@@ -41,7 +41,7 @@ from Screens.Setup import Setup
 from Tools.Directories import fileExists, resolveFilename, SCOPE_MEDIA
 
 # for my friend Archimede
-currversion = '1.0'
+currversion = '1.1'
 
 logger = logging.getLogger("M3UConverter")
 
