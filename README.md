@@ -1,7 +1,7 @@
 Archimede-M3UConverter 
  
 
-![](https://komarev.com/ghpvc/?username=Belfagor2005)
+![](https://komarev.com/ghpvc/?username=Belfagor2005) [![Python package](https://github.com/Belfagor2005/Archimede-M3UConverter/actions/workflows/pylint.yml/badge.svg)](https://github.com/Belfagor2005/Archimede-M3UConverter/actions/workflows/pylint.yml)
 
 <img src="https://github.com/Belfagor2005/Archimede-M3UConverter/blob/main/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/plugin.png">
 
