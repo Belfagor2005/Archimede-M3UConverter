@@ -538,7 +538,7 @@ class M3UConverter(Screen):
 
 
 class M3UConverterSettings(Setup):
-	def __init__(self, session, parent):
+	def __init__(self, session, parent=None):
 		Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
 		self.parent = parent
 
