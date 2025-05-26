@@ -29,7 +29,6 @@ from re import sub
 from urllib.parse import quote, urlparse
 from twisted.internet import threads
 from Components.ActionMap import ActionMap
-from Components.ConfigList import ConfigListScreen
 from Components.FileList import FileList
 from Components.Label import Label
 from Components.MenuList import MenuList
@@ -38,6 +37,7 @@ from Components.Sources.StaticText import StaticText
 from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
+from Screens.Setup import Setup
 from Tools.Directories import fileExists, resolveFilename, SCOPE_MEDIA
 
 # for my friend Archimede
@@ -537,41 +537,13 @@ class M3UConverter(Screen):
 		self.close()
 
 
-class M3UConverterSettings(ConfigListScreen, Screen):
-	skin = """
-	<screen position="center,center" size="1280,720" title="Settings">
-		<widget name="config" position="50,50" size="1180,600" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-		<ePixmap position="20,685" size="200,40" pixmap="skin_default/buttons/red.png" />
-		<ePixmap position="280,685" size="200,40" pixmap="skin_default/buttons/green.png" />
-		<widget source="key_red" render="Label" position="73,685" size="200,40" zPosition="1" font="Regular;24" />
-		<widget source="key_green" render="Label" position="326,685" size="200,40" zPosition="1" font="Regular;24" />
-	</screen>"""
+class M3UConverterSettings(Setup):
+	def __init__(self, session, parent):
+		Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
+		self.parent = parent
 
-	def __init__(self, session):
-		Screen.__init__(self, session)
-		self["key_red"] = StaticText(_("Cancel"))
-		self["key_green"] = StaticText(_("Save"))
-
-		ConfigListScreen.__init__(self, [
-			(_("Default folder"), config.plugins.m3uconverter.lastdir),
-			(_("Convert HLS streams"), config.plugins.m3uconverter.hls_convert),
-			(_("Auto-reload services"), config.plugins.m3uconverter.auto_reload),
-			(_("Create backup"), config.plugins.m3uconverter.backup_enable)
-		])
-
-		self["actions"] = ActionMap(["OkCancelActions", "ColorActions"], {
-			"green": self.save,
-			"red": self.cancel,
-			"cancel": self.cancel
-		}, -1)
-
-	def save(self):
-		for x in self["config"].list:
-			x[1].save()
-		self.close(True)
-
-	def cancel(self):
-		self.close(False)
+	def keySave(self):
+		Setup.keySave(self)
 
 
 def main(session, **kwargs):
