@@ -197,7 +197,7 @@ class M3UConverter(Screen):
 				MessageBox.TYPE_ERROR
 			)
 
-	def file_selected(self, res):
+	def file_selected(self, res=None):
 		logger.info("Callback file_selected: %s" % str(res))
 		if res and fileExists(res[0]):
 			try:
