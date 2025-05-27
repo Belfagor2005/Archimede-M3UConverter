@@ -297,12 +297,38 @@ class UniversalConverter(Screen):
 			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
 
 	def load_bouquets(self):
+		"""Load only active IPTV bouquets with HTTP streams"""
 		self.bouquet_list = []
-		for bouquet in glob.glob('/etc/enigma2/userbouquet.*.tv'):
-			with codecs.open(bouquet, "r", encoding="utf-8") as f:
-				content = f.read()
-				if '#SERVICE' in content and 'http' in content:
-					self.bouquet_list.append(bouquet)
+
+		bouquet_tv_path = "/etc/enigma2/bouquets.tv"
+		if not exists(bouquet_tv_path):
+			return
+
+		with open(bouquet_tv_path, "r", encoding="utf-8") as f:
+			lines = f.readlines()
+
+		# Parse only active bouquet paths
+		bouquet_files = []
+		for line in lines:
+			if line.startswith("#SERVICE") and "FROM BOUQUET" in line:
+				parts = line.split('"')
+				if len(parts) >= 2:
+					filename = parts[1]
+					if filename.endswith(".tv"):
+						bouquet_files.append("/etc/enigma2/" + filename)
+
+		# Filter only those with http streams
+		for bouquet in bouquet_files:
+			if not exists(bouquet):
+				continue
+			try:
+				with open(bouquet, "r", encoding="utf-8") as f:
+					content = f.read()
+					if "http" in content.lower():
+						self.bouquet_list.append(bouquet)
+			except Exception as e:
+				_log_error("Failed to read bouquet: " + bouquet + " - " + str(e))
+
 		self["list"].setList([basename(b) for b in self.bouquet_list])
 
 	def open_file_browser(self):
