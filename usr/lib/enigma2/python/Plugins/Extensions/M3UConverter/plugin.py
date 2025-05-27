@@ -4,12 +4,12 @@ from __future__ import absolute_import, print_function
 """
 #########################################################
 #                                                       #
-#  Archimede M3uConverter Plugin                        #
-#  Version: 1.0                                         #
+#  Archimede Universal Converter Plugin                 #
+#  Version: 1.2                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "11:56 - 20250526"                    #
+#  Last Modified: "21:50 - 20250527"                    #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -22,11 +22,13 @@ from __future__ import absolute_import, print_function
 __author__ = "Lululla"
 
 import logging
+import codecs
+import glob
 from gettext import gettext as _
 from os import access, listdir, makedirs, remove, replace, chmod, fsync, W_OK
-from os.path import basename, dirname, exists, isdir, join, normpath, splitext
-from re import sub
-from urllib.parse import quote, urlparse
+from os.path import basename, dirname, exists, isdir, isfile, join, normpath
+from re import sub, findall, DOTALL, search
+from urllib.parse import quote, urlparse, unquote
 from twisted.internet import threads
 from Components.ActionMap import ActionMap
 from Components.FileList import FileList
@@ -39,29 +41,36 @@ from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
 from Tools.Directories import fileExists, resolveFilename, SCOPE_MEDIA
+from enigma import eDVBDB
+import unicodedata
 
-# for my friend Archimede
-currversion = '1.1'
 
-logger = logging.getLogger("M3UConverter")
+# for my friend Archimede@
+currversion = '1.2'
 
-# Configurazione iniziale
+logger = logging.getLogger("UniversalConverter")
+
+# Init Config
 config.plugins.m3uconverter = ConfigSubsection()
 config.plugins.m3uconverter.lastdir = ConfigSelection(default="/media/hdd", choices=[])
+config.plugins.m3uconverter.bouquet_position = ConfigSelection(
+	default="bottom",
+	choices=[("top", _("Top")), ("bottom", _("Bottom"))]
+)
 config.plugins.m3uconverter.hls_convert = ConfigYesNo(default=True)
 config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
 config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
 
 
 class M3UFileBrowser(Screen):
-	def __init__(self, session, startdir="/media/hdd"):
+	def __init__(self, session, startdir="/media/hdd", matchingPattern=r"(?i)^.*\.m3u$"):
 		Screen.__init__(self, session)
 		self.skinName = "FileBrowser"
 
-		self["title"] = Label("Select M3U file")
+		self["title"] = Label("Select file")
 		self["filelist"] = FileList(
 			startdir,
-			matchingPattern=r"(?i)^.*\.m3u$",
+			matchingPattern=matchingPattern,
 			showDirectories=True,
 			showFiles=True,
 			useServiceRef=False
@@ -69,22 +78,153 @@ class M3UFileBrowser(Screen):
 
 		self["actions"] = ActionMap(["OkCancelActions", "ColorActions"], {
 			"ok": self.ok_pressed,
-			"OK": self.ok_pressed,
+			# "OK": self.ok_pressed, (.. on Atv are OK Uppercase in keymap.xml ??
 			"green": self.ok_pressed,
 			"cancel": self.close
 		}, -1)
 
 	def ok_pressed(self):
-		print("OK pressed")
 		selection = self["filelist"].getCurrent()
-		print("Selection:", selection)
-		if selection:
-			self.close(selection[0])
+		if not selection:
+			return
+
+		# Get the path from the tuple
+		first_item = selection[0]
+		if not isinstance(first_item, tuple):
+			return
+
+		path = first_item[0]
+		is_dir = first_item[1]
+
+		if not isinstance(path, str):
+			return
+
+		# Ignore "<Top folder>" if user just entered a folder
+		if path.endswith("/") and path.count("/") == 3:
+			# likely means '/media/hdd/movie/' → '/media/hdd/' → prevent loop
+			return
+
+		if is_dir:
+			self["filelist"].changeDir(path)
+		else:
+			self.close(path)
 
 
-class M3UConverter(Screen):
+def create_backup():
+	"""Create a backup of bouquets.tv only"""
+	from shutil import copy2
+	src = "/etc/enigma2/bouquets.tv"
+	dst = "/etc/enigma2/bouquets.tv.bak"
+	if exists(src):
+		copy2(src, dst)
+
+
+def reload_services():
+	"""Reload the list of services"""
+	eDVBDB.getInstance().reloadServicelist()
+	eDVBDB.getInstance().reloadBouquets()
+
+
+def transliterate(text):
+	normalized = unicodedata.normalize("NFKD", text)
+	return normalized.encode('ascii', 'ignore').decode('ascii')
+
+
+def clean_group_name(name):
+	return name.encode("ascii", "ignore").decode().replace(" ", "_").replace("/", "_").replace(":", "_")[:50]
+
+
+class ConversionSelector(Screen):
 	skin = """
-	<screen position="center,center" size="1280,720" title="Archimede M3U Converter">
+	<screen position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type">
+		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
+		<widget name="status" position="20,630" size="1240,50" font="Regular;24" />
+		<ePixmap position="20,685" size="200,40" pixmap="skin_default/buttons/red.png" />
+		<ePixmap position="280,685" size="200,40" pixmap="skin_default/buttons/green.png" />
+		<ePixmap position="538,685" size="200,40" pixmap="skin_default/buttons/yellow.png" />
+		<!--
+		<ePixmap position="817,685" size="200,40" pixmap="skin_default/buttons/blue.png" />
+		-->
+		<widget source="key_red" render="Label" position="73,685" size="200,40" zPosition="1" font="Regular;24" />
+		<widget source="key_green" render="Label" position="326,685" size="200,40" zPosition="1" font="Regular;24" />
+		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;24" />
+		<!--
+		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;24" />
+		-->
+	</screen>"""
+
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self.session = session
+		self.skinName = "ConversionSelector"
+		self.is_modal = True
+
+		self.menu = [
+			(_("Convert M3U to Enigma2 Bouquets"), "m3u_to_tv"),
+			(_("Convert Enigma2 Bouquets to M3U"), "tv_to_m3u"),
+			(_("Remove Enigma2 Bouquets Created with M3UConverter"), "purge_m3u_bouquets"),
+		]
+		self["list"] = MenuList(self.menu)
+		self["status"] = Label(_("Select Type of Conversion"))
+		self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
+			"red": self.close,
+			"green": self.select_item,
+			"ok": self.select_item,
+			"yellow": self.purge_m3u_bouquets,
+			"cancel": self.close
+		})
+		self["key_red"] = StaticText(_("Close"))
+		self["key_green"] = StaticText(_("Select"))
+		self["key_yellow"] = StaticText(_("Remove Bouquets"))
+
+	def purge_m3u_bouquets(self, directory="/etc/enigma2", pattern="_m3ubouquet.tv"):
+		"""Remove all bouquet files created by M3UConverter"""
+		create_backup()
+		removed_files = []
+
+		# Remove matching bouquet files
+		for f in listdir(directory):
+			file_path = join(directory, f)
+			if isfile(file_path) and search(pattern, f):
+				try:
+					remove(file_path)
+					removed_files.append(f)
+				except Exception as e:
+					logger.error("Failed to remove %s: %s" % (f, str(e)))
+
+		# Remove matching lines from bouquets.tv
+		bouquets_file = join(directory, "bouquets.tv")
+		if exists(bouquets_file):
+			with open(bouquets_file, "r", encoding="utf-8") as f:
+				lines = f.readlines()
+			with open(bouquets_file, "w", encoding="utf-8") as f:
+				for line in lines:
+					if not search(pattern, line):
+						f.write(line)
+
+		if removed_files:
+			message = "Removed %d bouquet(s):\n%s" % (
+				len(removed_files),
+				"\n".join(removed_files)
+			)
+		else:
+			message = "No M3UConverter bouquets found to remove."
+
+		self.session.open(MessageBox, message, MessageBox.TYPE_INFO)
+
+	def select_item(self):
+		selection = self["list"].getCurrent()
+		if selection[1] == "purge_m3u_bouquets":
+			self.purge_m3u_bouquets()
+			return
+
+		elif selection:
+			self.close(selection[1])
+
+
+class UniversalConverter(Screen):
+	skin = """
+	<screen position="center,center" size="1280,720" title="Archimede Universal Converter">
 		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
 		<widget name="status" position="20,630" size="1240,50" font="Regular;24" />
 		<ePixmap position="20,685" size="200,40" pixmap="skin_default/buttons/red.png" />
@@ -99,41 +239,124 @@ class M3UConverter(Screen):
 		<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;24" />
 	</screen>"""
 
-	def __init__(self, session):
+	def __init__(self, session, conversion_type):
 		Screen.__init__(self, session)
-		self.session = session
+		self.conversion_type = conversion_type
 		self.m3u_list = []
+		self.bouquet_list = []
 		self.selected_file = ""
 		self.progress = None
-
+		self.progress_source = Progress()
+		base_path = config.plugins.m3uconverter.lastdir.value
+		self.full_path = base_path
 		self["list"] = MenuList([])
-		self["status"] = Label("No files selected")
+		self["status"] = Label(_("Ready"))
 		self["key_red"] = StaticText(_("Open"))
-		self["key_green"] = StaticText(_("Export"))
+		self["key_green"] = StaticText(_("Convert"))
 		self["key_yellow"] = StaticText(_("Settings"))
 		self["key_blue"] = StaticText(_("Info"))
-		self.progress_source = Progress()
 		self["progress_source"] = self.progress_source
-		self["progress_text"] = StaticText()
-		self["actions"] = ActionMap(["OkCancelActions", "ColorActions"], {
+		self["progress_text"] = StaticText("")
+		self["progress_source"].setValue(0)
+		self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
 			"red": self.open_file,
-			"green": self.start_export,
+			"green": self.start_conversion,
 			"yellow": self.open_settings,
-			"blue": self.show_info,
-			"cancel": self.exit
+			"blue": self.show_credits,
+			"cancel": self.close
 		}, -1)
 
-		self.update_mounts()
-		self.update_path()
+		if self.conversion_type == "m3u_to_tv":
+			self.init_m3u_converter()
+		else:
+			self.init_tv_converter()
+
+	def init_m3u_converter(self):
+		self["key_green"].setText(_("Convert M3U"))
+		self["status"].setText(_("Press OK to select M3U file"))
+		self.onShown.append(self.delayed_file_browser)
+
+	def delayed_file_browser(self):
+		self.onShown.remove(self.delayed_file_browser)
+		self.open_file_browser()
+
+	def init_tv_converter(self):
+		self["key_green"].setText(_("Convert Bouquet"))
+		self.update_path_tv()
+
+	def update_path_tv(self):
+		try:
+			if not exists("/etc/enigma2"):
+				raise OSError("Bouquets path not found")
+
+			if not access("/etc/enigma2", W_OK):
+				logger.warning("Read-only bouquets path")
+
+		except Exception as e:
+			logger.error("TV path error: %s", str(e))
+			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
+
+	def load_bouquets(self):
+		self.bouquet_list = []
+		for bouquet in glob.glob('/etc/enigma2/userbouquet.*.tv'):
+			with codecs.open(bouquet, "r", encoding="utf-8") as f:
+				content = f.read()
+				if '#SERVICE' in content and 'http' in content:
+					self.bouquet_list.append(bouquet)
+		self["list"].setList([basename(b) for b in self.bouquet_list])
+
+	def open_file_browser(self):
+		if self.conversion_type == "m3u_to_tv":
+			pattern = r"(?i)^.*\.m3u$"
+		else:
+			pattern = r"(?i)^.*\.tv$"
+
+		self.session.openWithCallback(
+			self.file_selected,
+			M3UFileBrowser,
+			config.plugins.m3uconverter.lastdir.value,
+			matchingPattern=pattern
+		)
+
+	def start_conversion(self):
+		if self.conversion_type == "m3u_to_tv":
+			self.update_mounts()
+			self.update_path()
+			self.convert_m3u_to_tv()
+		else:
+			self.convert_tv_to_m3u()
+
+	def convert_m3u_to_tv(self):
+
+		def conversion_task():
+			try:
+				groups = {}
+				for idx, channel in enumerate(self.m3u_list):
+					group = channel.get('group', 'Default')
+					groups.setdefault(group, []).append(channel)
+					self.update_progress(idx + 1, _("Processing: %s") % channel['name'])
+
+				# First write a group
+				for group, channels in groups.items():
+					self.write_group_bouquet(group, channels)
+
+				# Next update main bouquet
+				self.update_main_bouquet(groups.keys())
+
+				return (True, len(self.m3u_list))
+			except Exception as e:
+				return (False, str(e))
+
+		threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
 	def update_mounts(self):
-		"""Aggiorna la lista dei dispositivi montati"""
+		"""Update the list of mounted devices"""
 		mounts = self.get_mounted_devices()
 		config.plugins.m3uconverter.lastdir.setChoices(mounts)
 		config.plugins.m3uconverter.lastdir.save()
 
 	def get_mounted_devices(self):
-		"""Recupera i dispositivi montati con permessi di scrittura"""
+		"""Recovers mounted devices with write permissions"""
 		from Components.Harddisk import harddiskmanager
 
 		devices = [
@@ -158,36 +381,53 @@ class M3UConverter(Screen):
 		return [(p.rstrip('/') + '/', d) for p, d in devices if isdir(p)]
 
 	def update_path(self):
-		"""Update path with special handling for /tmp"""
+		"""Update path with special handling for /tmp and ensure it's a valid directory."""
 		try:
-			base_path = config.plugins.m3uconverter.lastdir.value
-
-			# Verifica e fallback per il percorso base
-			if not base_path or not isdir(base_path):
-				fallbacks = ["/media/hdd", "/media/usb", "/tmp"]
-				base_path = next((p for p in fallbacks if isdir(p)), "/tmp")
-
-			# Gestione speciale per /tmp
-			if base_path == "/tmp":
-				self.full_path = base_path
+			if self.conversion_type == "tv_to_m3u":
+				self.full_path = "/etc/enigma2"
+				if not isdir(self.full_path):
+					logger.warning("Path %s does not exist, falling back to /tmp", self.full_path)
+					self.full_path = "/tmp"
 			else:
-				self.full_path = join(base_path, "movie")
+				base_path = config.plugins.m3uconverter.lastdir.value
 
-			if base_path != "/tmp":
-				makedirs(self.full_path, exist_ok=True)
-				chmod(self.full_path, 0o755)
+				if not base_path or not isdir(base_path):
+					fallbacks = ["/media/hdd", "/media/usb", "/tmp"]
+					base_path = next((p for p in fallbacks if isdir(p)), "/tmp")
+
+				if base_path == "/tmp":
+					self.full_path = base_path
+				else:
+					self.full_path = join(base_path, "movie")
+					if not isdir(self.full_path):
+						makedirs(self.full_path, exist_ok=True)
+						chmod(self.full_path, 0o755)
+
+			if not isdir(self.full_path):
+				logger.error("Final path %s is not a directory, falling back to /tmp", self.full_path)
+				self.full_path = "/tmp"
+
+			logger.info("Using path: %s", self.full_path)
 
 		except Exception as e:
-			logger.error(f"Path update failed: {str(e)}")
+			logger.error("Path update failed: %s", str(e))
 			self.full_path = "/tmp"
 
 	def open_file(self):
 		"""Opens the selector file without selectedItems parameter"""
 		try:
+			self.update_path()
+
+			if self.conversion_type == "tv_to_m3u":
+				pattern = r"(?i)^.*\.tv$"
+			else:
+				pattern = r"(?i)^.*\.m3u$"
+
 			self.session.openWithCallback(
 				self.file_selected,
 				M3UFileBrowser,
-				self.full_path
+				self.full_path,
+				matchingPattern=pattern
 			)
 		except Exception as e:
 			logger.error(f"Browser error: {str(e)}")
@@ -198,26 +438,60 @@ class M3UConverter(Screen):
 			)
 
 	def file_selected(self, res=None):
-		logger.info("Callback file_selected: %s" % str(res))
-		if res and fileExists(res[0]):
-			try:
-				selected_path = normpath(res[0])
+		logger.info("Callback file_selected: %s", str(res))
 
-				if not selected_path.lower().endswith('.m3u'):
-					raise ValueError("Unsupported file format")
-
-				config_dir = dirname(selected_path)
-				logger.info("Callback config_dir: %s" % config_dir)
-				if isdir(config_dir):
-					config.plugins.m3uconverter.lastdir.value = config_dir
-					config.plugins.m3uconverter.lastdir.save()
-				self.selected_file = selected_path
-				self.parse_m3u(selected_path)
-			except Exception as e:
-				logger.error("File selection error: %s" % str(e))
-				self["status"].setText(_("Invalid selection"))
-		else:
+		if not res:
 			self["status"].setText(_("No files selected"))
+			return
+		logger.info("Callback file_selected: %s" % str(res))
+		# If res is tuple or list, take the first element
+		selected_path = None
+		if isinstance(res, (tuple, list)):
+			if len(res) == 0:
+				self["status"].setText(_("No files selected"))
+				return
+			selected_path = res[0]
+		elif isinstance(res, str):
+			selected_path = res
+		else:
+			self["status"].setText(_("Invalid selection"))
+			return
+
+		if not fileExists(selected_path):
+			self["status"].setText(_("Selected file does not exist"))
+			return
+
+		try:
+			selected_path = normpath(selected_path)
+
+			# Extension validation based on conversion type
+			if self.conversion_type == "m3u_to_tv":
+				if not selected_path.lower().endswith('.m3u'):
+					raise ValueError(_("Select a valid M3U file"))
+			else:
+				if not selected_path.lower().endswith('.tv'):
+					raise ValueError(_("Select a valid TV bouquet"))
+
+			# Update route configuration
+			config_dir = dirname(selected_path)
+			if isdir(config_dir):
+				config.plugins.m3uconverter.lastdir.value = config_dir
+				config.plugins.m3uconverter.lastdir.save()
+
+			self.selected_file = selected_path
+
+			# Start appropriate parsing
+			if self.conversion_type == "m3u_to_tv":
+				self.parse_m3u(selected_path)
+			else:
+				self.parse_tv(selected_path)
+
+			self["status"].setText(_("Selected file: %s") % selected_path)
+
+		except Exception as e:
+			logger.error("Error file selected: %s", str(e), exc_info=True)
+			self["status"].setText(_("Error: %s") % str(e))
+			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
 
 	def parse_m3u(self, filename):
 		"""Analyze M3U files with advanced attribute management"""
@@ -227,8 +501,13 @@ class M3UConverter(Screen):
 
 			self.m3u_list = []
 			self.filename = filename
+
+			# 1. Initial backup
+			if config.plugins.m3uconverter.backup_enable.value:
+				create_backup()
+
 			channels = self._parse_m3u_content(data)
-			# Mappatura attributi avanzati
+			# Advanced Attribute Mapping
 			for channel in channels:
 				self.m3u_list.append({
 					'name': channel.get('title', ''),
@@ -241,7 +520,7 @@ class M3UConverter(Screen):
 					'program_id': channel.get('program-id', '')
 				})
 
-			# Aggiornamento UI
+			# UI Update
 			display_list = []
 			for c in self.m3u_list:
 				group = c['group']
@@ -257,13 +536,13 @@ class M3UConverter(Screen):
 					display_list.append(name)
 
 			self["list"].setList(display_list)
-			self["status"].setText(_("Caricati %d canali") % len(self.m3u_list))
+			self["status"].setText(_("Loaded %d channels") % len(self.m3u_list))
 
 		except Exception as e:
-			logger.error(f"Errore parsing M3U: {str(e)}")
+			logger.error(f"Error parsing M3U: {str(e)}")
 			self.session.open(
 				MessageBox,
-				_("Formato file non valido:\n%s") % str(e),
+				_("Invalid file format:\n%s") % str(e),
 				MessageBox.TYPE_ERROR
 			)
 
@@ -343,7 +622,7 @@ class M3UConverter(Screen):
 			elif line.startswith('#'):
 				continue
 
-			else:  # URL del canale
+			else:
 				if current_params.get('title'):
 					current_params['uri'] = line.strip()
 					entries.append(current_params)
@@ -366,136 +645,72 @@ class M3UConverter(Screen):
 			return f"hls://{url}"
 		return url
 
-	def start_export(self):
-		self.progress_source.setRange(len(self.m3u_list))
-		self.progress_source.setValue(0)
-		self["progress_text"].setText(_("Starting export..."))
-
-		def export_task():
-			try:
-				self.name_file = self.get_safe_filename(splitext(basename(self.filename))[0])
-				# 1. Backup iniziale
-				if config.plugins.m3uconverter.backup_enable.value:
-					self.create_backup()
-
-				# 2. Elaborazione canali
-				groups = {}
-				for idx, channel in enumerate(self.m3u_list):
-					groups.setdefault(channel['group'], []).append(channel)
-					self.update_progress(idx + 1, _("Processing %s") % channel['name'])
-
-				# 3. Scrittura DOPO l'elaborazione completa
-				self.update_main_bouquet(groups.keys())
-
-				for group, channels in groups.items():
-					self.write_group_bouquet(group, channels)
-
-				# 4. Ricarica finale
-				if config.plugins.m3uconverter.auto_reload.value:
-					self.reload_services()
-
-				return (True, len(self.m3u_list))
-			except Exception as e:
-				import traceback
-				tb = traceback.format_exc()  # Ottieni stack trace completo
-				self.update_progress(0, _("Error: %s") % str(e))
-				logger.error("Export failed:\n%s", tb)
-				return (False, str(e))
-
-		threads.deferToThread(export_task).addBoth(self.export_finished)
-
-	def export_finished(self, result):
-		success, data = result
-		if success:
-			msg = _("Exported %d channels") % data
-			self.progress_source.setValue(self.progress_source.range)
-		else:
-			msg = _("Export failed: %s") % data
-			self.progress_source.setValue(0)
-
-		self["progress_text"].setText(msg)
-
-	def update_progress(self, value, text):
-		from twisted.internet import reactor
-		reactor.callFromThread(self._update_ui, value, text)
-
-	def _update_ui(self, value, text):
-		self.progress_source.setValue(value)
-		self["progress_text"].setText(text)
-
-	def create_backup(self):
-		"""Create backups of existing bouquets"""
-		from shutil import copy2
-		backup_dir = "/etc/enigma2/backup"
-		makedirs(backup_dir, exist_ok=True)
-
-		for f in listdir("/etc/enigma2"):
-			if f.startswith(("bouquets.", "userbouquet.")):
-				copy2(
-					join("/etc/enigma2", f),
-					join(backup_dir, f)
-				)
-
-	def update_main_bouquet(self, groups, keys=None):
+	def update_main_bouquet(self, groups):
 		"""Update the main bouquet file with generated group bouquets"""
 		main_file = "/etc/enigma2/bouquets.tv"
 		existing = []
-		new_content = []
-		marker = "--- | M3UConverter | ---"
 
 		if exists(main_file):
-			with open(main_file, 'r+', encoding='utf-8') as f:
+			with open(main_file, "r", encoding="utf-8") as f:
 				existing = f.readlines()
 
-		# Conserva contenuto esistente prima del marker
-		for line in existing:
-			if line.strip() == marker.strip():
-				break
-			new_content.append(line)
+		if config.plugins.m3uconverter.backup_enable.value:
+			create_backup()
 
-		# Aggiungi nuovi gruppi
-		new_content.append(marker)
-		new_content.append("#NAME " + self.name_file.capitalize() + "\r\n")
+		new_lines = []
 		for group in groups:
-			group_name = quote(group.replace(' ', '_').replace('/', '_').replace(':', '_')[:50])
-			safe_name = self.get_safe_filename(group_name)
-			new_content.append(f'#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.{safe_name}.tv" ORDER BY bouquet\n')
+			safe_name = self.get_safe_filename(group)
+			bouquet_path = "userbouquet." + safe_name + ".tv"
+			line_to_add = '#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "' + bouquet_path + '" ORDER BY bouquet\n'
 
-		# Scrivi il file
-		with open(main_file, 'w') as f:
+			if line_to_add not in existing and line_to_add not in new_lines:
+				new_lines.append(line_to_add)
+
+		# Decide if add at top or bottom based on config option
+		if config.plugins.m3uconverter.bouquet_position.value == "top":
+			new_content = new_lines + existing
+		else:
+			new_content = existing + new_lines
+
+		with open(main_file, "w", encoding="utf-8") as f:
 			f.writelines(new_content)
+
+		if config.plugins.m3uconverter.auto_reload.value:
+			reload_services()
 
 	def write_group_bouquet(self, group, channels):
 		"""
-		Writes a bouquet file for a single group safely and efficiently.
-
-		This method:
-		- Converts the group name into a safe filename by replacing spaces and
-		  special characters, and truncates it to 50 chars.
-		- Writes the bouquet content into a temporary file to avoid corruption.
-		- Each channel is written with its service reference (type 4097) and description.
-		- Flushes and syncs the file every 50 channels for data safety.
-		- Atomically replaces the old bouquet file with the new one.
-		- Sets proper file permissions (644).
-		- Handles errors by cleaning up temporary files and logging failures.
+		Writes a bouquet file for a single group safely and efficiently,
+		handling cirillic characters by transliterating names and saving
+		the file in latin-1 encoding for Enigma2 compatibility.
 		"""
 		try:
-			group_name = quote(group.replace(' ', '_').replace('/', '_'), safe='')[:50]
-			safe_name = self.get_safe_filename(group_name)
-			filename = join("/etc/enigma2", f"userbouquet.{safe_name}.tv")
-			temp_file = f"{filename}.tmp"
-			name_bouquet = safe_name.capitalize().replace('_', ' ').replace('-', ' ').replace('.', ' ')
-			# Scrittura su file temporaneo
-			with open(temp_file, 'w', encoding='utf-8', errors='replace') as f:
-				f.write(f"#NAME {name_bouquet}\n")
+			safe_name = self.get_safe_filename(group)
+			filename = join("/etc/enigma2", "userbouquet." + safe_name + ".tv")
+			temp_file = filename + ".tmp"
+
+			# Transliterate group name and provide fallback
+			name_bouquet = transliterate(group).capitalize()
+			if not name_bouquet.strip():
+				name_bouquet = "Unnamed Group"
+
+			# Add marker and main bouquet name
+			markera = "#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | M3UConverter | ---"
+			markerb = "#DESCRIPTION --- | M3UConverter | ---"
+
+			with open(temp_file, "w", encoding="latin-1", errors="replace") as f:
+				f.write("#NAME " + name_bouquet + "\n")
+				f.write(markera + "\n")
+				f.write(markerb + "\n")
 				for idx, ch in enumerate(channels, 1):
-					f.write(f"#SERVICE 4097:0:1:0:0:0:0:0:0:0:{ch['url']}\n")
-					f.write(f"#DESCRIPTION {ch['name']}\n")
-					if idx % 50 == 0:  # Flush periodico
+					f.write("#SERVICE 4097:0:1:0:0:0:0:0:0:0:" + ch["url"] + "\n")
+					desc = transliterate(ch["name"])
+					f.write("#DESCRIPTION " + desc + "\n")
+
+					if idx % 50 == 0:
 						f.flush()
 						fsync(f.fileno())
 
-			# Sostituzione atomica del file
 			replace(temp_file, filename)
 			chmod(filename, 0o644)
 
@@ -504,37 +719,109 @@ class M3UConverter(Screen):
 				try:
 					remove(temp_file)
 				except Exception as cleanup_error:
-					logger.error(f"Cleanup error: {cleanup_error}")
+					logger.error("Cleanup error: " + str(cleanup_error))
 
-			logger.error(f"Failed to write bouquet {group}: {str(e)}")
-			raise RuntimeError(f"Bouquet creation failed for {group}") from e
+			logger.error("Failed to write bouquet " + group + ": " + str(e))
+			raise RuntimeError("Bouquet creation failed for " + group) from e
 
 	def get_safe_filename(self, group):
-		import unicodedata
-		"""Generate a secure file name for bouquets"""
-		# Normalizza e pulisci il nome del gruppo
-		safe_name = unicodedata.normalize('NFKD', group)
-		safe_name = safe_name.encode('ascii', 'ignore').decode('ascii')
-		safe_name = sub(r'[^a-z0-9_-]', '_', safe_name.lower())
-		safe_name = sub(r'_+', '_', safe_name).strip('_')
-		# Lunghezza massima 50 caratteri mantenendo l'unicità
-		return safe_name[:50] or self.name_file
+		"""Generate a secure file name for bouquets with a suffix for identification"""
+		normalized = unicodedata.normalize("NFKD", group)
+		safe_name = normalized.encode('ascii', 'ignore').decode('ascii')  # Remove accents and non-ASCII
+		safe_name = sub(r'[^a-z0-9_-]', '_', safe_name.lower())           # Replace unwanted chars
+		safe_name = sub(r'_+', '_', safe_name).strip('_')                 # Normalize underscores
 
-	def reload_services(self):
-		"""Reload the list of services"""
-		from enigma import eDVBDB
-		eDVBDB.getInstance().reloadServicelist()
-		eDVBDB.getInstance().reloadBouquets()
+		# Add a suffix to mark the bouquet as created by M3UConverter
+		suffix = "_m3ubouquet"
+		base_name = safe_name[:50 - len(suffix)] if len(safe_name) > 50 - len(suffix) else safe_name
+
+		return base_name + suffix if base_name else "my_m3uconverter" + suffix
+
+	# TV to M3U Conversion Methods
+	def parse_tv(self, filename):
+		try:
+			channels = []
+			with codecs.open(filename, "r", encoding="utf-8") as f:
+				content = f.read()
+				matches = findall(
+					r'#SERVICE\s(?:4097|5002):\d+:\d+:\d+:\d+:\d+:\d+:\d+:\d+:\d+:(.*?)\n#DESCRIPTION\s(.*?)\n',
+					content,
+					DOTALL
+				)
+
+				for service, name in matches:
+					# URL decoding and filtering HTTP/HTTPS streams only
+					url = unquote(service.strip())
+					if any(url.startswith(proto) for proto in ('http://', 'https://', 'hls://')):
+						channels.append((name.strip(), url))
+
+			if not channels:
+				raise ValueError(_("No IPTV channels found in the bouquet"))
+
+			self.m3u_list = channels
+			self["list"].setList([c[0] for c in channels])
+			self["status"].setText(_("Loaded %d channels") % len(channels))
+
+		except Exception as e:
+			self.show_error(_("Error parsing bouquet: %s") % str(e))
+
+	def convert_tv_to_m3u(self):
+
+		def conversion_task():
+			try:
+				output_file = "/tmp/converted.m3u"
+				with open(output_file, 'w', encoding='utf-8') as f:
+					f.write('#EXTM3U\n')
+					for idx, (name, url) in enumerate(self.m3u_list):
+						f.write(f'#EXTINF:-1 tvg-name="{quote(name)}",{name}\n')
+						f.write(f'{url}\n')
+						self.update_progress(idx + 1, _("Exporting: %s") % name)
+				return (True, output_file)
+			except Exception as e:
+				return (False, str(e))
+
+		threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+
+	def conversion_finished(self, result):
+		self["progress_source"].setValue(0)
+		success, data = result
+
+		if success:
+			msg = _("Successfully converted %d items") % data if isinstance(data, int) else _("File saved to: %s") % data
+			self.show_info(msg)
+			self["status"].setText(msg)
+			self["progress_source"].setValue(self["progress_source"].range)
+		else:
+			msg = _("Conversion failed: %s") % data
+			self.show_error(msg)
+			self["progress_source"].setValue(0)
+			self["status"].setText(msg)
+
+		self["progress_text"].setText("")
+
+	def update_progress(self, value, text):
+		from twisted.internet import reactor
+		reactor.callFromThread(self._update_progress_ui, value, text)
+
+	def _update_progress_ui(self, value, text):
+		self.progress_source.setRange(len(self.m3u_list) if self.m3u_list else 100)
+		self.progress_source.setValue(value)
+		self["progress_text"].setText(text)
 
 	def open_settings(self):
 		self.session.open(M3UConverterSettings)
 
-	def show_info(self):
-		text = f"M3U Converter Plugin\nVersion {str(currversion)}\nLululla Developed for Enigma2"
+	def show_credits(self):
+		text = f"M3U Archimede Universal Converter Plugin\nVersion {str(currversion)}\nLululla Developed for Enigma2"
 		self.session.open(MessageBox, text, MessageBox.TYPE_INFO)
 
-	def exit(self):
-		self.close()
+	def show_info(self, message):
+		self.session.open(MessageBox, message, MessageBox.TYPE_INFO)
+		self["status"].setText(message)
+
+	def show_error(self, message):
+		self.session.open(MessageBox, message, MessageBox.TYPE_ERROR)
+		self["status"].setText(message)
 
 
 class M3UConverterSettings(Setup):
@@ -547,14 +834,21 @@ class M3UConverterSettings(Setup):
 
 
 def main(session, **kwargs):
-	session.open(M3UConverter)
+	session.openWithCallback(
+		lambda conversion_type: conversion_type and session.openWithCallback(
+			lambda: None,  # Callback vuoto per mantenere la modalità
+			UniversalConverter,
+			conversion_type
+		),
+		ConversionSelector
+	)
 
 
 def Plugins(**kwargs):
 	from Plugins.Plugin import PluginDescriptor
 	return [PluginDescriptor(
-		name=_("M3U Converter"),
-		description=_("Archimede Convert M3U playlists to Enigma2 bouquets"),
+		name=_("Universal Converter"),
+		description=_("Convert between M3U and Enigma2 bouquets"),
 		where=PluginDescriptor.WHERE_PLUGINMENU,
 		icon="plugin.png",
 		fnc=main)

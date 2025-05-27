@@ -1,6 +1,7 @@
 <setupxml>
 	<setup key="M3UConverterSettings" title="M3UConverter Settings">
 		<item level="0" text="Default folder" description="The default folder used to open or save M3U files.">config.plugins.m3uconverter.lastdir</item>
+		<item level="0" text="Position of M3U bouquets in main list" description="Choose whether to place the generated M3U bouquets at the top or bottom of the bouquet list.">config.plugins.m3uconverter.bouquet_position</item>
 		<item level="0" text="Convert HLS streams" description="Automatically convert HLS (m3u8) streams into direct Enigma2-compatible streams.">config.plugins.m3uconverter.hls_convert</item>
 		<item level="0" text="Auto-reload services" description="Automatically reload the channel list after each conversion.">config.plugins.m3uconverter.auto_reload</item>
 		<item level="0" text="Create backup" description="Create a backup copy of the original M3U file before conversion.">config.plugins.m3uconverter.backup_enable</item>
