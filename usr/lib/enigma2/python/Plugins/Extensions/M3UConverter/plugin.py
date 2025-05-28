@@ -199,16 +199,16 @@ class ConversionSelector(Screen):
 	skin = """
 	<screen position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type" flags="wfNoBorder">
 		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;32" scrollbarMode="showNever" />
-		<widget name="status" position="20,630" size="1240,50" font="Regular;28" />
-		<eLabel backgroundColor="red" cornerRadius="3" position="50,720" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="green" cornerRadius="3" position="327,720" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,720" size="200,6" zPosition="11" />
+		<widget name="status" position="20,605" size="1240,50" font="Regular;28" />
+		<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
 		<!--
 		<eLabel backgroundColor="blue" cornerRadius="3" position="882,720" size="200,6" zPosition="11" />
 		-->
-		<widget source="key_red" render="Label" position="50,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_green" render="Label" position="325,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
 		<!--
 		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
 		-->
@@ -287,19 +287,19 @@ class UniversalConverter(Screen):
 	skin = """
 	<screen position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
 		<widget name="list" position="20,20" size="840,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-		<widget name="status" position="20,630" size="1240,50" font="Regular;24" />
-		<eLabel backgroundColor="red" cornerRadius="3" position="50,720" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="green" cornerRadius="3" position="327,720" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,720" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="blue" cornerRadius="3" position="882,720" size="200,6" zPosition="11" />
-		<widget source="key_red" render="Label" position="50,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_green" render="Label" position="325,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget name="status" position="20,605" size="1240,50" font="Regular;28" />
+		<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="blue" cornerRadius="3" position="882,700" size="200,6" zPosition="11" />
+		<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_blue" render="Label" position="880,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
 		<widget source="progress_source" render="Progress" position="51,589" size="1180,30" />
 		<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;28" />
-		<eLabel name="" position="1096,677" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
-		<eLabel name="" position="1155,677" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
+		<eLabel name="" position="1096,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
+		<eLabel name="" position="1155,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
 		<widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
 			<convert type="ServiceName">Name</convert>
 		</widget>
