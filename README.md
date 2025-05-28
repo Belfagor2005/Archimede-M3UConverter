@@ -27,18 +27,19 @@ Easily turn `.m3u` files into clean IPTV lists with group, logo, and stream info
 - 💾 Automatic backup of original files
 - 🧠 Auto-reload playlist at boot
 - 📚 Add new bouquets at top or bottom of main list
-
+- 🎯 Browser of file .tv: smart filter that shows only files containing http streams (great for avoiding empty or useless files).​​
 ---
 
 ## 🎮 How to Use
 
 | Button       | Action                                      |
 |--------------|---------------------------------------------|
-| 🔴 RED       | Select M3U/TV file                             |
+| 🔴 RED       | Select M3U/TV file                          |
 | 🟢 GREEN     | Convert M3U to bouquet or bouquet to M3U    |
 | 🟡 YELLOW    | Settings (HLS, backup, autoload, position)  |
 | 🔵 BLUE      | Plugin info and about                       |
-
+| ▶️  Player    | can be activated with OK​​                    |
+| ⏹️ STOP      | to end playback                             |
 ---
 
 ## 🗂️ Output
