@@ -1,10 +1,10 @@
 Package: enigma2-plugin-extensions-m3uconverter
-Version: 1.2
+Version: 1.3
 Section: enigma2
 Priority: optional
 Architecture: all
 Maintainer: Lululla
-Description: Archimede M3UConverter
+Description: Archimede Universal M3UConverter
 Source: enigma2-plugin-extensions-m3uconverter
 Homepage: https://github.com/Belfagor2005
 License: GPL-3.0

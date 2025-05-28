@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 1.2                                         #
+#  Version: 1.3                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
@@ -23,10 +23,9 @@ __author__ = "Lululla"
 
 import logging
 import codecs
-import glob
 from gettext import gettext as _
 from os import access, listdir, makedirs, remove, replace, chmod, fsync, W_OK
-from os.path import basename, dirname, exists, isdir, isfile, join, normpath
+from os.path import dirname, exists, isdir, isfile, join, normpath
 from re import sub, findall, DOTALL, search
 from urllib.parse import quote, urlparse, unquote
 from twisted.internet import threads
@@ -41,13 +40,46 @@ from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
 from Tools.Directories import fileExists, resolveFilename, SCOPE_MEDIA
-from enigma import eDVBDB
+from enigma import eDVBDB, eServiceReference
 import unicodedata
 
 
-# for my friend Archimede@
-currversion = '1.2'
+try:
+	from Components.AVSwitch import AVSwitch
+except ImportError:
+	from Components.AVSwitch import eAVControl as AVSwitch
 
+
+class AspectManager:
+	def __init__(self):
+		self.init_aspect = self.get_current_aspect()
+		print("[INFO] Initial aspect ratio:", self.init_aspect)
+
+	def get_current_aspect(self):
+		"""Restituisce l'aspect ratio attuale del dispositivo."""
+		try:
+			return int(AVSwitch().getAspectRatioSetting())
+		except Exception as e:
+			print("[ERROR] Failed to get aspect ratio:", str(e))
+			return 0
+
+	def restore_aspect(self):
+		"""Ripristina l'aspect ratio originale all'uscita del plugin."""
+		try:
+			print("[INFO] Restoring aspect ratio to:", self.init_aspect)
+			AVSwitch().setAspectRatio(self.init_aspect)
+		except Exception as e:
+			print("[ERROR] Failed to restore aspect ratio:", str(e))
+
+
+# for my friend Archimede
+currversion = '1.4'
+
+ICON_STORAGE = 0
+ICON_PARENT = 1
+ICON_CURRENT = 2
+
+aspect_manager = AspectManager()
 logger = logging.getLogger("UniversalConverter")
 
 # Init Config
@@ -60,54 +92,6 @@ config.plugins.m3uconverter.bouquet_position = ConfigSelection(
 config.plugins.m3uconverter.hls_convert = ConfigYesNo(default=True)
 config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
 config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
-
-
-class M3UFileBrowser(Screen):
-	def __init__(self, session, startdir="/media/hdd", matchingPattern=r"(?i)^.*\.m3u$"):
-		Screen.__init__(self, session)
-		self.skinName = "FileBrowser"
-
-		self["title"] = Label("Select file")
-		self["filelist"] = FileList(
-			startdir,
-			matchingPattern=matchingPattern,
-			showDirectories=True,
-			showFiles=True,
-			useServiceRef=False
-		)
-
-		self["actions"] = ActionMap(["OkCancelActions", "ColorActions"], {
-			"ok": self.ok_pressed,
-			# "OK": self.ok_pressed, (.. on Atv are OK Uppercase in keymap.xml ??
-			"green": self.ok_pressed,
-			"cancel": self.close
-		}, -1)
-
-	def ok_pressed(self):
-		selection = self["filelist"].getCurrent()
-		if not selection:
-			return
-
-		# Get the path from the tuple
-		first_item = selection[0]
-		if not isinstance(first_item, tuple):
-			return
-
-		path = first_item[0]
-		is_dir = first_item[1]
-
-		if not isinstance(path, str):
-			return
-
-		# Ignore "<Top folder>" if user just entered a folder
-		if path.endswith("/") and path.count("/") == 3:
-			# likely means '/media/hdd/movie/' → '/media/hdd/' → prevent loop
-			return
-
-		if is_dir:
-			self["filelist"].changeDir(path)
-		else:
-			self.close(path)
 
 
 def create_backup():
@@ -134,22 +118,99 @@ def clean_group_name(name):
 	return name.encode("ascii", "ignore").decode().replace(" ", "_").replace("/", "_").replace(":", "_")[:50]
 
 
+class M3UFileBrowser(Screen):
+	def __init__(self, session, startdir="/etc/enigma2", matchingPattern=r"(?i)^.*\.tv$", conversion_type=None):
+		Screen.__init__(self, session)
+		self.skinName = "FileBrowser"
+		self.conversion_type = conversion_type
+		self["filelist"] = FileList(
+			startdir,
+			matchingPattern=matchingPattern,
+			showDirectories=True,
+			showFiles=True,
+			useServiceRef=False
+		)
+
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions"], {
+			"ok": self.ok_pressed,
+			"green": self.ok_pressed,
+			"cancel": self.close
+		}, -1)
+		if self.conversion_type == "tv_to_m3u":
+			self.onShown.append(self._filter_list)  # Filter after screen is shown
+
+	def _filter_list(self):
+		"""Filter list to show only directories and .tv files containing 'http'"""
+		filtered = []
+		for entry in self["filelist"].list:
+			# Entry format: [tuple, ...]
+			# First element is a tuple: (path, isDir, isLink, selected, name, dirIcon)
+			file_data = entry[0]
+			path = file_data[0]  # Get path from tuple
+			is_dir = file_data[1]  # Get isDir flag
+
+			# Handle special cases like parent directory
+			if is_dir or file_data[5] in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
+				filtered.append(entry)  # Always include directories and special entries
+			else:
+				# Only include .tv files with HTTP content
+				if path and path.lower().endswith(".tv") and self._contains_http(path):
+					filtered.append(entry)
+
+		self["filelist"].list = filtered
+		self["filelist"].l.setList(filtered)  # Update the list display
+
+	def _contains_http(self, filepath):
+		"""Check if file contains 'http' (case-insensitive)"""
+		try:
+			with open(filepath, "r") as f:
+				return any("http" in line.lower() for line in f)
+		except Exception as e:
+			logger.error(f"Error reading {filepath}: {str(e)}")
+			return False
+
+	def ok_pressed(self):
+		selection = self["filelist"].getCurrent()
+		if not selection:
+			return
+
+		# Selection is a list of components
+		# First component is tuple: (path, isDir, isLink, selected, name, dirIcon)
+		file_data = selection[0]
+		path = file_data[0]  # Get path from tuple
+		# flags = file_data[1]  # Get flags
+		is_dir = file_data[1]  # isDir flag
+
+		# Handle special entries (parent, storage, etc.)
+		if file_data[5] in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
+			self["filelist"].changeDir(path)
+			if self.conversion_type == "tv_to_m3u":
+				self._filter_list()
+
+		elif is_dir:
+			self["filelist"].changeDir(path)
+			if self.conversion_type == "tv_to_m3u":
+				self._filter_list()
+		else:
+			self.close(path)
+
+
 class ConversionSelector(Screen):
 	skin = """
-	<screen position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type">
-		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-		<widget name="status" position="20,630" size="1240,50" font="Regular;24" />
-		<ePixmap position="20,685" size="200,40" pixmap="skin_default/buttons/red.png" />
-		<ePixmap position="280,685" size="200,40" pixmap="skin_default/buttons/green.png" />
-		<ePixmap position="538,685" size="200,40" pixmap="skin_default/buttons/yellow.png" />
+	<screen position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type" flags="wfNoBorder">
+		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;32" scrollbarMode="showNever" />
+		<widget name="status" position="20,630" size="1240,50" font="Regular;28" />
+		<eLabel backgroundColor="red" cornerRadius="3" position="50,720" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="green" cornerRadius="3" position="327,720" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,720" size="200,6" zPosition="11" />
 		<!--
-		<ePixmap position="817,685" size="200,40" pixmap="skin_default/buttons/blue.png" />
+		<eLabel backgroundColor="blue" cornerRadius="3" position="882,720" size="200,6" zPosition="11" />
 		-->
-		<widget source="key_red" render="Label" position="73,685" size="200,40" zPosition="1" font="Regular;24" />
-		<widget source="key_green" render="Label" position="326,685" size="200,40" zPosition="1" font="Regular;24" />
-		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;24" />
+		<widget source="key_red" render="Label" position="50,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_green" render="Label" position="325,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
 		<!--
-		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;24" />
+		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
 		-->
 	</screen>"""
 
@@ -224,19 +285,25 @@ class ConversionSelector(Screen):
 
 class UniversalConverter(Screen):
 	skin = """
-	<screen position="center,center" size="1280,720" title="Archimede Universal Converter">
-		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
+	<screen position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
+		<widget name="list" position="20,20" size="840,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
 		<widget name="status" position="20,630" size="1240,50" font="Regular;24" />
-		<ePixmap position="20,685" size="200,40" pixmap="skin_default/buttons/red.png" />
-		<ePixmap position="280,685" size="200,40" pixmap="skin_default/buttons/green.png" />
-		<ePixmap position="538,685" size="200,40" pixmap="skin_default/buttons/yellow.png" />
-		<ePixmap position="817,685" size="200,40" pixmap="skin_default/buttons/blue.png" />
-		<widget source="key_red" render="Label" position="73,685" size="200,40" zPosition="1" font="Regular;24" />
-		<widget source="key_green" render="Label" position="326,685" size="200,40" zPosition="1" font="Regular;24" />
-		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;24" />
-		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;24" />
+		<eLabel backgroundColor="red" cornerRadius="3" position="50,720" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="green" cornerRadius="3" position="327,720" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,720" size="200,6" zPosition="11" />
+		<eLabel backgroundColor="blue" cornerRadius="3" position="882,720" size="200,6" zPosition="11" />
+		<widget source="key_red" render="Label" position="50,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_green" render="Label" position="325,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_yellow" render="Label" position="600,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
 		<widget source="progress_source" render="Progress" position="51,589" size="1180,30" />
-		<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;24" />
+		<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;28" />
+		<eLabel name="" position="1096,677" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
+		<eLabel name="" position="1155,677" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
+		<widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
+			<convert type="ServiceName">Name</convert>
+		</widget>
+		<widget source="session.VideoPicture" render="Pig" position="871,92" zPosition="20" size="400,220" backgroundColor="transparent" transparent="0" cornerRadius="14" />
 	</screen>"""
 
 	def __init__(self, session, conversion_type):
@@ -258,17 +325,21 @@ class UniversalConverter(Screen):
 		self["progress_source"] = self.progress_source
 		self["progress_text"] = StaticText("")
 		self["progress_source"].setValue(0)
-		self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
+		self.initialservice = self.session.nav.getCurrentlyPlayingServiceReference()
+		self["actions"] = ActionMap(["ColorActions", "OkCancelActions", "MediaPlayerActions"], {
 			"red": self.open_file,
 			"green": self.start_conversion,
 			"yellow": self.open_settings,
 			"blue": self.show_credits,
-			"cancel": self.close
+			"cancel": self.keyClose,
+			"stop": self.stop_player,
+			"ok": self.key_ok
 		}, -1)
 
 		if self.conversion_type == "m3u_to_tv":
 			self.init_m3u_converter()
 		else:
+			self.conversion_type = "tv_to_m3u"
 			self.init_tv_converter()
 
 	def init_m3u_converter(self):
@@ -296,52 +367,14 @@ class UniversalConverter(Screen):
 			logger.error("TV path error: %s", str(e))
 			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
 
-	def load_bouquets(self):
-		"""Load only active IPTV bouquets with HTTP streams"""
-		self.bouquet_list = []
-
-		bouquet_tv_path = "/etc/enigma2/bouquets.tv"
-		if not exists(bouquet_tv_path):
-			return
-
-		with open(bouquet_tv_path, "r", encoding="utf-8") as f:
-			lines = f.readlines()
-
-		# Parse only active bouquet paths
-		bouquet_files = []
-		for line in lines:
-			if line.startswith("#SERVICE") and "FROM BOUQUET" in line:
-				parts = line.split('"')
-				if len(parts) >= 2:
-					filename = parts[1]
-					if filename.endswith(".tv"):
-						bouquet_files.append("/etc/enigma2/" + filename)
-
-		# Filter only those with http streams
-		for bouquet in bouquet_files:
-			if not exists(bouquet):
-				continue
-			try:
-				with open(bouquet, "r", encoding="utf-8") as f:
-					content = f.read()
-					if "http" in content.lower():
-						self.bouquet_list.append(bouquet)
-			except Exception as e:
-				_log_error("Failed to read bouquet: " + bouquet + " - " + str(e))
-
-		self["list"].setList([basename(b) for b in self.bouquet_list])
-
 	def open_file_browser(self):
-		if self.conversion_type == "m3u_to_tv":
-			pattern = r"(?i)^.*\.m3u$"
-		else:
-			pattern = r"(?i)^.*\.tv$"
-
+		pattern = r"(?i)^.*\.tv$" if self.conversion_type != "m3u_to_tv" else r"(?i)^.*\.m3u$"
 		self.session.openWithCallback(
 			self.file_selected,
 			M3UFileBrowser,
 			config.plugins.m3uconverter.lastdir.value,
-			matchingPattern=pattern
+			matchingPattern=pattern,
+			conversion_type=self.conversion_type
 		)
 
 	def start_conversion(self):
@@ -443,17 +476,13 @@ class UniversalConverter(Screen):
 		"""Opens the selector file without selectedItems parameter"""
 		try:
 			self.update_path()
-
-			if self.conversion_type == "tv_to_m3u":
-				pattern = r"(?i)^.*\.tv$"
-			else:
-				pattern = r"(?i)^.*\.m3u$"
-
+			pattern = r"(?i)^.*\.tv$" if self.conversion_type != "m3u_to_tv" else r"(?i)^.*\.m3u$"
 			self.session.openWithCallback(
 				self.file_selected,
 				M3UFileBrowser,
 				self.full_path,
-				matchingPattern=pattern
+				matchingPattern=pattern,
+				conversion_type=self.conversion_type
 			)
 		except Exception as e:
 			logger.error(f"Browser error: {str(e)}")
@@ -769,14 +798,12 @@ class UniversalConverter(Screen):
 			channels = []
 			with codecs.open(filename, "r", encoding="utf-8") as f:
 				content = f.read()
-				matches = findall(
-					r'#SERVICE\s(?:4097|5002):\d+:\d+:\d+:\d+:\d+:\d+:\d+:\d+:\d+:(.*?)\n#DESCRIPTION\s(.*?)\n',
-					content,
-					DOTALL
-				)
+				# More robust pattern that handles different spacing and optional fields
+				pattern = r'#SERVICE\s(?:4097|5002):[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:(.*?)\s*\n#DESCRIPTION\s*(.*?)\s*\n'
+				matches = findall(pattern, content, DOTALL)
 
 				for service, name in matches:
-					# URL decoding and filtering HTTP/HTTPS streams only
+					# URL decoding and filtering HTTP/HTTPS/HLS streams
 					url = unquote(service.strip())
 					if any(url.startswith(proto) for proto in ('http://', 'https://', 'hls://')):
 						channels.append((name.strip(), url))
@@ -840,6 +867,61 @@ class UniversalConverter(Screen):
 	def show_credits(self):
 		text = f"M3U Archimede Universal Converter Plugin\nVersion {str(currversion)}\nLululla Developed for Enigma2"
 		self.session.open(MessageBox, text, MessageBox.TYPE_INFO)
+
+	def key_ok(self):
+		index = self["list"].getSelectedIndex()
+		if index < 0 or index >= len(self.m3u_list):
+			self["status"].setText(_("No item selected"))
+			return
+
+		item = self.m3u_list[index]
+
+		if self.conversion_type == "tv_to_m3u":
+			# If loaded from .tv (tuple)
+			if isinstance(item, tuple) and len(item) == 2:
+				name, url = item
+				url = unquote(url.strip())
+			else:
+				self["status"].setText(_("Invalid .tv item format"))
+				return
+		else:
+			# Default: assume it's from .m3u (dict)
+			if isinstance(item, dict):
+				name = item.get("name", "")
+				url = item.get("url", "")
+				url = unquote(url.strip())
+			else:
+				self["status"].setText(_("Invalid .m3u item format"))
+				return
+
+		self["status"].setText(_("Playing: %s") % name)
+		self.start_player(name, url)
+
+	def start_player(self, name, url):
+		print("Playing:", name)
+		print("Stream URL:", url)
+		stream = eServiceReference(4097, 0, url)
+		stream.setName(name)
+		logger.debug("Extracted video URL: " + str(stream))
+		self.session.nav.stopService()
+		self.session.nav.playService(stream)
+
+	def stop_player(self):
+		self.session.nav.stopService()
+		self.session.nav.playService(self.initialservice)
+		self["status"].setText(_("Ready"))
+
+	def on_movieplayer_exit(self, result=None):
+		self.session.nav.stopService()
+		self.session.nav.playService(self.initialservice)
+		aspect_manager.restore_aspect()
+		self.close()
+
+	def keyClose(self, result=None):
+		self.session.nav.stopService()
+		self.session.nav.playService(self.initialservice)
+		aspect_manager.restore_aspect()
+		self.close()
 
 	def show_info(self, message):
 		self.session.open(MessageBox, message, MessageBox.TYPE_INFO)
