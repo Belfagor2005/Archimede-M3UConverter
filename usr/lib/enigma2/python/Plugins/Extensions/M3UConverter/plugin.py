@@ -40,7 +40,7 @@ from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
 from Tools.Directories import fileExists, resolveFilename, SCOPE_MEDIA
-from enigma import eDVBDB, eServiceReference
+from enigma import eDVBDB, eServiceReference, getDesktop
 import unicodedata
 
 
@@ -80,6 +80,8 @@ ICON_PARENT = 1
 ICON_CURRENT = 2
 
 aspect_manager = AspectManager()
+screenwidth = getDesktop(0).size()
+screen_width = screenwidth.width()
 logger = logging.getLogger("UniversalConverter")
 
 # Init Config
@@ -143,22 +145,30 @@ class M3UFileBrowser(Screen):
 		"""Filter list to show only directories and .tv files containing 'http'"""
 		filtered = []
 		for entry in self["filelist"].list:
-			# Entry format: [tuple, ...]
-			# First element is a tuple: (path, isDir, isLink, selected, name, dirIcon)
+			if not entry or not isinstance(entry[0], tuple):
+				continue  # Skip invalid entries
+
 			file_data = entry[0]
-			path = file_data[0]  # Get path from tuple
-			is_dir = file_data[1]  # Get isDir flag
+
+			# Ensure we have enough elements in the tuple
+			if len(file_data) < 6:
+				logger.error(f"Skipping invalid entry: {file_data}")
+				continue
+
+			path = file_data[0]
+			is_dir = file_data[1]
+			dir_icon = file_data[5] if len(file_data) > 5 else None
 
 			# Handle special cases like parent directory
-			if is_dir or file_data[5] in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
-				filtered.append(entry)  # Always include directories and special entries
+			if is_dir or (dir_icon is not None and dir_icon in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT)):
+				filtered.append(entry)
 			else:
 				# Only include .tv files with HTTP content
 				if path and path.lower().endswith(".tv") and self._contains_http(path):
 					filtered.append(entry)
 
 		self["filelist"].list = filtered
-		self["filelist"].l.setList(filtered)  # Update the list display
+		self["filelist"].l.setList(filtered)
 
 	def _contains_http(self, filepath):
 		"""Check if file contains 'http' (case-insensitive)"""
@@ -174,43 +184,49 @@ class M3UFileBrowser(Screen):
 		if not selection:
 			return
 
-		# Selection is a list of components
-		# First component is tuple: (path, isDir, isLink, selected, name, dirIcon)
+		if not selection or not isinstance(selection[0], tuple) or len(selection[0]) < 6:
+			logger.error("Invalid selection format")
+			return
+
 		file_data = selection[0]
-		path = file_data[0]  # Get path from tuple
-		# flags = file_data[1]  # Get flags
-		is_dir = file_data[1]  # isDir flag
+		path = file_data[0]
+		is_dir = file_data[1]
+		dir_icon = file_data[5]  # This is safe now since we checked length
 
-		# Handle special entries (parent, storage, etc.)
-		if file_data[5] in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
-			self["filelist"].changeDir(path)
-			if self.conversion_type == "tv_to_m3u":
-				self._filter_list()
-
-		elif is_dir:
-			self["filelist"].changeDir(path)
-			if self.conversion_type == "tv_to_m3u":
-				self._filter_list()
-		else:
-			self.close(path)
+		try:
+			# Handle special entries (parent, storage, etc.)
+			if dir_icon in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
+				self["filelist"].changeDir(path)
+				if self.conversion_type == "tv_to_m3u":
+					self._filter_list()
+			elif is_dir:
+				self["filelist"].changeDir(path)
+				if self.conversion_type == "tv_to_m3u":
+					self._filter_list()
+			else:
+				self.close(path)
+		except Exception as e:
+			logger.error(f"ok_pressed Error: {str(e)}")
 
 
 class ConversionSelector(Screen):
+
 	skin = """
 	<screen position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type" flags="wfNoBorder">
+		<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
 		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;32" scrollbarMode="showNever" />
-		<widget name="status" position="20,605" size="1240,50" font="Regular;28" />
-		<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
+		<widget name="status" position="20,605" size="1240,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
+		<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="300,6" zPosition="11" />
+		<eLabel backgroundColor="green" cornerRadius="3" position="347,700" size="300,6" zPosition="11" />
+		<eLabel backgroundColor="yellow" cornerRadius="3" position="647,700" size="300,6" zPosition="11" />
 		<!--
 		<eLabel backgroundColor="blue" cornerRadius="3" position="882,720" size="200,6" zPosition="11" />
 		-->
-		<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_red" render="Label" position="50,660" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+		<widget source="key_green" render="Label" position="350,660" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+		<widget source="key_yellow" render="Label" position="650,660" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
 		<!--
-		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" />
+		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
 		-->
 	</screen>"""
 
@@ -219,6 +235,7 @@ class ConversionSelector(Screen):
 		self.session = session
 		self.skinName = "ConversionSelector"
 		self.is_modal = True
+		self.setTitle("Archimede Universal Converter v.%s by Lululla" % currversion)
 
 		self.menu = [
 			(_("Convert M3U to Enigma2 Bouquets"), "m3u_to_tv"),
@@ -284,30 +301,58 @@ class ConversionSelector(Screen):
 
 
 class UniversalConverter(Screen):
-	skin = """
-	<screen position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
-		<widget name="list" position="20,20" size="840,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-		<widget name="status" position="20,605" size="1240,50" font="Regular;28" />
-		<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
-		<eLabel backgroundColor="blue" cornerRadius="3" position="882,700" size="200,6" zPosition="11" />
-		<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="key_blue" render="Label" position="880,660" size="200,40" zPosition="1" font="Regular;28" halign="center" />
-		<widget source="progress_source" render="Progress" position="51,589" size="1180,30" />
-		<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;28" />
-		<eLabel name="" position="1096,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
-		<eLabel name="" position="1155,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
-		<widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
-			<convert type="ServiceName">Name</convert>
-		</widget>
-		<widget source="session.VideoPicture" render="Pig" position="871,92" zPosition="20" size="400,220" backgroundColor="transparent" transparent="0" cornerRadius="14" />
-	</screen>"""
+	if screen_width > 1280:
+
+		skin = """
+		<screen position="-25,-20" size="1920,1080" title="Archimede Universal Converter" flags="wfNoBorder">
+			<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
+			<widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
+			<widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<eLabel backgroundColor="red" cornerRadius="3" position="65,1025" size="200,6" zPosition="11" />
+			<eLabel backgroundColor="green" cornerRadius="3" position="306,1025" size="200,6" zPosition="11" />
+			<eLabel backgroundColor="yellow" cornerRadius="3" position="571,1025" size="200,6" zPosition="11" />
+			<eLabel backgroundColor="blue" cornerRadius="3" position="841,1025" size="200,6" zPosition="11" />
+			<widget source="key_red" render="Label" position="65,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_green" render="Label" position="305,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_yellow" render="Label" position="569,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_blue" render="Label" position="842,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<eLabel name="" position="1083,980" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
+			<eLabel name="" position="1142,980" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
+			<widget source="session.CurrentService" render="Label" position="1220,125" size="640,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
+				<convert type="ServiceName">Name</convert>
+			</widget>
+			<widget source="session.VideoPicture" render="Pig" position="1220,166" zPosition="20" size="640,360" backgroundColor="transparent" transparent="0" cornerRadius="14" />
+		</screen>"""
+
+	else:
+		skin = """
+		<screen position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
+			<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
+			<widget name="list" position="20,20" size="840,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
+			<widget name="status" position="20,605" size="1240,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
+			<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
+			<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
+			<eLabel backgroundColor="blue" cornerRadius="3" position="882,700" size="200,6" zPosition="11" />
+			<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_blue" render="Label" position="880,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="progress_source" render="Progress" position="51,589" size="1180,30" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<eLabel name="" position="1096,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
+			<eLabel name="" position="1155,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
+			<widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
+				<convert type="ServiceName">Name</convert>
+			</widget>
+			<widget source="session.VideoPicture" render="Pig" position="871,92" zPosition="20" size="400,220" backgroundColor="transparent" transparent="0" cornerRadius="14" />
+		</screen>"""
 
 	def __init__(self, session, conversion_type):
 		Screen.__init__(self, session)
+		self.setTitle("Archimede Universal Converter v.%s by Lululla" % currversion)
 		self.conversion_type = conversion_type
 		self.m3u_list = []
 		self.bouquet_list = []
