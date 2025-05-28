@@ -327,7 +327,7 @@ class UniversalConverter(Screen):
 					if "http" in content.lower():
 						self.bouquet_list.append(bouquet)
 			except Exception as e:
-				_log_error("Failed to read bouquet: " + bouquet + " - " + str(e))
+				logger.error("Failed to read bouquet: " + bouquet + " - " + str(e))
 
 		self["list"].setList([basename(b) for b in self.bouquet_list])
 
