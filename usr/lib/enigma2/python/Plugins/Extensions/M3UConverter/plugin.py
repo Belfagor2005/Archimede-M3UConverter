@@ -74,7 +74,7 @@ class AspectManager:
 
 # for my friend Archimede
 currversion = '1.4'
-
+title_plug = _("Archimede Universal Converter v.%s by Lululla") % currversion
 ICON_STORAGE = 0
 ICON_PARENT = 1
 ICON_CURRENT = 2
@@ -235,7 +235,7 @@ class ConversionSelector(Screen):
 		self.session = session
 		self.skinName = "ConversionSelector"
 		self.is_modal = True
-		self.setTitle("Archimede Universal Converter v.%s by Lululla" % currversion)
+		self.setTitle(title_plug)
 
 		self.menu = [
 			(_("Convert M3U to Enigma2 Bouquets"), "m3u_to_tv"),
@@ -305,6 +305,7 @@ class UniversalConverter(Screen):
 
 		skin = """
 		<screen position="-25,-20" size="1920,1080" title="Archimede Universal Converter" flags="wfNoBorder">
+			<widget source="Title" render="Label" position="64,13" size="1120,52" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
 			<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
 			<widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
 			<widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
@@ -316,8 +317,8 @@ class UniversalConverter(Screen):
 			<widget source="key_green" render="Label" position="305,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
 			<widget source="key_yellow" render="Label" position="569,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
 			<widget source="key_blue" render="Label" position="842,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white"/>
+			<widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white"/>
 			<eLabel name="" position="1083,980" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
 			<eLabel name="" position="1142,980" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
 			<widget source="session.CurrentService" render="Label" position="1220,125" size="640,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
@@ -329,19 +330,20 @@ class UniversalConverter(Screen):
 	else:
 		skin = """
 		<screen position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
+			<widget source="Title" render="Label" position="25,8" size="1120,52" font="Regular; 24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
 			<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
-			<widget name="list" position="20,20" size="840,559" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-			<widget name="status" position="20,605" size="1240,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget name="list" position="25,60" size="840,518" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
+			<widget name="status" position="48,608" size="1185,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
 			<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
 			<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
 			<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
 			<eLabel backgroundColor="blue" cornerRadius="3" position="882,700" size="200,6" zPosition="11" />
-			<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="key_blue" render="Label" position="880,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="progress_source" render="Progress" position="51,589" size="1180,30" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="progress_text" render="Label" position="49,587" size="1180,30" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
+			<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_blue" render="Label" position="880,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="progress_source" render="Progress" position="50,582" size="1180,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+			<widget source="progress_text" render="Label" position="49,582" size="1180,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
 			<eLabel name="" position="1096,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
 			<eLabel name="" position="1155,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
 			<widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
@@ -352,7 +354,6 @@ class UniversalConverter(Screen):
 
 	def __init__(self, session, conversion_type):
 		Screen.__init__(self, session)
-		self.setTitle("Archimede Universal Converter v.%s by Lululla" % currversion)
 		self.conversion_type = conversion_type
 		self.m3u_list = []
 		self.bouquet_list = []
@@ -362,6 +363,7 @@ class UniversalConverter(Screen):
 		base_path = config.plugins.m3uconverter.lastdir.value
 		self.full_path = base_path
 		self["list"] = MenuList([])
+		self["Title"] = Label(title_plug)
 		self["status"] = Label(_("Ready"))
 		self["key_red"] = StaticText(_("Open"))
 		self["key_green"] = StaticText(_("Convert"))
@@ -370,6 +372,7 @@ class UniversalConverter(Screen):
 		self["progress_source"] = self.progress_source
 		self["progress_text"] = StaticText("")
 		self["progress_source"].setValue(0)
+		self.setTitle(title_plug)
 		self.initialservice = self.session.nav.getCurrentlyPlayingServiceReference()
 		self["actions"] = ActionMap(["ColorActions", "OkCancelActions", "MediaPlayerActions"], {
 			"red": self.open_file,
@@ -888,7 +891,8 @@ class UniversalConverter(Screen):
 			msg = _("Successfully converted %d items") % data if isinstance(data, int) else _("File saved to: %s") % data
 			self.show_info(msg)
 			self["status"].setText(msg)
-			self["progress_source"].setValue(self["progress_source"].range)
+			# self["progress_source"].setValue(self["progress_source"].range)
+			self["progress_source"].setValue(0)
 		else:
 			msg = _("Conversion failed: %s") % data
 			self.show_error(msg)
@@ -987,12 +991,16 @@ class M3UConverterSettings(Setup):
 
 
 def main(session, **kwargs):
+	def on_conversion_selected(conversion_type):
+		if conversion_type:
+			session.openWithCallback(
+				lambda: None,
+				UniversalConverter,
+				conversion_type=conversion_type
+			)
+
 	session.openWithCallback(
-		lambda conversion_type: conversion_type and session.openWithCallback(
-			lambda: None,  # Callback vuoto per mantenere la modalità
-			UniversalConverter,
-			conversion_type
-		),
+		on_conversion_selected,
 		ConversionSelector
 	)
 
