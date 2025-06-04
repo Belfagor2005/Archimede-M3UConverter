@@ -212,9 +212,9 @@ class M3UFileBrowser(Screen):
 class ConversionSelector(Screen):
 
 	skin = """
-	<screen position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type" flags="wfNoBorder">
+	<screen name="ConversionSelector" position="center,center" size="1280,720" title="Archimede Universal Converter - Select Type" flags="wfNoBorder">
 		<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
-		<widget name="list" position="20,20" size="1240,559" itemHeight="40" font="Regular;32" scrollbarMode="showNever" />
+		<widget name="list" position="20,20" size="1240,559" itemHeight="50" font="Regular;34" scrollbarMode="showNever" />
 		<widget name="status" position="20,605" size="1240,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
 		<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="300,6" zPosition="11" />
 		<eLabel backgroundColor="green" cornerRadius="3" position="347,700" size="300,6" zPosition="11" />
@@ -947,8 +947,6 @@ class UniversalConverter(Screen):
 		self.start_player(name, url)
 
 	def start_player(self, name, url):
-		print("Playing:", name)
-		print("Stream URL:", url)
 		stream = eServiceReference(4097, 0, url)
 		stream.setName(name)
 		logger.debug("Extracted video URL: " + str(stream))
@@ -967,10 +965,13 @@ class UniversalConverter(Screen):
 		self.close()
 
 	def keyClose(self, result=None):
-		self.session.nav.stopService()
-		self.session.nav.playService(self.initialservice)
-		aspect_manager.restore_aspect()
-		self.close()
+		try:
+			self.session.nav.stopService()
+			self.session.nav.playService(self.initialservice)
+			aspect_manager.restore_aspect()
+			self.close()
+		except Exception as e:
+			print('error:', str(e))
 
 	def show_info(self, message):
 		self.session.open(MessageBox, message, MessageBox.TYPE_INFO)
