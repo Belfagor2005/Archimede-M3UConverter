@@ -35,11 +35,12 @@ from Components.Label import Label
 from Components.MenuList import MenuList
 from Components.Sources.Progress import Progress
 from Components.Sources.StaticText import StaticText
-from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo
+from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo, ConfigDirectory
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
-from Tools.Directories import fileExists, resolveFilename, SCOPE_MEDIA
+from Tools.Directories import fileExists, resolveFilename
+from Tools.Directories import defaultRecordingLocation, SCOPE_MEDIA
 from enigma import eDVBDB, eServiceReference, getDesktop
 import unicodedata
 
@@ -73,7 +74,7 @@ class AspectManager:
 
 
 # for my friend Archimede
-currversion = '1.4'
+currversion = '1.5'
 title_plug = _("Archimede Universal Converter v.%s by Lululla") % currversion
 ICON_STORAGE = 0
 ICON_PARENT = 1
@@ -84,9 +85,22 @@ screenwidth = getDesktop(0).size()
 screen_width = screenwidth.width()
 logger = logging.getLogger("UniversalConverter")
 
+
+# Ensure movie path
+def defaultMoviePath():
+	result = config.usage.default_path.value
+	if not result.endswith("/"):
+		result += "/"
+	if not isdir(result):
+		return defaultRecordingLocation(config.usage.default_path.value)
+	return result
+
+
 # Init Config
 config.plugins.m3uconverter = ConfigSubsection()
-config.plugins.m3uconverter.lastdir = ConfigSelection(default="/media/hdd", choices=[])
+default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else defaultMoviePath()
+config.plugins.m3uconverter.lastdir = ConfigDirectory(default=default_dir)
+# config.plugins.m3uconverter.lastdir = ConfigSelection(default="/media/hdd", choices=[])
 config.plugins.m3uconverter.bouquet_position = ConfigSelection(
 	default="bottom",
 	choices=[("top", _("Top")), ("bottom", _("Bottom"))]
@@ -181,20 +195,16 @@ class M3UFileBrowser(Screen):
 
 	def ok_pressed(self):
 		selection = self["filelist"].getCurrent()
-		if not selection:
-			return
-
-		if not selection or not isinstance(selection[0], tuple) or len(selection[0]) < 6:
-			logger.error("Invalid selection format")
+		if not selection or not isinstance(selection, list) or not isinstance(selection[0], tuple):
+			logger.error("Invalid selection format: %s" % str(selection))
 			return
 
 		file_data = selection[0]
 		path = file_data[0]
 		is_dir = file_data[1]
-		dir_icon = file_data[5]  # This is safe now since we checked length
-
+		dir_icon = None
+		logger.info("file_data: %s, path: %s, is_dir: %s", file_data, path, is_dir)
 		try:
-			# Handle special entries (parent, storage, etc.)
 			if dir_icon in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
 				self["filelist"].changeDir(path)
 				if self.conversion_type == "tv_to_m3u":
@@ -204,9 +214,12 @@ class M3UFileBrowser(Screen):
 				if self.conversion_type == "tv_to_m3u":
 					self._filter_list()
 			else:
-				self.close(path)
+				current_dir = self["filelist"].getCurrentDirectory()
+				full_path = join(current_dir, path)
+				logger.info("Selected full file path: %s", full_path)
+				self.close(full_path)
 		except Exception as e:
-			logger.error(f"ok_pressed Error: {str(e)}")
+			logger.error("ok_pressed Error: %s" % str(e))
 
 
 class ConversionSelector(Screen):
@@ -546,9 +559,8 @@ class UniversalConverter(Screen):
 		if not res:
 			self["status"].setText(_("No files selected"))
 			return
-		logger.info("Callback file_selected: %s" % str(res))
-		# If res is tuple or list, take the first element
-		selected_path = None
+
+		# Directly use the full path
 		if isinstance(res, (tuple, list)):
 			if len(res) == 0:
 				self["status"].setText(_("No files selected"))
@@ -567,15 +579,15 @@ class UniversalConverter(Screen):
 		try:
 			selected_path = normpath(selected_path)
 
-			# Extension validation based on conversion type
+			# Validate extension
 			if self.conversion_type == "m3u_to_tv":
-				if not selected_path.lower().endswith('.m3u'):
+				if not selected_path.lower().endswith(".m3u"):
 					raise ValueError(_("Select a valid M3U file"))
 			else:
-				if not selected_path.lower().endswith('.tv'):
+				if not selected_path.lower().endswith(".tv"):
 					raise ValueError(_("Select a valid TV bouquet"))
 
-			# Update route configuration
+			# Save current directory
 			config_dir = dirname(selected_path)
 			if isdir(config_dir):
 				config.plugins.m3uconverter.lastdir.value = config_dir
@@ -583,7 +595,7 @@ class UniversalConverter(Screen):
 
 			self.selected_file = selected_path
 
-			# Start appropriate parsing
+			# Parse selected file
 			if self.conversion_type == "m3u_to_tv":
 				self.parse_m3u(selected_path)
 			else:
@@ -599,6 +611,7 @@ class UniversalConverter(Screen):
 	def parse_m3u(self, filename):
 		"""Analyze M3U files with advanced attribute management"""
 		try:
+			logger.info("Parsing M3U: %s", filename)
 			with open(filename, 'r', encoding='utf-8', errors='replace') as f:
 				data = f.read()
 
