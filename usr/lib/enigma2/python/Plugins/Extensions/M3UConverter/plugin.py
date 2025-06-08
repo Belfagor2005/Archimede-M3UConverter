@@ -472,7 +472,7 @@ class UniversalConverter(Screen):
 	def update_mounts(self):
 		"""Update the list of mounted devices"""
 		mounts = self.get_mounted_devices()
-		config.plugins.m3uconverter.lastdir.setChoices(mounts)
+		config.plugins.m3uconverter.lastdir.setValue(mounts)
 		config.plugins.m3uconverter.lastdir.save()
 
 	def get_mounted_devices(self):
