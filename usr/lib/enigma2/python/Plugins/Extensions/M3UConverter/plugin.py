@@ -698,8 +698,6 @@ class UniversalConverter(Screen):
 			else:
 				self.parse_tv(selected_path)
 
-			self["status"].setText(_("Selected file: %s. Are you ready to convert? Press Green to proceed.") % (selected_path, len(self.m3u_list)))
-
 		except Exception as e:
 			logger.log("ERROR", f"Error file selected: {str(e)}", exc_info=True)
 			self["status"].setText(_("Error: %s") % str(e))
