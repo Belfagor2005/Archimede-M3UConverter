@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 1.3                                         #
+#  Version: 1.6                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
@@ -21,28 +21,32 @@ from __future__ import absolute_import, print_function
 """
 __author__ = "Lululla"
 
-import logging
 import codecs
+import unicodedata
+from time import strftime
 from gettext import gettext as _
 from os import access, listdir, makedirs, remove, replace, chmod, fsync, W_OK
 from os.path import dirname, exists, isdir, isfile, join, normpath
 from re import sub, findall, DOTALL, search
 from urllib.parse import quote, urlparse, unquote
+
 from twisted.internet import threads
+from enigma import eDVBDB, eServiceReference, getDesktop
+
 from Components.ActionMap import ActionMap
 from Components.FileList import FileList
 from Components.Label import Label
 from Components.MenuList import MenuList
 from Components.Sources.Progress import Progress
 from Components.Sources.StaticText import StaticText
-from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo, ConfigDirectory
+from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo
+
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
+
 from Tools.Directories import fileExists, resolveFilename
 from Tools.Directories import defaultRecordingLocation, SCOPE_MEDIA
-from enigma import eDVBDB, eServiceReference, getDesktop
-import unicodedata
 
 
 try:
@@ -74,7 +78,7 @@ class AspectManager:
 
 
 # for my friend Archimede
-currversion = '1.5'
+currversion = '1.6'
 title_plug = _("Archimede Universal Converter v.%s by Lululla") % currversion
 ICON_STORAGE = 0
 ICON_PARENT = 1
@@ -83,7 +87,46 @@ ICON_CURRENT = 2
 aspect_manager = AspectManager()
 screenwidth = getDesktop(0).size()
 screen_width = screenwidth.width()
-logger = logging.getLogger("UniversalConverter")
+# logger = logging.getLogger("UniversalConverter")
+
+
+# add lululla for debug
+class ColoredLogger:
+	LEVELS = {
+		"DEBUG": ("\033[92m", "[DEBUG]"),  # verde
+		"INFO": ("\033[97m", "[INFO] "),  # bianco
+		"WARNING": ("\033[93m", "[WARN] "),  # giallo
+		"ERROR": ("\033[91m", "[ERROR]"),  # rosso
+	}
+	END = "\033[0m"
+
+	def __init__(self, log_file=None, clear_on_start=True):
+		self.log_file = log_file
+		if self.log_file and clear_on_start:
+			try:
+				remove(self.log_file)
+			except Exception:
+				pass  # silently ignore if file doesn't exist
+
+	def log(self, level, message):
+		prefix, label = self.LEVELS.get(level, ("", "[LOG] "))
+		timestamp = strftime("%Y-%m-%d %H:%M:%S")
+		formatted = "%s %s %s%s%s" % (timestamp, label, prefix, message, self.END)
+
+		# Print to console
+		print(formatted)
+
+		# Also write to file if enabled
+		if self.log_file:
+			try:
+				with open(self.log_file, "a") as f:
+					f.write("%s %s %s\n" % (timestamp, label, message))
+			except Exception:
+				pass  # never crash the app
+
+
+logger = ColoredLogger(log_file="/tmp/m3u_converter.log")
+logger.log("INFO", f"START PLUGIN {str(title_plug)}")
 
 
 # Ensure movie path
@@ -96,11 +139,54 @@ def defaultMoviePath():
 	return result
 
 
+def get_mounted_devices():
+	"""Recovers mounted devices with write permissions"""
+	from Components.Harddisk import harddiskmanager
+
+	devices = [
+		(resolveFilename(SCOPE_MEDIA, "hdd"), _("Hard Disk")),
+		(resolveFilename(SCOPE_MEDIA, "usb"), _("USB Drive"))
+	]
+
+	devices.append(("/tmp/", _("Temporary Storage")))
+
+	try:
+		devices += [
+			(p.mountpoint, p.description or _("Disk"))
+			for p in harddiskmanager.getMountedPartitions()
+			if p.mountpoint and access(p.mountpoint, W_OK)
+		]
+
+		net_dir = resolveFilename(SCOPE_MEDIA, "net")
+		if isdir(net_dir):
+			devices += [(join(net_dir, d), _("Network")) for d in listdir(net_dir)]
+
+	except Exception as e:
+		logger.log("ERROR", "Mount error: %s" % str(e))
+
+	unique_devices = {}
+	for p, d in devices:
+		path = p.rstrip("/") + "/"
+		if isdir(path):
+			unique_devices[path] = d
+
+	return list(unique_devices.items())
+
+
+def update_mounts():
+	"""Update the list of mounted devices and update config choices"""
+	mounts = get_mounted_devices()
+	if not mounts:
+		default_path = defaultMoviePath()
+		mounts = [(default_path, default_path)]
+	config.plugins.m3uconverter.lastdir.setChoices(mounts, default=mounts[0][0])
+	config.plugins.m3uconverter.lastdir.save()
+
+
 # Init Config
 config.plugins.m3uconverter = ConfigSubsection()
 default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else defaultMoviePath()
-config.plugins.m3uconverter.lastdir = ConfigDirectory(default=default_dir)
-# config.plugins.m3uconverter.lastdir = ConfigSelection(default="/media/hdd", choices=[])
+config.plugins.m3uconverter.lastdir = ConfigSelection(default=default_dir, choices=[])
 config.plugins.m3uconverter.bouquet_position = ConfigSelection(
 	default="bottom",
 	choices=[("top", _("Top")), ("bottom", _("Bottom"))]
@@ -108,6 +194,7 @@ config.plugins.m3uconverter.bouquet_position = ConfigSelection(
 config.plugins.m3uconverter.hls_convert = ConfigYesNo(default=True)
 config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
 config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
+update_mounts()
 
 
 def create_backup():
@@ -163,18 +250,25 @@ class M3UFileBrowser(Screen):
 				continue  # Skip invalid entries
 
 			file_data = entry[0]
+			path = None
+			is_dir = False
 
-			# Ensure we have enough elements in the tuple
-			if len(file_data) < 6:
-				logger.error(f"Skipping invalid entry: {file_data}")
+			# Handle different tuple formats
+			if len(file_data) >= 2:
+				# Standard format: (path, is_dir, ...)
+				path = file_data[0]
+				is_dir = file_data[1]
+
+			elif len(file_data) == 1 and isinstance(file_data[0], str):
+				# Special case for parent directory: ('..',)
+				path = file_data[0]
+				is_dir = True
+			else:
+				logger.log("DEBUG", f"Skipping invalid entry: {file_data}")
 				continue
 
-			path = file_data[0]
-			is_dir = file_data[1]
-			dir_icon = file_data[5] if len(file_data) > 5 else None
-
 			# Handle special cases like parent directory
-			if is_dir or (dir_icon is not None and dir_icon in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT)):
+			if path == ".." or is_dir:
 				filtered.append(entry)
 			else:
 				# Only include .tv files with HTTP content
@@ -184,26 +278,30 @@ class M3UFileBrowser(Screen):
 		self["filelist"].list = filtered
 		self["filelist"].l.setList(filtered)
 
-	def _contains_http(self, filepath):
-		"""Check if file contains 'http' (case-insensitive)"""
+	def _contains_http(self, filename):
+		"""Check if file contains 'http' (case-insensitive) with full path"""
 		try:
-			with open(filepath, "r") as f:
+			# Get the current directory to form the full path
+			current_dir = self["filelist"].getCurrentDirectory()
+			full_path = join(current_dir, filename)
+
+			with open(full_path, "r") as f:
 				return any("http" in line.lower() for line in f)
 		except Exception as e:
-			logger.error(f"Error reading {filepath}: {str(e)}")
+			logger.log("ERROR", f"Error reading {full_path}: {str(e)}")
 			return False
 
 	def ok_pressed(self):
 		selection = self["filelist"].getCurrent()
 		if not selection or not isinstance(selection, list) or not isinstance(selection[0], tuple):
-			logger.error("Invalid selection format: %s" % str(selection))
+			logger.log("ERROR", f"Invalid selection format: {selection}")
 			return
 
 		file_data = selection[0]
 		path = file_data[0]
 		is_dir = file_data[1]
 		dir_icon = None
-		logger.info("file_data: %s, path: %s, is_dir: %s", file_data, path, is_dir)
+		logger.log("INFO", f"file_data: {file_data}, path: {path}, is_dir: {is_dir}")
 		try:
 			if dir_icon in (ICON_STORAGE, ICON_PARENT, ICON_CURRENT):
 				self["filelist"].changeDir(path)
@@ -216,10 +314,10 @@ class M3UFileBrowser(Screen):
 			else:
 				current_dir = self["filelist"].getCurrentDirectory()
 				full_path = join(current_dir, path)
-				logger.info("Selected full file path: %s", full_path)
+				logger.log("INFO", f"Selected full file path: {full_path}")
 				self.close(full_path)
 		except Exception as e:
-			logger.error("ok_pressed Error: %s" % str(e))
+			logger.log("ERROR", f"ok_pressed error: {str(e)}")
 
 
 class ConversionSelector(Screen):
@@ -239,7 +337,7 @@ class ConversionSelector(Screen):
 		<widget source="key_green" render="Label" position="350,660" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
 		<widget source="key_yellow" render="Label" position="650,660" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
 		<!--
-		<widget source="key_blue" render="Label" position="880,685" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
+		<widget source="key_blue" render="Label" position="880,685" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
 		-->
 	</screen>"""
 
@@ -249,19 +347,24 @@ class ConversionSelector(Screen):
 		self.skinName = "ConversionSelector"
 		self.is_modal = True
 		self.setTitle(title_plug)
+		a = _("Convert M3U to Enigma2 Bouquets")
+		b = _("Convert Enigma2 Bouquets to M3U")
+		c = _("Remove Enigma2 Bouquets Created with M3UConverter")
 
 		self.menu = [
-			(_("Convert M3U to Enigma2 Bouquets"), "m3u_to_tv"),
-			(_("Convert Enigma2 Bouquets to M3U"), "tv_to_m3u"),
-			(_("Remove Enigma2 Bouquets Created with M3UConverter"), "purge_m3u_bouquets"),
+			(a, "m3u_to_tv"),
+			(b, "tv_to_m3u"),
+			(c, "purge_m3u_bouquets"),
 		]
 		self["list"] = MenuList(self.menu)
-		self["status"] = Label(_("Select Type of Conversion"))
+		self["status"] = Label(_("We're ready: what do you want to do?"))
 		self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
+			# "red": lambda: self.close(None),
 			"red": self.close,
 			"green": self.select_item,
 			"ok": self.select_item,
 			"yellow": self.purge_m3u_bouquets,
+			# "cancel": lambda: self.close(None)
 			"cancel": self.close
 		})
 		self["key_red"] = StaticText(_("Close"))
@@ -281,7 +384,7 @@ class ConversionSelector(Screen):
 					remove(file_path)
 					removed_files.append(f)
 				except Exception as e:
-					logger.error("Failed to remove %s: %s" % (f, str(e)))
+					logger.log("ERROR", f"Failed to remove: {str(f)} Error {str(e)}")
 
 		# Remove matching lines from bouquets.tv
 		bouquets_file = join(directory, "bouquets.tv")
@@ -321,19 +424,19 @@ class UniversalConverter(Screen):
 			<widget source="Title" render="Label" position="64,13" size="1120,52" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
 			<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
 			<widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-			<widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<eLabel backgroundColor="red" cornerRadius="3" position="65,1025" size="200,6" zPosition="11" />
-			<eLabel backgroundColor="green" cornerRadius="3" position="306,1025" size="200,6" zPosition="11" />
-			<eLabel backgroundColor="yellow" cornerRadius="3" position="571,1025" size="200,6" zPosition="11" />
-			<eLabel backgroundColor="blue" cornerRadius="3" position="841,1025" size="200,6" zPosition="11" />
-			<widget source="key_red" render="Label" position="65,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="key_green" render="Label" position="305,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="key_yellow" render="Label" position="569,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="key_blue" render="Label" position="842,985" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white"/>
-			<widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white"/>
-			<widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white"/>
-			<eLabel name="" position="1083,980" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
-			<eLabel name="" position="1142,980" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
+			<widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<eLabel backgroundColor="red" cornerRadius="3" position="65,1025" size="300,6" zPosition="11" />
+			<eLabel backgroundColor="green" cornerRadius="3" position="366,1025" size="300,6" zPosition="11" />
+			<eLabel backgroundColor="yellow" cornerRadius="3" position="666,1025" size="300,6" zPosition="11" />
+			<eLabel backgroundColor="blue" cornerRadius="3" position="966,1025" size="300,6" zPosition="11" />
+			<widget source="key_red" render="Label" position="65,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_green" render="Label" position="365,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_yellow" render="Label" position="664,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_blue" render="Label" position="967,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+			<widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+			<eLabel name="" position="1200,875" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
+			<eLabel name="" position="1200,930" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
 			<widget source="session.CurrentService" render="Label" position="1220,125" size="640,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
 				<convert type="ServiceName">Name</convert>
 			</widget>
@@ -346,19 +449,19 @@ class UniversalConverter(Screen):
 			<widget source="Title" render="Label" position="25,8" size="1120,52" font="Regular; 24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
 			<eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
 			<widget name="list" position="25,60" size="840,518" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
-			<widget name="status" position="48,608" size="1185,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
-			<eLabel backgroundColor="red" cornerRadius="3" position="50,700" size="200,6" zPosition="11" />
-			<eLabel backgroundColor="green" cornerRadius="3" position="327,700" size="200,6" zPosition="11" />
-			<eLabel backgroundColor="yellow" cornerRadius="3" position="602,700" size="200,6" zPosition="11" />
-			<eLabel backgroundColor="blue" cornerRadius="3" position="882,700" size="200,6" zPosition="11" />
-			<widget source="key_red" render="Label" position="50,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-			<widget source="key_green" render="Label" position="325,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-			<widget source="key_yellow" render="Label" position="600,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-			<widget source="key_blue" render="Label" position="880,660" size="200,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-			<widget source="progress_source" render="Progress" position="50,582" size="1180,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
-			<widget source="progress_text" render="Label" position="49,582" size="1180,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
-			<eLabel name="" position="1096,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
-			<eLabel name="" position="1155,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
+			<widget name="status" position="23,608" size="1185,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<eLabel backgroundColor="red" cornerRadius="3" position="30,700" size="275,6" zPosition="11" />
+			<eLabel backgroundColor="green" cornerRadius="3" position="305,700" size="275,6" zPosition="11" />
+			<eLabel backgroundColor="yellow" cornerRadius="3" position="580,700" size="275,6" zPosition="11" />
+			<eLabel backgroundColor="blue" cornerRadius="3" position="855,700" size="275,6" zPosition="11" />
+			<widget source="key_red" render="Label" position="30,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_green" render="Label" position="305,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_yellow" render="Label" position="580,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="key_blue" render="Label" position="855,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
+			<widget source="progress_source" render="Progress" position="25,582" size="1180,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+			<widget source="progress_text" render="Label" position="24,582" size="1180,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+			<eLabel name="" position="1141,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="OK" />
+			<eLabel name="" position="1195,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="28" font="Regular; 17" zPosition="1" text="STOP" />
 			<widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
 				<convert type="ServiceName">Name</convert>
 			</widget>
@@ -378,8 +481,8 @@ class UniversalConverter(Screen):
 		self["list"] = MenuList([])
 		self["Title"] = Label(title_plug)
 		self["status"] = Label(_("Ready"))
-		self["key_red"] = StaticText(_("Open"))
-		self["key_green"] = StaticText(_("Convert"))
+		self["key_red"] = StaticText(_("Select"))
+		self["key_green"] = StaticText("")
 		self["key_yellow"] = StaticText(_("Settings"))
 		self["key_blue"] = StaticText(_("Info"))
 		self["progress_source"] = self.progress_source
@@ -398,22 +501,26 @@ class UniversalConverter(Screen):
 		}, -1)
 
 		if self.conversion_type == "m3u_to_tv":
-			self.init_m3u_converter()
+			# self.init_m3u_converter()
+			pass
 		else:
 			self.conversion_type = "tv_to_m3u"
 			self.init_tv_converter()
 
+		self["status"] = Label(_("Ready: Select the file from the %s you configured in settings.") % self.full_path)
+
 	def init_m3u_converter(self):
-		self["key_green"].setText(_("Convert M3U"))
-		self["status"].setText(_("Press OK to select M3U file"))
 		self.onShown.append(self.delayed_file_browser)
 
 	def delayed_file_browser(self):
-		self.onShown.remove(self.delayed_file_browser)
-		self.open_file_browser()
+		try:
+			self.onShown.remove(self.delayed_file_browser)
+		except ValueError:
+			pass
+		# from twisted.internet import reactor
+		# reactor.callLater(0.2, self.open_file_browser)
 
 	def init_tv_converter(self):
-		self["key_green"].setText(_("Convert Bouquet"))
 		self.update_path_tv()
 
 	def update_path_tv(self):
@@ -422,25 +529,32 @@ class UniversalConverter(Screen):
 				raise OSError("Bouquets path not found")
 
 			if not access("/etc/enigma2", W_OK):
-				logger.warning("Read-only bouquets path")
+				logger.log("WARNING", "Read-only bouquets path /etc/enigma2")
 
 		except Exception as e:
-			logger.error("TV path error: %s", str(e))
+			logger.log("ERROR", f"TV path error: {str(e)}")
 			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
 
 	def open_file_browser(self):
+		path = config.plugins.m3uconverter.lastdir.value
+		if not path or not isdir(path):
+			path = "/media/hdd" if isdir("/media/hdd") else "/tmp"
+
 		pattern = r"(?i)^.*\.tv$" if self.conversion_type != "m3u_to_tv" else r"(?i)^.*\.m3u$"
-		self.session.openWithCallback(
-			self.file_selected,
-			M3UFileBrowser,
-			config.plugins.m3uconverter.lastdir.value,
-			matchingPattern=pattern,
-			conversion_type=self.conversion_type
-		)
+		try:
+			self.session.openWithCallback(
+				self.file_selected,
+				M3UFileBrowser,
+				path,
+				matchingPattern=pattern,
+				conversion_type=self.conversion_type
+			)
+		except Exception as e:
+			logger.log("ERROR", f"Error opening file browser: {str(e)}")
+			self.session.open(MessageBox, _("Unable to open file browser."), MessageBox.TYPE_ERROR)
 
 	def start_conversion(self):
 		if self.conversion_type == "m3u_to_tv":
-			self.update_mounts()
 			self.update_path()
 			self.convert_m3u_to_tv()
 		else:
@@ -469,50 +583,23 @@ class UniversalConverter(Screen):
 
 		threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
-	def update_mounts(self):
-		"""Update the list of mounted devices"""
-		mounts = self.get_mounted_devices()
-		config.plugins.m3uconverter.lastdir.setValue(mounts)
-		config.plugins.m3uconverter.lastdir.save()
-
-	def get_mounted_devices(self):
-		"""Recovers mounted devices with write permissions"""
-		from Components.Harddisk import harddiskmanager
-
-		devices = [
-			(resolveFilename(SCOPE_MEDIA, 'hdd'), _("Hard Disk")),
-			(resolveFilename(SCOPE_MEDIA, 'usb'), _("USB Drive"))
-		]
-
-		try:
-			devices += [
-				(p.mountpoint, p.description or _("Disk"))
-				for p in harddiskmanager.getMountedPartitions()
-				if p.mountpoint and access(p.mountpoint, W_OK)
-			]
-
-			net_dir = resolveFilename(SCOPE_MEDIA, 'net')
-			if isdir(net_dir):
-				devices += [(join(net_dir, d), _("Network")) for d in listdir(net_dir)]
-
-		except Exception as e:
-			logger.error(f"Mount error: {str(e)}")
-
-		return [(p.rstrip('/') + '/', d) for p, d in devices if isdir(p)]
-
 	def update_path(self):
 		"""Update path with special handling for /tmp and ensure it's a valid directory."""
 		try:
 			if self.conversion_type == "tv_to_m3u":
 				self.full_path = "/etc/enigma2"
 				if not isdir(self.full_path):
-					logger.warning("Path %s does not exist, falling back to /tmp", self.full_path)
+					logger.log("WARNING", f"Path {self.full_path} does not exist, falling back to /tmp")
 					self.full_path = "/tmp"
 			else:
 				base_path = config.plugins.m3uconverter.lastdir.value
-
+				"""
+				if not isinstance(base_path, (str, bytes)):
+					logger.log("WARNING", f"Invalid base_path type: {type(base_path)}, resetting to empty string")
+					base_path = ""
+				"""
+				fallbacks = ["/media/hdd", "/media/usb", "/tmp"]
 				if not base_path or not isdir(base_path):
-					fallbacks = ["/media/hdd", "/media/usb", "/tmp"]
 					base_path = next((p for p in fallbacks if isdir(p)), "/tmp")
 
 				if base_path == "/tmp":
@@ -522,39 +609,49 @@ class UniversalConverter(Screen):
 					if not isdir(self.full_path):
 						makedirs(self.full_path, exist_ok=True)
 						chmod(self.full_path, 0o755)
-
+			"""
+			if not isinstance(self.full_path, (str, bytes)):
+				logger.log("ERROR", f"Invalid path type: {type(self.full_path)}, expected str or bytes. Falling back to /tmp")
+				self.full_path = "/tmp"
+			"""
 			if not isdir(self.full_path):
-				logger.error("Final path %s is not a directory, falling back to /tmp", self.full_path)
+				logger.log("ERROR", f"Final path {self.full_path} is not a directory, falling back to /tmp")
 				self.full_path = "/tmp"
 
-			logger.info("Using path: %s", self.full_path)
+			logger.log("INFO", f"Using path: {self.full_path}")
 
 		except Exception as e:
-			logger.error("Path update failed: %s", str(e))
+			logger.log("ERROR", f"Path update failed: {str(e)}")
 			self.full_path = "/tmp"
 
 	def open_file(self):
-		"""Opens the selector file without selectedItems parameter"""
-		try:
-			self.update_path()
-			pattern = r"(?i)^.*\.tv$" if self.conversion_type != "m3u_to_tv" else r"(?i)^.*\.m3u$"
-			self.session.openWithCallback(
-				self.file_selected,
-				M3UFileBrowser,
-				self.full_path,
-				matchingPattern=pattern,
-				conversion_type=self.conversion_type
-			)
-		except Exception as e:
-			logger.error(f"Browser error: {str(e)}")
-			self.session.open(
-				MessageBox,
-				_("Error browser file:\n%s") % str(e),
-				MessageBox.TYPE_ERROR
-			)
+		logger.log("DEBUG", f"Path self.conversion_type: {self.conversion_type}")
+
+		if self.conversion_type == "m3u_to_tv":
+			self.open_file_browser()
+		else:
+			try:
+				self.update_path()
+				logger.log("DEBUG", "Conversion type: %s, Full path: %s" % (self.conversion_type, self.full_path))
+				pattern = r"(?i)^.*\.tv$" if self.conversion_type == "tv_to_m3u" else r"(?i)^.*\.m3u$"
+				logger.log("DEBUG", "Using pattern: %s" % pattern)
+				self.session.openWithCallback(
+					self.file_selected,
+					M3UFileBrowser,
+					self.full_path,
+					matchingPattern=pattern,
+					conversion_type=self.conversion_type
+				)
+			except Exception as e:
+				logger.log("ERROR", "Browser error: %s" % str(e))
+				self.session.open(
+					MessageBox,
+					_("Error browser file:\n%s") % str(e),
+					MessageBox.TYPE_ERROR
+				)
 
 	def file_selected(self, res=None):
-		logger.info("Callback file_selected: %s", str(res))
+		logger.log("INFO", f"Callback file_selected: {str(res)}")
 
 		if not res:
 			self["status"].setText(_("No files selected"))
@@ -601,17 +698,17 @@ class UniversalConverter(Screen):
 			else:
 				self.parse_tv(selected_path)
 
-			self["status"].setText(_("Selected file: %s") % selected_path)
+			self["status"].setText(_("Selected file: %s. Are you ready to convert? Press Green to proceed.") % (selected_path, len(self.m3u_list)))
 
 		except Exception as e:
-			logger.error("Error file selected: %s", str(e), exc_info=True)
+			logger.log("ERROR", f"Error file selected: {str(e)}", exc_info=True)
 			self["status"].setText(_("Error: %s") % str(e))
 			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
 
 	def parse_m3u(self, filename):
 		"""Analyze M3U files with advanced attribute management"""
 		try:
-			logger.info("Parsing M3U: %s", filename)
+			logger.log("INFO", f"Parsing M3U: {filename}")
 			with open(filename, 'r', encoding='utf-8', errors='replace') as f:
 				data = f.read()
 
@@ -652,10 +749,11 @@ class UniversalConverter(Screen):
 					display_list.append(name)
 
 			self["list"].setList(display_list)
-			self["status"].setText(_("Loaded %d channels") % len(self.m3u_list))
+			self["status"].setText(_("Loaded %d channels. Are you ready to convert? Press Green to proceed.") % len(self.m3u_list))
+			self["key_green"].setText(_("Convert to M3U"))
 
 		except Exception as e:
-			logger.error(f"Error parsing M3U: {str(e)}")
+			logger.log("ERROR", f"Error Parsing M3U: {str(e)}")
 			self.session.open(
 				MessageBox,
 				_("Invalid file format:\n%s") % str(e),
@@ -808,7 +906,11 @@ class UniversalConverter(Screen):
 			# Transliterate group name and provide fallback
 			name_bouquet = transliterate(group).capitalize()
 			if not name_bouquet.strip():
-				name_bouquet = "Unnamed Group"
+				match = search(r"([^/\\]+)\.m3u$", self.selected_file, flags=DOTALL)
+				if match:
+					name_bouquet = transliterate(match.group(1)).capitalize()
+				else:
+					name_bouquet = "Unnamed Group"
 
 			# Add marker and main bouquet name
 			markera = "#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | M3UConverter | ---"
@@ -835,9 +937,9 @@ class UniversalConverter(Screen):
 				try:
 					remove(temp_file)
 				except Exception as cleanup_error:
-					logger.error("Cleanup error: " + str(cleanup_error))
+					logger.log("ERROR", f"Cleanup error: {str(cleanup_error)}")
 
-			logger.error("Failed to write bouquet " + group + ": " + str(e))
+			logger.log("ERROR", f"Failed to write bouquet {str(group)} : {str(e)}")
 			raise RuntimeError("Bouquet creation failed for " + group) from e
 
 	def get_safe_filename(self, group):
@@ -874,8 +976,8 @@ class UniversalConverter(Screen):
 
 			self.m3u_list = channels
 			self["list"].setList([c[0] for c in channels])
-			self["status"].setText(_("Loaded %d channels") % len(channels))
-
+			self["status"].setText(_("Loaded %d channels. Are you ready to convert? Press Green to proceed.") % len(channels))
+			self["key_green"].setText(_("Convert to Bouquet"))
 		except Exception as e:
 			self.show_error(_("Error parsing bouquet: %s") % str(e))
 
@@ -899,19 +1001,17 @@ class UniversalConverter(Screen):
 	def conversion_finished(self, result):
 		self["progress_source"].setValue(0)
 		success, data = result
-
+		msg = ''
 		if success:
 			msg = _("Successfully converted %d items") % data if isinstance(data, int) else _("File saved to: %s") % data
 			self.show_info(msg)
-			self["status"].setText(msg)
-			# self["progress_source"].setValue(self["progress_source"].range)
 			self["progress_source"].setValue(0)
 		else:
 			msg = _("Conversion failed: %s") % data
 			self.show_error(msg)
 			self["progress_source"].setValue(0)
-			self["status"].setText(msg)
 
+		self["status"].setText(msg)
 		self["progress_text"].setText("")
 
 	def update_progress(self, value, text):
@@ -962,7 +1062,7 @@ class UniversalConverter(Screen):
 	def start_player(self, name, url):
 		stream = eServiceReference(4097, 0, url)
 		stream.setName(name)
-		logger.debug("Extracted video URL: " + str(stream))
+		logger.log("DEBUG", f"Extracted video URL: {str(stream)}")
 		self.session.nav.stopService()
 		self.session.nav.playService(stream)
 
@@ -1005,18 +1105,11 @@ class M3UConverterSettings(Setup):
 
 
 def main(session, **kwargs):
-	def on_conversion_selected(conversion_type):
-		if conversion_type:
-			session.openWithCallback(
-				lambda: None,
-				UniversalConverter,
-				conversion_type=conversion_type
-			)
+	def on_conversion_selected(result=None):
+		if result:
+			session.open(UniversalConverter, conversion_type=result)
 
-	session.openWithCallback(
-		on_conversion_selected,
-		ConversionSelector
-	)
+	session.openWithCallback(on_conversion_selected, ConversionSelector)
 
 
 def Plugins(**kwargs):
