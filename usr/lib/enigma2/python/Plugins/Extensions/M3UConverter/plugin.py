@@ -916,6 +916,7 @@ class UniversalConverter(Screen):
 
 			with open(temp_file, "w", encoding="latin-1", errors="replace") as f:
 				f.write("#NAME " + name_bouquet + "\n")
+				f.write("#NAME {}\n".format(name_bouquet if name_bouquet else group))
 				f.write(markera + "\n")
 				f.write(markerb + "\n")
 				for idx, ch in enumerate(channels, 1):
