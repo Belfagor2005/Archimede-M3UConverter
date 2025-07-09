@@ -813,29 +813,34 @@ class UniversalConverter(Screen):
         self["status"] = Label(_("Ready: Select the file from the %s you configured in settings.") % self.full_path)
 
     def update_green_button(self):
-        if self.file_loaded:
-            if self.conversion_type == "tv_to_m3u":
-                self["key_green"].setText(_("Convert to M3U"))
-                self["status"].setText(_("TV to M3U conversion ready"))
-            elif self.conversion_type == "m3u_to_tv":
-                self["key_green"].setText(_("Convert to Bouquet"))
-                self["status"].setText(_("M3U to Bouquet conversion ready"))
-            elif self.conversion_type == "json_to_tv":
-                self["key_green"].setText(_("Convert JSON to Bouquet"))
-                self["status"].setText(_("JSON to Bouquet conversion ready"))
-            elif self.conversion_type == "xspf_to_m3u":
-                self["key_green"].setText(_("Convert XSPF to M3U"))
-                self["status"].setText(_("XSPF to M3U conversion ready"))
+        if not hasattr(self, 'conversion_type'):
+            return
+            
+        status_messages = {
+            "tv_to_m3u": (_("Convert to M3U"), _("TV bouquet loaded. Press Green to convert to M3U")),
+            "m3u_to_tv": (_("Convert to Bouquet"), _("M3U file loaded. Press Green to convert to bouquet")),
+            "json_to_tv": (_("Convert JSON to Bouquet"), _("JSON file loaded. Press Green to convert")),
+            "xspf_to_m3u": (_("Convert XSPF to M3U"), _("XSPF playlist loaded. Ready to convert"))
+        }
+
+        if self.file_loaded and self.m3u_list:
+            label, status = status_messages.get(self.conversion_type, (_("Convert"), _("Ready to convert")))
+            self["key_green"].setText(label)
+            self["status"].setText(status)
         else:
             self["key_green"].setText("")
+            if not self.file_loaded:
+                self["status"].setText(_("Please select a file first"))
+            elif not self.m3u_list:
+                self["status"].setText(_("No valid channels found in file"))
 
     # optional
     def create_manual_backup(self):
         try:
             self.converter._create_backup()
-            self.session.open(MessageBox, "Backup creato con successo!", MessageBox.TYPE_INFO)
+            self.session.open(MessageBox, _("Backup created successfully!"), MessageBox.TYPE_INFO)
         except Exception as e:
-            self.session.open(MessageBox, f"Backup fallito: {str(e)}", MessageBox.TYPE_ERROR)
+            self.session.open(MessageBox, _(f"Backup failed: {str(e)}"), MessageBox.TYPE_ERROR)
 
     def init_m3u_converter(self):
         self.onShown.append(self.delayed_file_browser)
