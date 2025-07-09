@@ -1,46 +1,40 @@
-Archimede-M3UConverter 
- 
-
-![](https://komarev.com/ghpvc/?username=Belfagor2005) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [![Python package](https://github.com/Belfagor2005/Archimede-M3UConverter/actions/workflows/pylint.yml/badge.svg)](https://github.com/Belfagor2005/Archimede-M3UConverter/actions/workflows/pylint.yml)
-
-<img src="https://github.com/Belfagor2005/Archimede-M3UConverter/blob/main/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/plugin.png">
-
-
-Made with ❤️ for Archimede.
-
-
 ```markdown
 # 📺 Archimede M3U Converter
 
-A simple and powerful M3U playlist converter for **Enigma2 (Python 3 only)**.  
-Easily turn `.m3u` files into clean IPTV lists with group, logo, and stream info — and export Enigma2 bouquets back to `.m3u`!
+A simple and powerful playlist converter for **Enigma2 (Python 3 only)**.  
+Easily turn `.m3u`, `.json`, and `.xspf` files into clean IPTV lists with group, logo, and stream info — and export Enigma2 bouquets back to `.m3u`!
 
----
-
+```
 ## 🚀 Features
 
-- ✅ Choose `.m3u` files from USB, HDD, or network shares
+- ✅ Choose playlist files from USB, HDD, or network shares (`.m3u`, `.tv`, `.json`, `.xspf`)
 - 🔍 Parses EXTINF data: title, logo, group-title, tvg-name
-- 🧹 Cleans and exports a minimal Enigma2-compatible list
-- 🔁 Optionally convert streams to **HLS**
-- 📤 Also export bouquet `.tv` files back to `.m3u`
+- 🧹 Cleans and exports a minimal Enigma2-compatible bouquet
+- 🔁 Convert streams to **HLS** (optional)
+- 📤 Export Enigma2 bouquets (`.tv`) back to `.m3u` format
 - 💾 Automatic backup of original files
 - 🧠 Auto-reload playlist at boot
 - 📚 Add new bouquets at top or bottom of main list
-- 🎯 Browser of file .tv: smart filter that shows only files containing http streams (great for avoiding empty or useless files).​​
----
+- 📂 File browser with smart filter: shows only `.tv` files containing HTTP streams
+- 🔄 Convert JSON IPTV playlist to Enigma2 bouquets
+- 🔄 Convert XSPF playlists to M3U format
+
+
 
 ## 🎮 How to Use
 
 | Button       | Action                                      |
 |--------------|---------------------------------------------|
-| 🔴 RED       | Select M3U/TV file                          |
-| 🟢 GREEN     | Convert M3U to bouquet or bouquet to M3U    |
-| 🟡 YELLOW    | Settings (HLS, backup, autoload, position)  |
-| 🔵 BLUE      | Plugin info and about                       |
-| ▶️  Player    | can be activated with OK​​                    |
-| ⏹️ STOP      | to end playback                             |
----
+| 🔴 RED       | Open file (M3U, TV, JSON, XSPF)             |
+| 🟢 GREEN     | Start conversion                            |
+| 🟡 YELLOW    | Toggle stream filter (HTTP-only .tv files)  |
+| 🔵 BLUE      | Tools menu (export, preview, etc.)          |
+| 📂 MENU      | Plugin settings (HLS, autoload, position)   |
+| ▶️  OK        | Play selected channel                       |
+| ⏹️ STOP      | Stop playback                               |
+| ❌ CANCEL    | Close the plugin                            |
+
+
 
 ## 🗂️ Output
 
@@ -48,9 +42,12 @@ Easily turn `.m3u` files into clean IPTV lists with group, logo, and stream info
   - `/etc/enigma2/userbouquet.*.tv`
 - Converted `.tv` ➜ exported to:
   - `/tmp/exported_*.m3u`
+- Converted `.json` ➜ saved as:
+  - `/etc/enigma2/userbouquet.*.tv`
+- Converted `.xspf` ➜ exported as:
+  - `/tmp/converted_*.m3u`
 - UTF-8 M3U support ✅
 
----
 
 ## 🔄 Reverse Conversion
 
@@ -61,9 +58,14 @@ You can now export Enigma2 bouquets (`userbouquet.*.tv`) back into `.m3u` format
 - Only valid IPTV entries are included (e.g., `#SERVICE 4097`, `5001`, etc.)
 - Non-stream services (DVB, radio, etc.) are ignored
 
+New supported formats:
+
+- `.json` ➜ Enigma2 bouquet conversion
+- `.xspf` ➜ converted to `.m3u` playlist
+
 Perfect for creating backup playlists or re-editing outside Enigma2.
 
----
+
 
 ## 💡 Notes
 
@@ -72,7 +74,7 @@ Perfect for creating backup playlists or re-editing outside Enigma2.
 - No internet required for conversion
 - Clean, local processing — no logs or tracking
 
----
+
 
 ## 📄 Credits & License
 
@@ -83,5 +85,5 @@ This plugin is made with ❤️ for the Enigma2 community.
 You are free to use and modify it for personal use.
 
 🚫 **Do not redistribute modified versions without proper attribution.**
-
 ```
+
