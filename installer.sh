@@ -2,8 +2,8 @@
 ## setup command=wget -q --no-check-certificate https://raw.githubusercontent.com/Belfagor2005/Archimede-M3UConverter/main/installer.sh -O - | /bin/sh
 
 ## Only This 2 lines to edit with new version ######
-version='1.6'
-changelog='\nAdd Player for test - parser fixed'
+version='1.8'
+changelog='\nFic Logger\nfix folder browser'
 ##############################################################
 TMPPATH=/tmp/Archimede-M3UConverter-main
 FILEPATH=/tmp/main.tar.gz

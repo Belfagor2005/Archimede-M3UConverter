@@ -3,8 +3,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: M3UConverter\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-10 01:23+0200\n"
-"PO-Revision-Date: 2025-07-10 01:24+0200\n"
+"POT-Creation-Date: 2025-07-12 19:42+0200\n"
+"PO-Revision-Date: 2025-07-12 19:42+0200\n"
 "Last-Translator: \n"
 "Language-Team: <ekekaz@gmail.com>\n"
 "Language: it\n"
@@ -17,161 +17,161 @@ msgstr ""
 "X-Poedit-SearchPath-0: Logger_clr.py\n"
 "X-Poedit-SearchPath-1: plugin.py\n"
 
-#: plugin.py:89
+#: plugin.py:86
 #, python-format
 msgid "Archimede Universal Converter v.%s by Lululla"
 msgstr ""
 
-#: plugin.py:121
+#: plugin.py:128
 msgid "HDD Drive"
 msgstr ""
 
-#: plugin.py:122 plugin.py:138
+#: plugin.py:129 plugin.py:145
 msgid "USB Drive"
 msgstr ""
 
-#: plugin.py:123
+#: plugin.py:130
 msgid "Barry Allen"
 msgstr ""
 
-#: plugin.py:124
+#: plugin.py:131
 msgid "Network Storage"
 msgstr "Memoria Network"
 
-#: plugin.py:125
+#: plugin.py:132
 msgid "Temporary"
 msgstr "Temp"
 
-#: plugin.py:159
+#: plugin.py:166
 msgid "Top"
 msgstr "In Alto"
 
-#: plugin.py:159
+#: plugin.py:166
 msgid "Bottom"
 msgstr "In Basso"
 
-#: plugin.py:447
+#: plugin.py:454
 msgid "M3U ➔ Enigma2 Bouquets"
 msgstr "M3U ➔ Bouquets Enigma2"
 
-#: plugin.py:448
+#: plugin.py:455
 msgid "Enigma2 Bouquets ➔ M3U"
 msgstr "Bouquet Enigma2 ➔ M3U"
 
-#: plugin.py:449
+#: plugin.py:456
 msgid "JSON ➔ Enigma2 Bouquets"
 msgstr "JSON ➔ Bouquets Enigma2"
 
-#: plugin.py:450
+#: plugin.py:457
 msgid "XSPF ➔ M3U Playlist"
 msgstr "XSPF ➔ Playlist M3U"
 
-#: plugin.py:451
+#: plugin.py:458
 msgid "Remove M3U Bouquets"
 msgstr "Rimuovere Bouquets M3U"
 
-#: plugin.py:455
+#: plugin.py:462
 msgid "We're ready: what do you want to do?"
 msgstr "We're ready: what do you want to do?"
 
-#: plugin.py:465
+#: plugin.py:472
 msgid "Close"
 msgstr "Esci"
 
-#: plugin.py:466
+#: plugin.py:473
 msgid "Select"
 msgstr "Seleziona"
 
-#: plugin.py:467
+#: plugin.py:474
 msgid "Remove Bouquets"
 msgstr "Rimuovere Bouquets"
 
-#: plugin.py:538
+#: plugin.py:544
 msgid "Select M3U file to convert"
 msgstr "Seleziona il file M3U da convertire"
 
-#: plugin.py:539
+#: plugin.py:545
 msgid "Select Bouquet file to convert"
 msgstr "Seleziona il file Bouquet da convertire"
 
-#: plugin.py:540
+#: plugin.py:546
 msgid "Select JSON file to convert"
 msgstr "Seleziona il file JSON da convertire"
 
-#: plugin.py:541
+#: plugin.py:547
 msgid "Select XSPF playlist to convert"
 msgstr "Seleziona la playlist XSPF da convertire"
 
-#: plugin.py:543
+#: plugin.py:549
 msgid "Select file"
 msgstr "Seleziona file"
 
-#: plugin.py:556 plugin.py:625
+#: plugin.py:562 plugin.py:631
 msgid "M3U to Enigma2 Bouquet Conversion"
 msgstr "Conversione da M3U in Enigma2 Bouquet"
 
-#: plugin.py:557 plugin.py:626
+#: plugin.py:563 plugin.py:632
 msgid "Enigma2 Bouquet to M3U Conversion"
 msgstr "Conversione da Enigma2 Bouquet in M3U"
 
-#: plugin.py:558 plugin.py:627
+#: plugin.py:564 plugin.py:633
 msgid "JSON to Enigma2 Bouquet Conversion"
 msgstr "Conversione da JSON in Enigma2 Bouquet"
 
-#: plugin.py:559 plugin.py:628
+#: plugin.py:565 plugin.py:634
 msgid "XSPF to M3U Playlist Conversion"
 msgstr "Conversione da XSPF in M3U"
 
-#: plugin.py:572
+#: plugin.py:578
 msgid "fileSelected Error: selection"
 msgstr "fileSelected Errore: selezione"
 
-#: plugin.py:603
+#: plugin.py:609
 msgid "Proceed to file selection"
 msgstr "Procedi alla selezione del file"
 
-#: plugin.py:604
+#: plugin.py:610
 msgid "Show conversion info"
 msgstr "Mostra informazioni sulla conversione"
 
-#: plugin.py:605
+#: plugin.py:611
 msgid "Cancel"
 msgstr ""
 
-#: plugin.py:611
+#: plugin.py:617
 msgid "How do you want to proceed?"
 msgstr "How do you want to proceed?"
 
-#: plugin.py:629
+#: plugin.py:635
 msgid "Conversion information"
 msgstr "Informazioni sulla conversione"
 
-#: plugin.py:707 plugin.py:1639
+#: plugin.py:713 plugin.py:1646
 msgid "Ready"
 msgstr "Pronto"
 
-#: plugin.py:708
+#: plugin.py:714
 msgid "Open File"
 msgstr "Apri File"
 
-#: plugin.py:710
+#: plugin.py:716
 msgid "Filter"
 msgstr "Filtro"
 
-#: plugin.py:711
+#: plugin.py:717
 msgid "Tools"
 msgstr "Strumenti"
 
-#: plugin.py:728
+#: plugin.py:734
 #, python-format
 msgid "Ready: Select the file from the %s you configured in settings."
 msgstr "Pronto: seleziona il file dal %s configurato nelle impostazioni."
 
-#: plugin.py:742
+#: plugin.py:748
 msgid "Backup created successfully!"
 msgstr "Backup creato con successo!"
 
-#: plugin.py:793
+#: plugin.py:799
 #, python-format
 msgid ""
 "Error opening file browser:\n"
@@ -180,48 +180,48 @@ msgstr ""
 "Impossibile aprire il file browser\n"
 "%s"
 
-#: plugin.py:801
+#: plugin.py:807
 msgid "No file loaded to filter"
 msgstr "Nessun file caricato da filtrare"
 
-#: plugin.py:814
+#: plugin.py:820
 #, python-format
 msgid "Filter: %s"
 msgstr "Filtro: %s"
 
-#: plugin.py:814
+#: plugin.py:820
 msgid "ON"
 msgstr ""
 
-#: plugin.py:814
+#: plugin.py:820
 msgid "OFF"
 msgstr ""
 
-#: plugin.py:835
+#: plugin.py:841
 msgid "Create Backup"
 msgstr "Crea backup"
 
-#: plugin.py:836
+#: plugin.py:842
 msgid "Reload Services"
 msgstr "Ricarica Servizi"
 
-#: plugin.py:837
+#: plugin.py:843
 msgid "Plugin Info"
 msgstr ""
 
-#: plugin.py:846
+#: plugin.py:852
 msgid "Services reloaded"
 msgstr "Servizi ricaricati"
 
-#: plugin.py:853
+#: plugin.py:859
 msgid "Tools Menu"
 msgstr "Menu Strumenti"
 
-#: plugin.py:862
+#: plugin.py:868
 msgid "No channels loaded!"
 msgstr "Nessun canale caricato!"
 
-#: plugin.py:878
+#: plugin.py:884
 #, python-format
 msgid ""
 "Error preparing summary:\n"
@@ -230,60 +230,64 @@ msgstr ""
 "Errore durante la preparazione del riepilogo:\n"
 "%s"
 
-#: plugin.py:887
+#: plugin.py:893
 msgid "=== Conversion Summary ==="
 msgstr "=== Riepilogo della conversione ==="
 
-#: plugin.py:888
+#: plugin.py:894
 #, python-format
 msgid "Total channels: %d"
 msgstr "Totale Canali: %d"
 
-#: plugin.py:889
+#: plugin.py:895
 #, python-format
 msgid "Valid channels: %d"
 msgstr "Canali validi: %d"
 
-#: plugin.py:890
+#: plugin.py:896
 #, python-format
 msgid "Groups detected: %d"
 msgstr "Gruppi rilevati: %d"
 
-#: plugin.py:892
+#: plugin.py:898
 msgid "Press OK to confirm or Cancel to abort."
 msgstr "Premere OK per confermare o Annulla per annullare."
 
-#: plugin.py:899
+#: plugin.py:905
 msgid "Sample channels:"
 msgstr "Canali campione:"
 
-#: plugin.py:909
+#: plugin.py:915
 #, python-format
 msgid "Summary generation error: %s"
 msgstr "Errore di generazione del riepilogo: %s"
 
-#: plugin.py:930
+#: plugin.py:936
 msgid "Unsupported file type"
 msgstr "Tipo di file non supportato"
 
-#: plugin.py:999
+#: plugin.py:997
+msgid "Invalid selection"
+msgstr "Selezione non valida"
+
+#: plugin.py:1007
 msgid "Processing selection..."
 msgstr "Elaborazione della selezione..."
 
-#: plugin.py:1005 plugin.py:1593
+#: plugin.py:1012 plugin.py:1600
 msgid "No file selected"
 msgstr "Nessun file selezionato"
 
-#: plugin.py:1016
+#: plugin.py:1023
 msgid "File not found"
 msgstr "File non trovato"
 
-#: plugin.py:1050
+#: plugin.py:1057
 #, python-format
 msgid "Loaded %d channels. Are you ready to convert? Press Green to proceed."
 msgstr "Caricati %d canali. Pronti per la conversione? Premi Verde per procedere."
 
-#: plugin.py:1057
+#: plugin.py:1064
 #, python-format
 msgid ""
 "Invalid file format:\n"
@@ -292,135 +296,135 @@ msgstr ""
 "Formato file non valido:\n"
 "%s"
 
-#: plugin.py:1061
+#: plugin.py:1068
 msgid "Error loading file"
 msgstr "Errore durante il caricamento del file"
 
-#: plugin.py:1071
+#: plugin.py:1078
 #, python-format
 msgid "Loaded %d channels"
 msgstr "Caricati %d canali"
 
-#: plugin.py:1196
+#: plugin.py:1203
 msgid "No file specified"
 msgstr "Nessun file specificato"
 
-#: plugin.py:1240
+#: plugin.py:1247
 msgid "Convert to M3U"
 msgstr "Converti in M3U"
 
-#: plugin.py:1348
+#: plugin.py:1355
 msgid "No IPTV channels found in the bouquet"
 msgstr "Nessun canale IPTV trovato nel bouquet"
 
-#: plugin.py:1355
+#: plugin.py:1362
 msgid "Convert to Bouquet"
 msgstr "Converti in BOUQUET"
 
-#: plugin.py:1383
+#: plugin.py:1390
 msgid "Convert to JSON"
 msgstr "Converti in JSON"
 
-#: plugin.py:1414
+#: plugin.py:1421
 msgid "Convert to XSPF"
 msgstr "Converti in XSPF"
 
-#: plugin.py:1441
+#: plugin.py:1448
 msgid "Invalid JSON file"
 msgstr "File JSON non valido"
 
-#: plugin.py:1443
+#: plugin.py:1450
 #, python-format
 msgid "JSON processing error: %s"
 msgstr "Errore di elaborazione JSON: %s"
 
-#: plugin.py:1465
+#: plugin.py:1472
 #, python-format
 msgid "Processing: %s (%d%%)"
 msgstr "Elaborazione: %s (%d%%)"
 
-#: plugin.py:1472
+#: plugin.py:1479
 #, python-format
 msgid "Creating bouquet: %s"
 msgstr "Creazione bouquet: %s"
 
-#: plugin.py:1512
+#: plugin.py:1519
 #, python-format
 msgid "Exporting: %s (%d%%)"
 msgstr "Esportazione: %s (%d%%)"
 
-#: plugin.py:1517
+#: plugin.py:1524
 #, python-format
 msgid "File write error: %s"
 msgstr "Errore di scrittura del file: %s"
 
-#: plugin.py:1519
+#: plugin.py:1526
 #, python-format
 msgid "tv_to_m3u Conversion error: %s"
 msgstr "errore di conversione TVM3U: %s"
 
-#: plugin.py:1554
+#: plugin.py:1561
 msgid "Invalid XSPF file"
 msgstr "File XSPF non valido"
 
-#: plugin.py:1556
+#: plugin.py:1563
 #, python-format
 msgid "XSPF conversion error: %s"
 msgstr "Errore di conversione XSPF: %s"
 
-#: plugin.py:1567
+#: plugin.py:1574
 #, python-format
 msgid "Successfully converted %d items"
 msgstr "Convertiti con successo %d elementi"
 
-#: plugin.py:1567
+#: plugin.py:1574
 #, python-format
 msgid "File saved to: %s"
 msgstr "File salvato in: %s"
 
-#: plugin.py:1571
+#: plugin.py:1578
 #, python-format
 msgid "Conversion failed: %s"
 msgstr "Esportazione fallita: %s"
 
-#: plugin.py:1604
+#: plugin.py:1611
 msgid "Invalid .tv item format"
 msgstr "Formato file .tv non valido"
 
-#: plugin.py:1613
+#: plugin.py:1620
 msgid "Invalid .m3u item format"
 msgstr "Formato file .m3u non valido"
 
-#: plugin.py:1616
+#: plugin.py:1623
 #, python-format
 msgid "Playing: %s"
 msgstr "Riproduzione: %s"
 
-#: plugin.py:1634
+#: plugin.py:1641
 msgid "Playback error"
 msgstr "Errore di riproduzione"
 
-#: plugin.py:1666
+#: plugin.py:1673
 msgid "Author: Lululla"
 msgstr ""
 
-#: plugin.py:1667
+#: plugin.py:1674
 msgid "License: CC BY-NC-SA 4.0"
 msgstr ""
 
-#: plugin.py:1668
+#: plugin.py:1675
 msgid "Developed for Enigma2"
 msgstr "Sviluppato per Enigma2"
 
-#: plugin.py:1671
+#: plugin.py:1678
 msgid "Press OK to close"
 msgstr "Premere OK per uscire"
 
-#: plugin.py:1747
+#: plugin.py:1736
 msgid "Universal Converter"
 msgstr "Convertitore Universale"
 
-#: plugin.py:1748
+#: plugin.py:1737
 msgid "Convert between M3U and Enigma2 bouquets"
 msgstr "Convertire tra bouquet M3U ed Enigma2"
 
@@ -482,9 +486,6 @@ msgstr "Convertire tra bouquet M3U ed Enigma2"
 
 #~ msgid "No files selected"
 #~ msgstr "Nessun file selezionato"
-
-#~ msgid "Invalid selection"
-#~ msgstr "Selezione non valida"
 
 #~ msgid "Selected file does not exist"
 #~ msgstr "Il file selezionato non esiste"

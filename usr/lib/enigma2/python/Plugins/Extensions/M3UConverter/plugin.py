@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 1.7                                         #
+#  Version: 1.8                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
@@ -27,8 +27,8 @@ import json
 import shutil
 import unicodedata
 from gettext import gettext as _
-from os import access, W_OK, listdir, makedirs, remove, replace, chmod, fsync, system
-from os.path import dirname, exists, isdir, isfile, join, normpath
+from os import access, W_OK, listdir, remove, replace, chmod, fsync, system
+from os.path import exists, isdir, isfile, join, normpath
 from re import sub, findall, DOTALL, search
 from threading import Lock
 from time import strftime
@@ -52,16 +52,13 @@ from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
 from Tools.Directories import defaultRecordingLocation
+from enigma import eAVControl as AVSwitch
 
 from .Logger_clr import ColoredLogger
 
-try:
-	from Components.AVSwitch import AVSwitch
-except ImportError:
-	from Components.AVSwitch import eAVControl as AVSwitch
-
 
 class AspectManager:
+
 	def __init__(self):
 		self.init_aspect = self.get_current_aspect()
 		print("[INFO] Initial aspect ratio:", self.init_aspect)
@@ -84,33 +81,35 @@ class AspectManager:
 
 
 # for my friend Archimede
-currversion = '1.7'
-last_date = "20250709"
+currversion = '1.8'
+last_date = "20250712"
 title_plug = _("Archimede Universal Converter v.%s by Lululla") % currversion
 ICON_STORAGE = 0
 ICON_PARENT = 1
 ICON_CURRENT = 2
 
+
 aspect_manager = AspectManager()
 screenwidth = getDesktop(0).size()
 screen_width = screenwidth.width()
 
-archimede_converter_path = "/tmp/archimede_converter"
-log_path = join("/tmp", "archimede_converter", "m3u_converter.log")
-log_dir = dirname(log_path)
+archimede_converter_path = "archimede_converter"
+log_dir = join("/tmp", archimede_converter_path)
+main_log = join(log_dir, "unified_converter.log")
 
-if not exists(archimede_converter_path):
-	makedirs(archimede_converter_path)
+# Create directory if it does not exist
+try:
+	from os import makedirs
+	makedirs(log_dir, exist_ok=True)
+except Exception:
+	pass
 
-if not exists(log_dir):
-	try:
-		makedirs(log_dir)
-	except Exception:
-		pass
-
-
-logger = ColoredLogger(log_file=log_path)
-logger.info("Plugin loaded")
+# Global instance with dual output
+logger = ColoredLogger(
+	log_file=main_log,
+	secondary_log=join(log_dir, "debug.log"),
+	clear_on_start=False  # Keep previous logs
+)
 
 
 # Ensure movie path
@@ -133,17 +132,17 @@ def get_mounted_devices():
 		("/tmp/", _("Temporary"))
 	]
 
-	# Verifica quali esistono e sono scrivibili
+	# Check which paths exist and are writable
 	valid_devices = []
 	for path, desc in basic_paths:
 		if isdir(path) and access(path, W_OK):
 			valid_devices.append((path, desc))
 
-	# Aggiunge eventuali dispositivi USB aggiuntivi (usb1, usb2...)
+	# Add additional USB devices if available (usb1, usb2...)
 	for i in range(1, 4):
-		usb_path = f"/media/usb{i}/"
+		usb_path = "/media/usb%d/" % i
 		if isdir(usb_path) and access(usb_path, W_OK):
-			valid_devices.append((usb_path, _("USB Drive") + f" {i}"))
+			valid_devices.append((usb_path, _("USB Drive") + " %d" % i))
 
 	return valid_devices
 
@@ -519,7 +518,6 @@ class ConversionSelector(Screen):
 				self.openFileBrowser(conversion_type)
 
 	def open_file_browser(self, conversion_type):
-		"""Versione specifica per il selector"""
 		print(f"[DEBUG] Opening browser for {conversion_type}")
 		patterns = {
 			"m3u_to_tv": r"(?i)^.*\.(m3u|m3u8)$",
@@ -700,6 +698,7 @@ class UniversalConverter(Screen):
 
 	def __init__(self, session, conversion_type, selected_file=None, auto_open_browser=False):
 		Screen.__init__(self, session)
+		self.setTitle(title_plug)
 		self.conversion_type = conversion_type
 		self.m3u_list = []
 		self.bouquet_list = []
@@ -707,7 +706,6 @@ class UniversalConverter(Screen):
 		self.selected_file = selected_file
 		self.auto_open_browser = auto_open_browser
 		self.progress = None
-		self.progress_source = Progress()
 		base_path = config.plugins.m3uconverter.lastdir.value
 		self.full_path = base_path
 		self["list"] = MenuList([])
@@ -717,20 +715,20 @@ class UniversalConverter(Screen):
 		self["key_green"] = StaticText("")
 		self["key_yellow"] = StaticText(_("Filter"))
 		self["key_blue"] = StaticText(_("Tools"))
+		self.progress_source = Progress()
 		self["progress_source"] = self.progress_source
 		self["progress_text"] = StaticText("")
 		self["progress_source"].setValue(0)
-		self.setTitle(title_plug)
 		self.initialservice = self.session.nav.getCurrentlyPlayingServiceReference()
 		self["actions"] = ActionMap(["ColorActions", "OkCancelActions", "MediaPlayerActions", "MenuActions"], {
-			"red": self.open_file,              # Open file
-			"green": self.start_conversion,     # Start conversion
-			"yellow": self.toggle_filter,       # Enable/disable filter
-			"blue": self.show_tools_menu,       # Tools menu
-			"menu": self.open_settings,         # Settings
-			"ok": self.key_ok,                  # Play channel
-			"cancel": self.keyClose,            # Close
-			"stop": self.stop_player            # Stop playback
+			"red": self.open_file,
+			"green": self.start_conversion,
+			"yellow": self.toggle_filter,
+			"blue": self.show_tools_menu,
+			"menu": self.open_settings,
+			"ok": self.key_ok,
+			"cancel": self.keyClose,
+			"stop": self.stop_player
 		}, -1)
 
 		self["status"] = Label(_("Ready: Select the file from the %s you configured in settings.") % self.full_path)
@@ -776,7 +774,7 @@ class UniversalConverter(Screen):
 			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR, timeout=5)
 
 	def open_file(self):
-		"""UNICO metodo per gestire l'apertura del file browser"""
+		"""The ONLY way to manage file browser opening"""
 		logger.debug(f"Opening file browser for {self.conversion_type}")
 
 		try:
@@ -995,17 +993,18 @@ class UniversalConverter(Screen):
 
 	def file_selected(self, res=None):
 		"""Bulletproof file selection handler"""
+		if not res or not isinstance(res, (str, list, tuple)):
+			self["status"].setText(_("Invalid selection"))
+			return
 		try:
 			# DEBUG START
 			logger.debug("=== FILE SELECTION STARTED ===")
-			# self._debug_state()
 
 			# Reset all states
 			self.file_loaded = False
 			self.m3u_list = []
 			# self.update_green_button()
 			self["status"].setText(_("Processing selection..."))
-			# self._force_full_refresh()
 
 			# Validate input
 			if not res:
@@ -1029,10 +1028,10 @@ class UniversalConverter(Screen):
 
 			# DEBUG: Before processing
 			logger.debug(f"Processing file: {selected_path}")
-			# self._debug_state()
 
 			# Process file
-			self.selected_file = selected_path
+			path = res[0] if isinstance(res, (list, tuple)) else res
+			self.selected_file = normpath(str(path))
 			try:
 				if self.conversion_type == "m3u_to_tv":
 					self.parse_m3u(selected_path)
@@ -1070,7 +1069,7 @@ class UniversalConverter(Screen):
 
 	def update_channel_list(self):
 		display_list = []
-		for idx, channel in enumerate(self.m3u_list[:200]):  # Mostra max 200 elementi
+		for idx, channel in enumerate(self.m3u_list[:200]):  # Show max 200 items
 			name = sub(r'\[.*?\]', '', channel.get('name', '')).strip()
 			group = channel.get('group', '')
 			display_list.append(f"{idx + 1: 03d}. {group + ' - ' if group else ''}{name}")
@@ -1714,24 +1713,6 @@ class M3UConverterSettings(Setup):
 
 	def keySave(self):
 		Setup.keySave(self)
-
-
-"""
-def main(session, **kwargs):
-	core_converter.cleanup_old_backups(config.plugins.m3uconverter.max_backups.value)
-
-	def on_conversion_selected(conversion_type=None):
-		if conversion_type:
-			session.openWithCallback(
-				lambda res: session.open(UniversalConverter, conversion_type=conversion_type, selected_file=res),
-				M3UFileBrowser,
-				startdir="/media/hdd" if isdir("/media/hdd") else "/tmp",
-				matchingPattern=get_pattern_for_type(conversion_type),
-				conversion_type=conversion_type
-			)
-
-	session.openWithCallback(on_conversion_selected, ConversionSelector)
-"""
 
 
 def main(session, **kwargs):
