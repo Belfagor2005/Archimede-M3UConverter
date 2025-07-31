@@ -45,15 +45,15 @@ echo ""
 ##############################################################
 
 # Controllo presenza wget
-if [ -f /usr/bin/wget ]; then
-    echo "✔ wget è già installato"
-else
+if ! command -v wget >/dev/null 2>&1; then
     echo "⚠ Installazione wget in corso..."
-    if [ $OSTYPE = "DreamOs" ]; then
-        apt-get update && apt-get install wget -y
+    if [ "$OSTYPE" = "DreamOs" ]; then
+        apt-get update && apt-get install -y wget || { echo "Failed to install wget"; exit 1; }
     else
-        opkg update && opkg install wget
+        opkg update && opkg install wget || { echo "Failed to install wget"; exit 1; }
     fi
+else
+    echo "✔ wget è già installato"
 fi
 
 # Determinazione versione Python
@@ -74,21 +74,17 @@ echo "##############################################################"
 echo "##          Verifica Dipendenze Python                     ##"
 echo "##############################################################"
 
-if [ $PYTHON = "PY3" ]; then
-    if ! grep -qs "Package: $Packagesix" $STATUS ; then
-        echo "⚠ Installazione python3-six in corso..."
-        opkg update && opkg install python3-six
-    fi
+if [ "$PYTHON" = "PY3" ] && ! grep -qs "Package: $Packagesix" "$STATUS"; then
+    echo "⚠ Installazione python3-six in corso..."
+    opkg update && opkg install python3-six || { echo "Failed to install python3-six"; exit 1; }
 fi
 
-if ! grep -qs "Package: $Packagerequests" $STATUS ; then
+if ! grep -qs "Package: $Packagerequests" "$STATUS"; then
     echo "⚠ Installazione $Packagerequests in corso..."
-    if [ $OSTYPE = "DreamOs" ]; then
-        apt-get update && apt-get install python-requests -y
-    elif [ $PYTHON = "PY3" ]; then
-        opkg update && opkg install python3-requests
+    if [ "$OSTYPE" = "DreamOs" ]; then
+        apt-get update && apt-get install -y "$Packagerequests" || { echo "Failed to install $Packagerequests"; exit 1; }
     else
-        opkg update && opkg install python-requests
+        opkg update && opkg install "$Packagerequests" || { echo "Failed to install $Packagerequests"; exit 1; }
     fi
 fi
 
@@ -124,17 +120,17 @@ fi
 
 echo ""
 echo "⚠ Download plugin in corso..."
-wget --no-check-certificate -q 'https://github.com/Belfagor2005/Archimede-M3UConverter/archive/refs/heads/main.tar.gz'
+wget --no-check-certificate -q 'https://github.com/Belfagor2005/Archimede-M3UConverter/archive/refs/heads/main.tar.gz' -O "$FILEPATH" || { echo "Download failed"; exit 1; }
 echo "✔ Download completato!"
 
 echo ""
 echo "⚠ Estrazione archivio in corso..."
-tar -xzf main.tar.gz
+tar -xzf "$FILEPATH" -C /tmp/ || { echo "Extraction failed"; exit 1; }
 echo "✔ Estrazione completata!"
 
 echo ""
 echo "⚠ Installazione file in corso..."
-cp -rf 'Archimede-M3UConverter-main/usr' '/'
+cp -rf /tmp/Archimede-M3UConverter-main/usr/ / || { echo "Copy failed"; exit 1; }
 set +e
 
 ##############################################################
@@ -149,7 +145,7 @@ if [ -d "$PLUGINPATH" ]; then
     echo "✔ Plugin installato correttamente in: $PLUGINPATH"
 else
     echo "✖ Errore! Installazione fallita!"
-    rm -rf "$TMPPATH" > /dev/null 2>&1
+    rm -rf "$TMPPATH" "$FILEPATH" > /dev/null 2>&1
     exit 1
 fi
 
@@ -158,7 +154,7 @@ fi
 ##############################################################
 echo ""
 echo "⚠ Pulizia file temporanei in corso..."
-rm -rf "$TMPPATH" > /dev/null 2>&1
+rm -rf "$TMPPATH" "$FILEPATH" > /dev/null 2>&1
 sync
 
 ##############################################################
