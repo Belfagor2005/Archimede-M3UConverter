@@ -431,16 +431,19 @@ class ConversionSelector(Screen):
             <widget name="info" position="1,78" size="1280,50" font="Regular;30" halign="center" valign="center" foregroundColor="yellow" backgroundColor="#202020" transparent="0" zPosition="5" />
             
             <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/fulltop.png" position="0,0" size="1280,720" zPosition="1" />
-            <!-- 
-            <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/tvs.png" position="220,35" size="279,50" alphatest="blend" zPosition="5" />
-            -->
+
             <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/sep.png" position="0,68" size="1280,8" zPosition="5" />
             <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/sep.png" position="0,626" size="1280,8" zPosition="5" />
             <widget name="text" position="0,135" size="1280,491" scrollbarMode="showOnDemand" transparent="1" zPosition="5" foregroundColor="#00a0a0a0" foregroundColorSelected="#ffffff" backgroundColor="#20000000" backgroundColorSelected="#0b2049" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/sliderb.png" />
-            <eLabel backgroundColor="red" position="31,685" size="300,6" zPosition="10" />
-            <eLabel backgroundColor="green" position="947,687" size="300,6" zPosition="10" />
-            <widget name="key_red" position="29,643" size="300,40" font="Regular;30" halign="center" valign="center" backgroundColor="#20000000" zPosition="5" transparent="1" />
-            <widget name="key_green" position="945,643" size="300,40" font="Regular;30" halign="center" valign="center" backgroundColor="#20000000" zPosition="5" transparent="1" />
+
+            <!--#####red####/-->
+            <eLabel backgroundColor="#00ff0000" position="31,685" size="280,6" zPosition="12" />
+            <widget name="key_red" position="29,643" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="29,643" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <!--#####green####/-->
+            <eLabel backgroundColor="#0000ff00" position="947,685" size="280,6" zPosition="12" />
+            <widget name="key_green" position="945,643" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="945,643" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
         </screen>"""
 
     def __init__(self, session):
@@ -651,23 +654,31 @@ class UniversalConverter(Screen):
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
             <widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
             <widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <eLabel backgroundColor="red" cornerRadius="3" position="65,1025" size="300,6" zPosition="11" />
-            <eLabel backgroundColor="green" cornerRadius="3" position="366,1025" size="300,6" zPosition="11" />
-            <eLabel backgroundColor="yellow" cornerRadius="3" position="666,1025" size="300,6" zPosition="11" />
-            <eLabel backgroundColor="blue" cornerRadius="3" position="966,1025" size="300,6" zPosition="11" />
-            <widget source="key_red" render="Label" position="65,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="key_green" render="Label" position="365,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="key_yellow" render="Label" position="664,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="key_blue" render="Label" position="967,985" size="300,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
             <widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
             <widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
-            <eLabel name="" position="1200,820" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
-            <eLabel name="" position="1200,875" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
-            <eLabel name="" position="1200,930" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
+            <eLabel name="" position="1200,810" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
+            <eLabel name="" position="1200,865" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
+            <eLabel name="" position="1200,920" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
             <widget source="session.CurrentService" render="Label" position="1220,125" size="640,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
                 <convert type="ServiceName">Name</convert>
             </widget>
-            <widget source="session.VideoPicture" render="Pig" position="1220,166" zPosition="20" size="640,360" backgroundColor="transparent" transparent="0" cornerRadius="14" />
+            <widget source="session.VideoPicture" render="Pig" position="1220,166" zPosition="20" size="640,360" backgroundColor="transparent" transparent="0" cornerRadius="14" />            
+            <!--#####red####/-->
+            <eLabel backgroundColor="#00ff0000" position="65,1035" size="280,6" zPosition="12" />
+            <widget name="key_red" position="65,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="65,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <!--#####green####/-->
+            <eLabel backgroundColor="#0000ff00" position="365,1035" size="280,6" zPosition="12" />
+            <widget name="key_green" position="365,990" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="364,990" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <!--#####yellow####/-->
+            <eLabel backgroundColor="#00ffff00" position="666,1035" size="280,6" zPosition="12" />
+            <widget name="key_yellow" position="664,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
+            <widget source="key_yellow" render="Label" position="664,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
+            <!--#####blue####/-->
+            <eLabel backgroundColor="#000000ff" position="968,1035" size="280,6" zPosition="12" />
+            <widget name="key_blue" position="967,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,Button,Label" transparent="1" />
+            <widget source="key_blue" render="Label" position="967,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
         </screen>"""
 
     else:
@@ -677,24 +688,33 @@ class UniversalConverter(Screen):
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
             <widget name="list" position="25,60" size="840,518" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
             <widget name="status" position="23,608" size="1185,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <eLabel backgroundColor="red" cornerRadius="3" position="20,700" size="275,6" zPosition="11" />
-            <eLabel backgroundColor="green" cornerRadius="3" position="295,700" size="275,6" zPosition="11" />
-            <eLabel backgroundColor="yellow" cornerRadius="3" position="570,700" size="275,6" zPosition="11" />
-            <eLabel backgroundColor="blue" cornerRadius="3" position="845,700" size="275,6" zPosition="11" />
-            <widget source="key_red" render="Label" position="20,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="key_green" render="Label" position="295,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="key_yellow" render="Label" position="570,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="key_blue" render="Label" position="845,660" size="275,40" zPosition="1" font="Regular;28" halign="center" backgroundColor="background" transparent="1" foregroundColor="white" />
             <widget source="progress_source" render="Progress" position="25,582" size="1180,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
             <widget source="progress_text" render="Label" position="24,582" size="1180,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
-            <eLabel name="" position="1121,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
-            <eLabel name="" position="1175,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
-            <eLabel name="" position="1230,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
+            <eLabel name="" position="1111,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
+            <eLabel name="" position="1165,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
+            <eLabel name="" position="1220,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
             <widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
                 <convert type="ServiceName">Name</convert>
             </widget>
             <widget source="session.VideoPicture" render="Pig" position="871,92" zPosition="20" size="400,220" backgroundColor="transparent" transparent="0" cornerRadius="14" />
+            <!--#####red####/-->
+            <eLabel backgroundColor="#00ff0000" position="25,700" size="250,6" zPosition="12" />
+            <widget name="key_red" position="25,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="25,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <!--#####green####/-->
+            <eLabel backgroundColor="#0000ff00" position="280,700" size="250,6" zPosition="12" />
+            <widget name="key_green" position="280,660" size="250,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="280,660" size="250,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <!--#####yellow####/-->
+            <eLabel backgroundColor="#00ffff00" position="541,700" size="250,6" zPosition="12" />
+            <widget name="key_yellow" position="539,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
+            <widget source="key_yellow" render="Label" position="539,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
+            <!--#####blue####/-->
+            <eLabel backgroundColor="#000000ff" position="798,700" size="250,6" zPosition="12" />
+            <widget name="key_blue" position="797,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,Button,Label" transparent="1" />
+            <widget source="key_blue" render="Label" position="797,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
         </screen>"""
+
 
     def __init__(self, session, conversion_type, selected_file=None, auto_open_browser=False):
         Screen.__init__(self, session)
@@ -966,6 +986,7 @@ class UniversalConverter(Screen):
                 "/media/net",
                 "/hdd/movie",
                 "/hdd",
+                "/usb",
                 "/autofs/movie",
                 "/autofs",
                 "/tmp"
