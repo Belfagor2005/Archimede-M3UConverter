@@ -425,25 +425,26 @@ class M3UFileBrowser(Screen):
 class ConversionSelector(Screen):
 
     skin = """
-        <screen name="MainSetting" position="center,center" size="1280,720" title="..::tvRaiPreview::.." backgroundColor="#20000000" flags="wfNoBorder">
+        <screen name="ConversionSelector" position="center,center" size="1280,720" title="..::ConversionSelector::.." backgroundColor="#20000000" flags="wfNoBorder">
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
-            <widget name="title" position="0,6" size="1280,58" font="Regular;30" halign="left" valign="center" foregroundColor="#002a79b8" backgroundColor="black" transparent="1" zPosition="5" />
-            <widget name="info" position="1,78" size="1280,50" font="Regular;30" halign="center" valign="center" foregroundColor="yellow" backgroundColor="#202020" transparent="0" zPosition="5" />
-            
-            <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/fulltop.png" position="0,0" size="1280,720" zPosition="1" />
+            <widget source="Title" render="Label" position="64,13" size="1120,52" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
+            <widget name="list" position="15,135" size="1250,491" scrollbarMode="showOnDemand" transparent="1" itemHeight="35" zPosition="5" foregroundColor="#00a0a0a0" foregroundColorSelected="#ffffff" backgroundColor="#20000000" backgroundColorSelected="#0b2049" />
+            <widget name="status" position="14,79" size="1250,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" zPosition="5" />
 
-            <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/sep.png" position="0,68" size="1280,8" zPosition="5" />
-            <ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/sep.png" position="0,626" size="1280,8" zPosition="5" />
-            <widget name="text" position="0,135" size="1280,491" scrollbarMode="showOnDemand" transparent="1" zPosition="5" foregroundColor="#00a0a0a0" foregroundColorSelected="#ffffff" backgroundColor="#20000000" backgroundColorSelected="#0b2049" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/tvRaiPreview/res/pics/sliderb.png" />
-
+            <widget name="info" position="0,0" size="1,1" font="Regular;1" transparent="1" />
+            <widget name="text" position="0,0" size="1,1" font="Regular;1" transparent="1" />
             <!--#####red####/-->
             <eLabel backgroundColor="#00ff0000" position="31,685" size="280,6" zPosition="12" />
-            <widget name="key_red" position="29,643" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
-            <widget source="key_red" render="Label" position="29,643" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <widget name="key_red" position="30,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="30,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
             <!--#####green####/-->
-            <eLabel backgroundColor="#0000ff00" position="947,685" size="280,6" zPosition="12" />
-            <widget name="key_green" position="945,643" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
-            <widget source="key_green" render="Label" position="945,643" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <eLabel backgroundColor="#0000ff00" position="338,685" size="280,6" zPosition="12" />
+            <widget name="key_green" position="340,645" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="340,645" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <!--#####yellow####/-->
+            <eLabel backgroundColor="#00ffff00" position="645,685" size="280,6" zPosition="12" />
+            <widget name="key_yellow" position="645,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
+            <widget source="key_yellow" render="Label" position="645,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
         </screen>"""
 
     def __init__(self, session):
@@ -461,7 +462,9 @@ class ConversionSelector(Screen):
             (_("Remove M3U Bouquets"), "purge_m3u_bouquets", None)
         ]
         self["list"] = MenuList([(x[0], x[1]) for x in self.menu])
-
+        self["Title"] = Label(title_plug)
+        self["info"] = Label('')
+        self["text"] = Label('')
         self["status"] = Label(_("We're ready: what do you want to do?"))
         self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
             # "red": lambda: self.close(None),
@@ -649,7 +652,7 @@ class UniversalConverter(Screen):
     if screen_width > 1280:
 
         skin = """
-        <screen position="center,center" size="1920,1080" title="Archimede Universal Converter" flags="wfNoBorder">
+        <screen name="UniversalConverter" position="center,center" size="1920,1080" title="Archimede Universal Converter" flags="wfNoBorder">
             <widget source="Title" render="Label" position="64,13" size="1120,52" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
             <widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
@@ -683,7 +686,7 @@ class UniversalConverter(Screen):
 
     else:
         skin = """
-        <screen position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
+        <screen name="UniversalConverter" position="center,center" size="1280,720" title="Archimede Universal Converter" flags="wfNoBorder">
             <widget source="Title" render="Label" position="25,8" size="1120,52" font="Regular; 24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
             <widget name="list" position="25,60" size="840,518" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
