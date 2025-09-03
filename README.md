@@ -1,7 +1,6 @@
-```markdown
 # 📺 Archimede M3U Converter
 
-A simple and powerful playlist converter for **Enigma2 (Python 3 only)**.  
+A simple and powerful playlist converter for **Enigma2 (Python 3 only)**.
 Easily turn `.m3u`, `.json`, and `.xspf` files into clean IPTV lists with group, logo, and stream info — and export Enigma2 bouquets back to `.m3u`!
 
 ```
@@ -18,6 +17,8 @@ Easily turn `.m3u`, `.json`, and `.xspf` files into clean IPTV lists with group,
 - 📂 File browser with smart filter: shows only `.tv` files containing HTTP streams
 - 🔄 Convert JSON IPTV playlist to Enigma2 bouquets
 - 🔄 Convert XSPF playlists to M3U format
+- 🔄 **Convert M3U playlists to JSON** (structured channels metadata)
+- 🗓️ **When converting to `.tv`, auto-attach EPG info if available** (based on `tvg-id`/`tvg-name`)
 
 
 
@@ -39,13 +40,15 @@ Easily turn `.m3u`, `.json`, and `.xspf` files into clean IPTV lists with group,
 ## 🗂️ Output
 
 - Converted `.m3u` ➜ saved to:
-  - `/etc/enigma2/userbouquet.*.tv`
+  - `/etc/enigma2/userbouquet.*.tv` (with EPG mapping when available)
 - Converted `.tv` ➜ exported to:
   - `/tmp/exported_*.m3u`
 - Converted `.json` ➜ saved as:
   - `/etc/enigma2/userbouquet.*.tv`
 - Converted `.xspf` ➜ exported as:
   - `/tmp/converted_*.m3u`
+- **Converted `.m3u` ➜ exported as structured `.json`:**
+  - `/tmp/converted_*.json`
 - UTF-8 M3U support ✅
 
 
@@ -62,6 +65,7 @@ New supported formats:
 
 - `.json` ➜ Enigma2 bouquet conversion
 - `.xspf` ➜ converted to `.m3u` playlist
+- `.m3u` ➜ **converted to `.json`**
 
 Perfect for creating backup playlists or re-editing outside Enigma2.
 
@@ -73,6 +77,7 @@ Perfect for creating backup playlists or re-editing outside Enigma2.
 - Designed for modern Enigma2 boxes
 - No internet required for conversion
 - Clean, local processing — no logs or tracking
+- EPG attachment uses available tags (`tvg-id`, `tvg-name`) to map channels when present
 
 
 
@@ -86,4 +91,5 @@ You are free to use and modify it for personal use.
 
 🚫 **Do not redistribute modified versions without proper attribution.**
 ```
+
 
