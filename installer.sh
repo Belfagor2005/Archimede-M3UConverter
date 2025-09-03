@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='1.8'
-changelog='\nAdded options and secure structure to loggerCol\nshow browserfile fixed'
+version='1.9'
+changelog='\nAdded options M3U TO JSON - EPG ON CONVERSION TV'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##

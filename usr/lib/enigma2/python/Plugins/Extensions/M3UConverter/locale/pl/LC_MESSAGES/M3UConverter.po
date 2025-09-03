@@ -3,8 +3,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: M3UConverter\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-06-10 18:13+0200\n"
-"PO-Revision-Date: 2025-06-10 18:13+0200\n"
+"POT-Creation-Date: 2025-09-03 17:51+0200\n"
+"PO-Revision-Date: 2025-09-03 17:51+0200\n"
 "Last-Translator: \n"
 "Language-Team: <ekekaz@gmail.com>\n"
 "Language: pl\n"
@@ -12,204 +12,923 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Poedit-SourceCharset: UTF-8\n"
-"X-Generator: Poedit 3.6\n"
+"X-Generator: Poedit 3.7\n"
 "X-Poedit-Basepath: ../../..\n"
 "X-Poedit-SearchPath-0: .\n"
 
-#: plugin.py:82
+#: ⁨plugin - Copia (2).py⁩:86 ⁨plugin - Copia (3).py⁩:87 ⁨plugin - Copia (4).py⁩:87
+#: ⁨plugin - Copia (5).py⁩:87 ⁨plugin - Copia.py⁩:89 plugin.py:87 plugin~.py:82
 #, python-format
 msgid "Archimede Universal Converter v.%s by Lululla"
 msgstr ""
 
-#: plugin.py:147
-msgid "Hard Disk"
+#: ⁨plugin - Copia (2).py⁩:128 ⁨plugin - Copia (3).py⁩:129
+#: ⁨plugin - Copia (4).py⁩:129 ⁨plugin - Copia (5).py⁩:129 ⁨plugin - Copia.py⁩:129
+#: plugin.py:129
+msgid "HDD Drive"
 msgstr ""
 
-#: plugin.py:148
+#: ⁨plugin - Copia (2).py⁩:129 ⁨plugin - Copia (2).py⁩:145
+#: ⁨plugin - Copia (3).py⁩:130 ⁨plugin - Copia (3).py⁩:146
+#: ⁨plugin - Copia (4).py⁩:130 ⁨plugin - Copia (4).py⁩:146
+#: ⁨plugin - Copia (5).py⁩:130 ⁨plugin - Copia (5).py⁩:146 ⁨plugin - Copia.py⁩:130
+#: ⁨plugin - Copia.py⁩:146 plugin.py:130 plugin.py:146 plugin~.py:148
 msgid "USB Drive"
 msgstr ""
 
-#: plugin.py:151
-msgid "Temporary Storage"
+#: ⁨plugin - Copia (2).py⁩:130 ⁨plugin - Copia (3).py⁩:131
+#: ⁨plugin - Copia (4).py⁩:131 ⁨plugin - Copia (5).py⁩:131 ⁨plugin - Copia.py⁩:131
+#: plugin.py:131
+msgid "Barry Allen"
 msgstr ""
 
-#: plugin.py:155
-msgid "Disk"
+#: ⁨plugin - Copia (2).py⁩:131 ⁨plugin - Copia (3).py⁩:132
+#: ⁨plugin - Copia (4).py⁩:132 ⁨plugin - Copia (5).py⁩:132 ⁨plugin - Copia.py⁩:132
+#: plugin.py:132
+msgid "Network Storage"
 msgstr ""
 
-#: plugin.py:162
-msgid "Network"
+#: ⁨plugin - Copia (2).py⁩:132 ⁨plugin - Copia (3).py⁩:133
+#: ⁨plugin - Copia (4).py⁩:133 ⁨plugin - Copia (5).py⁩:133 ⁨plugin - Copia.py⁩:133
+#: plugin.py:133
+msgid "Temporary"
 msgstr ""
 
-#: plugin.py:192
+#: ⁨plugin - Copia (2).py⁩:166 ⁨plugin - Copia (3).py⁩:177
+#: ⁨plugin - Copia (4).py⁩:177 ⁨plugin - Copia (5).py⁩:177 ⁨plugin - Copia.py⁩:167
+#: plugin.py:177 plugin~.py:192
 msgid "Top"
 msgstr ""
 
-#: plugin.py:192
+#: ⁨plugin - Copia (2).py⁩:166 ⁨plugin - Copia (3).py⁩:177
+#: ⁨plugin - Copia (4).py⁩:177 ⁨plugin - Copia (5).py⁩:177 ⁨plugin - Copia.py⁩:167
+#: plugin.py:177 plugin~.py:192
 msgid "Bottom"
 msgstr ""
 
-#: plugin.py:350
-msgid "Convert M3U to Enigma2 Bouquets"
+#: ⁨plugin - Copia (2).py⁩:458 ⁨plugin - Copia (3).py⁩:1249
+#: ⁨plugin - Copia (4).py⁩:1230 ⁨plugin - Copia (5).py⁩:1266 ⁨plugin - Copia.py⁩:455
+#: plugin.py:1266
+msgid "M3U ➔ Enigma2 Bouquets"
 msgstr ""
 
-#: plugin.py:351
-msgid "Convert Enigma2 Bouquets to M3U"
+#: ⁨plugin - Copia (2).py⁩:459 ⁨plugin - Copia (3).py⁩:1250
+#: ⁨plugin - Copia (4).py⁩:1231 ⁨plugin - Copia (5).py⁩:1267 ⁨plugin - Copia.py⁩:456
+#: plugin.py:1267
+msgid "Enigma2 Bouquets ➔ M3U"
 msgstr ""
 
-#: plugin.py:352
-msgid "Remove Enigma2 Bouquets Created with M3UConverter"
+#: ⁨plugin - Copia (2).py⁩:460 ⁨plugin - Copia (3).py⁩:1251
+#: ⁨plugin - Copia (4).py⁩:1232 ⁨plugin - Copia (5).py⁩:1268 ⁨plugin - Copia.py⁩:457
+#: plugin.py:1268
+msgid "JSON ➔ Enigma2 Bouquets"
 msgstr ""
 
-#: plugin.py:360
+#: ⁨plugin - Copia (2).py⁩:461 ⁨plugin - Copia (3).py⁩:1252
+#: ⁨plugin - Copia (4).py⁩:1233 ⁨plugin - Copia (5).py⁩:1269 ⁨plugin - Copia.py⁩:458
+#: plugin.py:1269
+msgid "XSPF ➔ M3U Playlist"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:462 ⁨plugin - Copia (3).py⁩:1253
+#: ⁨plugin - Copia (4).py⁩:1234 ⁨plugin - Copia (5).py⁩:1270 ⁨plugin - Copia.py⁩:459
+#: plugin.py:1271
+msgid "Remove M3U Bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:468 ⁨plugin - Copia (3).py⁩:1259
+#: ⁨plugin - Copia (4).py⁩:1240 ⁨plugin - Copia (5).py⁩:1276 ⁨plugin - Copia.py⁩:463
+#: plugin.py:1277 plugin~.py:370
 msgid "We're ready: what do you want to do?"
 msgstr ""
 
-#: plugin.py:370
+#: ⁨plugin - Copia (2).py⁩:478 ⁨plugin - Copia (3).py⁩:1269
+#: ⁨plugin - Copia (4).py⁩:1250 ⁨plugin - Copia (5).py⁩:1286 ⁨plugin - Copia.py⁩:473
+#: plugin.py:1287 plugin~.py:380
 msgid "Close"
 msgstr ""
 
-#: plugin.py:371 plugin.py:484
+#: ⁨plugin - Copia (2).py⁩:479 ⁨plugin - Copia (3).py⁩:1270
+#: ⁨plugin - Copia (4).py⁩:1251 ⁨plugin - Copia (5).py⁩:1287 ⁨plugin - Copia.py⁩:474
+#: plugin.py:1288 plugin~.py:381 plugin~.py:494
 msgid "Select"
 msgstr ""
 
-#: plugin.py:372
+#: ⁨plugin - Copia (2).py⁩:480 ⁨plugin - Copia (3).py⁩:1271
+#: ⁨plugin - Copia (4).py⁩:1252 ⁨plugin - Copia (5).py⁩:1288 ⁨plugin - Copia.py⁩:475
+#: plugin.py:1289 plugin~.py:382
 msgid "Remove Bouquets"
 msgstr ""
 
-#: plugin.py:483 plugin.py:1072
+#: ⁨plugin - Copia (2).py⁩:551 ⁨plugin - Copia (3).py⁩:1342
+#: ⁨plugin - Copia (4).py⁩:1323 ⁨plugin - Copia (5).py⁩:1358 ⁨plugin - Copia.py⁩:546
+#: plugin.py:1360 plugin.py:1364
+msgid "Select M3U file to convert"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:552 ⁨plugin - Copia (3).py⁩:1343
+#: ⁨plugin - Copia (4).py⁩:1324 ⁨plugin - Copia (5).py⁩:1359 ⁨plugin - Copia.py⁩:547
+#: plugin.py:1361
+msgid "Select Bouquet file to convert"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:553 ⁨plugin - Copia (3).py⁩:1344
+#: ⁨plugin - Copia (4).py⁩:1325 ⁨plugin - Copia (5).py⁩:1360 ⁨plugin - Copia.py⁩:548
+#: plugin.py:1362
+msgid "Select JSON file to convert"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:554 ⁨plugin - Copia (3).py⁩:1345
+#: ⁨plugin - Copia (4).py⁩:1326 ⁨plugin - Copia (5).py⁩:1361 ⁨plugin - Copia.py⁩:549
+#: plugin.py:1363
+msgid "Select XSPF playlist to convert"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:556 ⁨plugin - Copia (3).py⁩:1347
+#: ⁨plugin - Copia (4).py⁩:1328 ⁨plugin - Copia (5).py⁩:1363 ⁨plugin - Copia.py⁩:551
+#: plugin.py:1366
+msgid "Select file"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:569 ⁨plugin - Copia (2).py⁩:638
+#: ⁨plugin - Copia (3).py⁩:1360 ⁨plugin - Copia (3).py⁩:1431
+#: ⁨plugin - Copia (4).py⁩:1341 ⁨plugin - Copia (4).py⁩:1412
+#: ⁨plugin - Copia (5).py⁩:1376 ⁨plugin - Copia (5).py⁩:1447 ⁨plugin - Copia.py⁩:564
+#: ⁨plugin - Copia.py⁩:633 plugin.py:1379 plugin.py:1451
+msgid "M3U to Enigma2 Bouquet Conversion"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:570 ⁨plugin - Copia (2).py⁩:639
+#: ⁨plugin - Copia (3).py⁩:1361 ⁨plugin - Copia (3).py⁩:1432
+#: ⁨plugin - Copia (4).py⁩:1342 ⁨plugin - Copia (4).py⁩:1413
+#: ⁨plugin - Copia (5).py⁩:1377 ⁨plugin - Copia (5).py⁩:1448 ⁨plugin - Copia.py⁩:565
+#: ⁨plugin - Copia.py⁩:634 plugin.py:1380 plugin.py:1452
+msgid "Enigma2 Bouquet to M3U Conversion"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:571 ⁨plugin - Copia (2).py⁩:640
+#: ⁨plugin - Copia (3).py⁩:1362 ⁨plugin - Copia (3).py⁩:1433
+#: ⁨plugin - Copia (4).py⁩:1343 ⁨plugin - Copia (4).py⁩:1414
+#: ⁨plugin - Copia (5).py⁩:1378 ⁨plugin - Copia (5).py⁩:1449 ⁨plugin - Copia.py⁩:566
+#: ⁨plugin - Copia.py⁩:635 plugin.py:1381 plugin.py:1453
+msgid "JSON to Enigma2 Bouquet Conversion"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:572 ⁨plugin - Copia (2).py⁩:641
+#: ⁨plugin - Copia (3).py⁩:1363 ⁨plugin - Copia (3).py⁩:1434
+#: ⁨plugin - Copia (4).py⁩:1344 ⁨plugin - Copia (4).py⁩:1415
+#: ⁨plugin - Copia (5).py⁩:1379 ⁨plugin - Copia (5).py⁩:1450 ⁨plugin - Copia.py⁩:567
+#: ⁨plugin - Copia.py⁩:636 plugin.py:1382 plugin.py:1454
+msgid "XSPF to M3U Playlist Conversion"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:585 ⁨plugin - Copia (3).py⁩:1378
+#: ⁨plugin - Copia (4).py⁩:1359 ⁨plugin - Copia (5).py⁩:1394 ⁨plugin - Copia.py⁩:580
+#: plugin.py:1398
+msgid "fileSelected Error: selection"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:616 ⁨plugin - Copia (3).py⁩:1409
+#: ⁨plugin - Copia (4).py⁩:1390 ⁨plugin - Copia (5).py⁩:1425 ⁨plugin - Copia.py⁩:611
+#: plugin.py:1429
+msgid "Proceed to file selection"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:617 ⁨plugin - Copia (3).py⁩:1410
+#: ⁨plugin - Copia (4).py⁩:1391 ⁨plugin - Copia (5).py⁩:1426 ⁨plugin - Copia.py⁩:612
+#: plugin.py:1430
+msgid "Show conversion info"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:618 ⁨plugin - Copia (3).py⁩:1411
+#: ⁨plugin - Copia (3).py⁩:1809 ⁨plugin - Copia (4).py⁩:1392
+#: ⁨plugin - Copia (4).py⁩:1790 ⁨plugin - Copia (5).py⁩:1427
+#: ⁨plugin - Copia (5).py⁩:1824 ⁨plugin - Copia.py⁩:613 plugin.py:1431
+#: plugin.py:1841
+msgid "Cancel"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:624 ⁨plugin - Copia (3).py⁩:1417
+#: ⁨plugin - Copia (4).py⁩:1398 ⁨plugin - Copia (5).py⁩:1433 ⁨plugin - Copia.py⁩:619
+#: plugin.py:1437
+msgid "How do you want to proceed?"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:642 ⁨plugin - Copia (3).py⁩:1435
+#: ⁨plugin - Copia (4).py⁩:1416 ⁨plugin - Copia (5).py⁩:1451 ⁨plugin - Copia.py⁩:637
+#: plugin.py:1456
+msgid "Conversion information"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:737 ⁨plugin - Copia (2).py⁩:1672
+#: ⁨plugin - Copia (3).py⁩:1531 ⁨plugin - Copia (3).py⁩:2841
+#: ⁨plugin - Copia (4).py⁩:1512 ⁨plugin - Copia (4).py⁩:2920
+#: ⁨plugin - Copia (5).py⁩:1547 ⁨plugin - Copia (5).py⁩:2946 ⁨plugin - Copia.py⁩:715
+#: ⁨plugin - Copia.py⁩:1647 plugin.py:1552 plugin.py:3019 plugin~.py:493
+#: plugin~.py:1080
 msgid "Ready"
 msgstr ""
 
-#: plugin.py:486
-msgid "Settings"
+#: ⁨plugin - Copia (2).py⁩:738 ⁨plugin - Copia (3).py⁩:1532
+#: ⁨plugin - Copia (4).py⁩:1513 ⁨plugin - Copia (5).py⁩:1548 ⁨plugin - Copia.py⁩:716
+#: plugin.py:1553
+msgid "Open File"
 msgstr ""
 
-#: plugin.py:487
-msgid "Info"
+#: ⁨plugin - Copia (2).py⁩:740 ⁨plugin - Copia (3).py⁩:1534
+#: ⁨plugin - Copia (4).py⁩:1515 ⁨plugin - Copia (5).py⁩:1550 ⁨plugin - Copia.py⁩:718
+#: plugin.py:1555
+msgid "Filter"
 msgstr ""
 
-#: plugin.py:510
+#: ⁨plugin - Copia (2).py⁩:741 ⁨plugin - Copia (3).py⁩:1535
+#: ⁨plugin - Copia (3).py⁩:1823 ⁨plugin - Copia (3).py⁩:2719
+#: ⁨plugin - Copia (3).py⁩:2767 ⁨plugin - Copia (3).py⁩:2776
+#: ⁨plugin - Copia (4).py⁩:1516 ⁨plugin - Copia (4).py⁩:1804
+#: ⁨plugin - Copia (4).py⁩:2798 ⁨plugin - Copia (4).py⁩:2846
+#: ⁨plugin - Copia (4).py⁩:2855 ⁨plugin - Copia (5).py⁩:1551
+#: ⁨plugin - Copia (5).py⁩:1838 ⁨plugin - Copia (5).py⁩:2831
+#: ⁨plugin - Copia (5).py⁩:2874 ⁨plugin - Copia (5).py⁩:2882 ⁨plugin - Copia.py⁩:719
+#: plugin.py:1556 plugin.py:1854 plugin.py:2904 plugin.py:2947 plugin.py:2955
+msgid "Tools"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:758 ⁨plugin - Copia (3).py⁩:1552
+#: ⁨plugin - Copia (4).py⁩:1533 ⁨plugin - Copia (5).py⁩:1568 ⁨plugin - Copia.py⁩:736
+#: plugin.py:1573 plugin~.py:520
 #, python-format
 msgid "Ready: Select the file from the %s you configured in settings."
 msgstr ""
 
-#: plugin.py:554
-msgid "Unable to open file browser."
+#: ⁨plugin - Copia (2).py⁩:772 ⁨plugin - Copia (3).py⁩:1598
+#: ⁨plugin - Copia (4).py⁩:1579 ⁨plugin - Copia (5).py⁩:1613 ⁨plugin - Copia.py⁩:750
+#: plugin.py:1617
+msgid "Backup created successfully!"
 msgstr ""
 
-#: plugin.py:571
-#, python-format
-msgid "Processing: %s"
-msgstr ""
-
-#: plugin.py:649
+#: ⁨plugin - Copia (2).py⁩:823 ⁨plugin - Copia (3).py⁩:1649
+#: ⁨plugin - Copia (4).py⁩:1630 ⁨plugin - Copia (5).py⁩:1664 ⁨plugin - Copia.py⁩:801
+#: plugin.py:1668
 #, python-format
 msgid ""
-"Error browser file:\n"
+"Error opening file browser:\n"
 "%s"
 msgstr ""
 
-#: plugin.py:657 plugin.py:663
-msgid "No files selected"
+#: ⁨plugin - Copia (2).py⁩:831 ⁨plugin - Copia (3).py⁩:1657
+#: ⁨plugin - Copia (4).py⁩:1638 ⁨plugin - Copia (5).py⁩:1672 ⁨plugin - Copia.py⁩:809
+#: plugin.py:1676
+msgid "No file loaded to filter"
 msgstr ""
 
-#: plugin.py:669
+#: ⁨plugin - Copia (2).py⁩:844 ⁨plugin - Copia (3).py⁩:1670
+#: ⁨plugin - Copia (4).py⁩:1651 ⁨plugin - Copia (5).py⁩:1685 ⁨plugin - Copia.py⁩:822
+#: plugin.py:1689
+#, python-format
+msgid "Filter: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:844 ⁨plugin - Copia (3).py⁩:1670
+#: ⁨plugin - Copia (4).py⁩:1651 ⁨plugin - Copia (5).py⁩:1685 ⁨plugin - Copia.py⁩:822
+#: plugin.py:1689
+msgid "ON"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:844 ⁨plugin - Copia (3).py⁩:1670
+#: ⁨plugin - Copia (4).py⁩:1651 ⁨plugin - Copia (5).py⁩:1685 ⁨plugin - Copia.py⁩:822
+#: plugin.py:1689
+msgid "OFF"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:865 ⁨plugin - Copia (3).py⁩:1691
+#: ⁨plugin - Copia (4).py⁩:1672 ⁨plugin - Copia (5).py⁩:1706 ⁨plugin - Copia.py⁩:843
+#: plugin.py:1710
+msgid "Create Backup"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:866 ⁨plugin - Copia (3).py⁩:1692
+#: ⁨plugin - Copia (4).py⁩:1673 ⁨plugin - Copia (5).py⁩:1707 ⁨plugin - Copia.py⁩:844
+#: plugin.py:1711
+msgid "Reload Services"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:867 ⁨plugin - Copia (3).py⁩:1693
+#: ⁨plugin - Copia (4).py⁩:1674 ⁨plugin - Copia (5).py⁩:1708 ⁨plugin - Copia.py⁩:845
+#: plugin.py:1712
+msgid "Plugin Info"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:876 ⁨plugin - Copia (3).py⁩:1702
+#: ⁨plugin - Copia (4).py⁩:1683 ⁨plugin - Copia (5).py⁩:1717 ⁨plugin - Copia.py⁩:854
+#: plugin.py:1721
+msgid "Services reloaded"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:883 ⁨plugin - Copia (3).py⁩:1709
+#: ⁨plugin - Copia (4).py⁩:1690 ⁨plugin - Copia (5).py⁩:1724 ⁨plugin - Copia.py⁩:861
+#: plugin.py:1728
+msgid "Tools Menu"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:892 ⁨plugin - Copia (3).py⁩:1718
+#: ⁨plugin - Copia (4).py⁩:1699 ⁨plugin - Copia (5).py⁩:1733 ⁨plugin - Copia.py⁩:870
+#: plugin.py:1737
+msgid "No channels loaded!"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:908 ⁨plugin - Copia (3).py⁩:1734
+#: ⁨plugin - Copia (4).py⁩:1715 ⁨plugin - Copia (5).py⁩:1749 ⁨plugin - Copia.py⁩:886
+#: plugin.py:1753
+#, python-format
+msgid ""
+"Error preparing summary:\n"
+"%s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:917 ⁨plugin - Copia (3).py⁩:1743
+#: ⁨plugin - Copia (4).py⁩:1724 ⁨plugin - Copia (5).py⁩:1758 ⁨plugin - Copia.py⁩:895
+#: plugin.py:1762
+msgid "=== Conversion Summary ==="
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:918 ⁨plugin - Copia (3).py⁩:1744
+#: ⁨plugin - Copia (4).py⁩:1725 ⁨plugin - Copia (5).py⁩:1759 ⁨plugin - Copia.py⁩:896
+#: plugin.py:1763
+#, python-format
+msgid "Total channels: %d"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:919 ⁨plugin - Copia (3).py⁩:1745
+#: ⁨plugin - Copia (4).py⁩:1726 ⁨plugin - Copia (5).py⁩:1760 ⁨plugin - Copia.py⁩:897
+#: plugin.py:1764
+#, python-format
+msgid "Valid channels: %d"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:920 ⁨plugin - Copia (3).py⁩:1746
+#: ⁨plugin - Copia (4).py⁩:1727 ⁨plugin - Copia (5).py⁩:1761 ⁨plugin - Copia.py⁩:898
+#: plugin.py:1765
+#, python-format
+msgid "Groups detected: %d"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:922 ⁨plugin - Copia (3).py⁩:1748
+#: ⁨plugin - Copia (4).py⁩:1729 ⁨plugin - Copia (5).py⁩:1763 ⁨plugin - Copia.py⁩:900
+#: plugin.py:1767
+msgid "Press OK to confirm or Cancel to abort."
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:929 ⁨plugin - Copia (3).py⁩:1755
+#: ⁨plugin - Copia (4).py⁩:1736 ⁨plugin - Copia (5).py⁩:1770 ⁨plugin - Copia.py⁩:907
+#: plugin.py:1774
+msgid "Sample channels:"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:939 ⁨plugin - Copia (3).py⁩:1765
+#: ⁨plugin - Copia (4).py⁩:1746 ⁨plugin - Copia (5).py⁩:1780 ⁨plugin - Copia.py⁩:917
+#: plugin.py:1784
+#, python-format
+msgid "Summary generation error: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:960 ⁨plugin - Copia (3).py⁩:1786
+#: ⁨plugin - Copia (4).py⁩:1767 ⁨plugin - Copia (5).py⁩:1801 ⁨plugin - Copia.py⁩:938
+#: plugin.py:1805
+msgid "Unsupported file type"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1022 ⁨plugin - Copia (3).py⁩:1880
+#: ⁨plugin - Copia (4).py⁩:1861 ⁨plugin - Copia (5).py⁩:1895 plugin.py:1910
+#: plugin~.py:682
 msgid "Invalid selection"
 msgstr ""
 
-#: plugin.py:673
-msgid "Selected file does not exist"
+#: ⁨plugin - Copia (2).py⁩:1032 ⁨plugin - Copia (3).py⁩:1890
+#: ⁨plugin - Copia (4).py⁩:1871 ⁨plugin - Copia (5).py⁩:1905 ⁨plugin - Copia.py⁩:1007
+#: plugin.py:1920
+msgid "Processing selection..."
 msgstr ""
 
-#: plugin.py:682
-msgid "Select a valid M3U file"
+#: ⁨plugin - Copia (2).py⁩:1037 ⁨plugin - Copia (2).py⁩:1626
+#: ⁨plugin - Copia (3).py⁩:1895 ⁨plugin - Copia (3).py⁩:2795
+#: ⁨plugin - Copia (4).py⁩:1876 ⁨plugin - Copia (4).py⁩:2874
+#: ⁨plugin - Copia (5).py⁩:1910 ⁨plugin - Copia (5).py⁩:2900 ⁨plugin - Copia.py⁩:1013
+#: ⁨plugin - Copia.py⁩:1601 plugin.py:1925 plugin.py:2973
+msgid "No file selected"
 msgstr ""
 
-#: plugin.py:685
-msgid "Select a valid TV bouquet"
+#: ⁨plugin - Copia (2).py⁩:1048 ⁨plugin - Copia (3).py⁩:1906
+#: ⁨plugin - Copia (4).py⁩:1887 ⁨plugin - Copia (5).py⁩:1921 ⁨plugin - Copia.py⁩:1024
+#: plugin.py:1936
+msgid "File not found"
 msgstr ""
 
-#: plugin.py:701
-#, python-format
-msgid "Selected file: %s. Are you ready to convert? Press Green to proceed."
-msgstr ""
-
-#: plugin.py:705
-#, python-format
-msgid "Error: %s"
-msgstr ""
-
-#: plugin.py:752 plugin.py:979
+#: ⁨plugin - Copia (2).py⁩:1082 ⁨plugin - Copia (3).py⁩:1940
+#: ⁨plugin - Copia (4).py⁩:1921 ⁨plugin - Copia (5).py⁩:1955 ⁨plugin - Copia.py⁩:1058
+#: plugin.py:1970 plugin~.py:763 plugin~.py:991
 #, python-format
 msgid "Loaded %d channels. Are you ready to convert? Press Green to proceed."
 msgstr ""
 
-#: plugin.py:753
-msgid "Convert to M3U"
-msgstr ""
-
-#: plugin.py:759
+#: ⁨plugin - Copia (2).py⁩:1089 ⁨plugin - Copia (3).py⁩:1947
+#: ⁨plugin - Copia (4).py⁩:1928 ⁨plugin - Copia (5).py⁩:1962 ⁨plugin - Copia.py⁩:1065
+#: plugin.py:1977 plugin~.py:770
 #, python-format
 msgid ""
 "Invalid file format:\n"
 "%s"
 msgstr ""
 
-#: plugin.py:975
+#: ⁨plugin - Copia (2).py⁩:1093 ⁨plugin - Copia (3).py⁩:1951
+#: ⁨plugin - Copia (4).py⁩:1932 ⁨plugin - Copia (5).py⁩:1966 ⁨plugin - Copia.py⁩:1069
+#: plugin.py:1981
+msgid "Error loading file"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1103 ⁨plugin - Copia (3).py⁩:1961
+#: ⁨plugin - Copia (4).py⁩:1942 ⁨plugin - Copia (5).py⁩:1976 ⁨plugin - Copia.py⁩:1079
+#: plugin.py:1991
+#, python-format
+msgid "Loaded %d channels"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1229 ⁨plugin - Copia (3).py⁩:2263
+#: ⁨plugin - Copia (4).py⁩:2249 ⁨plugin - Copia (5).py⁩:2296 ⁨plugin - Copia.py⁩:1204
+#: plugin.py:2369
+msgid "No file specified"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1273 ⁨plugin - Copia (3).py⁩:2307
+#: ⁨plugin - Copia (4).py⁩:2293 ⁨plugin - Copia (5).py⁩:2340 ⁨plugin - Copia.py⁩:1248
+#: plugin.py:2413 plugin~.py:764
+msgid "Convert to M3U"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1381 ⁨plugin - Copia (3).py⁩:2415
+#: ⁨plugin - Copia (4).py⁩:2494 ⁨plugin - Copia (5).py⁩:2527 ⁨plugin - Copia.py⁩:1356
+#: plugin.py:2600 plugin~.py:987
 msgid "No IPTV channels found in the bouquet"
 msgstr ""
 
-#: plugin.py:980
+#: ⁨plugin - Copia (2).py⁩:1388 ⁨plugin - Copia (3).py⁩:2422
+#: ⁨plugin - Copia (4).py⁩:2501 ⁨plugin - Copia (5).py⁩:2534 ⁨plugin - Copia.py⁩:1363
+#: plugin.py:2607 plugin~.py:992
 msgid "Convert to Bouquet"
 msgstr ""
 
-#: plugin.py:982
-#, python-format
-msgid "Error parsing bouquet: %s"
+#: ⁨plugin - Copia (2).py⁩:1416 ⁨plugin - Copia (3).py⁩:2450
+#: ⁨plugin - Copia (4).py⁩:2529 ⁨plugin - Copia (5).py⁩:2562 ⁨plugin - Copia.py⁩:1391
+#: plugin.py:2635
+msgid "Convert to JSON"
 msgstr ""
 
-#: plugin.py:994
-#, python-format
-msgid "Exporting: %s"
+#: ⁨plugin - Copia (2).py⁩:1447 ⁨plugin - Copia (3).py⁩:2481
+#: ⁨plugin - Copia (4).py⁩:2560 ⁨plugin - Copia (5).py⁩:2593 ⁨plugin - Copia.py⁩:1422
+#: plugin.py:2666
+msgid "Convert to XSPF"
 msgstr ""
 
-#: plugin.py:1006
+#: ⁨plugin - Copia (2).py⁩:1474 ⁨plugin - Copia (3).py⁩:2508
+#: ⁨plugin - Copia (4).py⁩:2587 ⁨plugin - Copia (5).py⁩:2620 ⁨plugin - Copia.py⁩:1449
+#: plugin.py:2693
+msgid "Invalid JSON file"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1476 ⁨plugin - Copia (3).py⁩:2510
+#: ⁨plugin - Copia (4).py⁩:2589 ⁨plugin - Copia (5).py⁩:2622 ⁨plugin - Copia.py⁩:1451
+#: plugin.py:2695
+#, python-format
+msgid "JSON processing error: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1498 ⁨plugin - Copia (3).py⁩:2573
+#: ⁨plugin - Copia (4).py⁩:2652 ⁨plugin - Copia (5).py⁩:2685 ⁨plugin - Copia.py⁩:1473
+#: plugin.py:2758
+#, python-format
+msgid "Processing: %s (%d%%)"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1505 ⁨plugin - Copia (3).py⁩:2594
+#: ⁨plugin - Copia (4).py⁩:2673 ⁨plugin - Copia (5).py⁩:2706 ⁨plugin - Copia.py⁩:1480
+#: plugin.py:2779
+#, python-format
+msgid "Creating bouquet: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1545 ⁨plugin - Copia (3).py⁩:2664
+#: ⁨plugin - Copia (4).py⁩:2743 ⁨plugin - Copia (5).py⁩:2776 ⁨plugin - Copia.py⁩:1520
+#: plugin.py:2849
+#, python-format
+msgid "Exporting: %s (%d%%)"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1550 ⁨plugin - Copia (3).py⁩:2669
+#: ⁨plugin - Copia (4).py⁩:2748 ⁨plugin - Copia (5).py⁩:2781 ⁨plugin - Copia.py⁩:1525
+#: plugin.py:2854
+#, python-format
+msgid "File write error: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1552 ⁨plugin - Copia (3).py⁩:2671
+#: ⁨plugin - Copia (4).py⁩:2750 ⁨plugin - Copia (5).py⁩:2783 ⁨plugin - Copia.py⁩:1527
+#: plugin.py:2856
+#, python-format
+msgid "tv_to_m3u Conversion error: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1587 ⁨plugin - Copia (3).py⁩:2706
+#: ⁨plugin - Copia (4).py⁩:2785 ⁨plugin - Copia (5).py⁩:2818 ⁨plugin - Copia.py⁩:1562
+#: plugin.py:2891
+msgid "Invalid XSPF file"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1589 ⁨plugin - Copia (3).py⁩:2708
+#: ⁨plugin - Copia (4).py⁩:2787 ⁨plugin - Copia (5).py⁩:2820 ⁨plugin - Copia.py⁩:1564
+#: plugin.py:2893
+#, python-format
+msgid "XSPF conversion error: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1600 ⁨plugin - Copia (3).py⁩:2872
+#: ⁨plugin - Copia (4).py⁩:2951 ⁨plugin - Copia (5).py⁩:2975 ⁨plugin - Copia.py⁩:1575
+#: plugin.py:3048 plugin~.py:1018
 #, python-format
 msgid "Successfully converted %d items"
 msgstr ""
 
-#: plugin.py:1006
+#: ⁨plugin - Copia (2).py⁩:1600 ⁨plugin - Copia.py⁩:1575 plugin~.py:1018
 #, python-format
 msgid "File saved to: %s"
 msgstr ""
 
-#: plugin.py:1010
+#: ⁨plugin - Copia (2).py⁩:1604 ⁨plugin - Copia (3).py⁩:2733
+#: ⁨plugin - Copia (3).py⁩:2893 ⁨plugin - Copia (4).py⁩:2812
+#: ⁨plugin - Copia (4).py⁩:2972 ⁨plugin - Copia (5).py⁩:2844
+#: ⁨plugin - Copia (5).py⁩:2996 ⁨plugin - Copia.py⁩:1579 plugin.py:2917
+#: plugin.py:3069 plugin~.py:1022
 #, python-format
 msgid "Conversion failed: %s"
 msgstr ""
 
-#: plugin.py:1036
-msgid "No item selected"
-msgstr ""
-
-#: plugin.py:1047
+#: ⁨plugin - Copia (2).py⁩:1637 ⁨plugin - Copia (3).py⁩:2806
+#: ⁨plugin - Copia (4).py⁩:2885 ⁨plugin - Copia (5).py⁩:2911 ⁨plugin - Copia.py⁩:1612
+#: plugin.py:2984 plugin~.py:1055
 msgid "Invalid .tv item format"
 msgstr ""
 
-#: plugin.py:1056
+#: ⁨plugin - Copia (2).py⁩:1646 ⁨plugin - Copia (3).py⁩:2815
+#: ⁨plugin - Copia (4).py⁩:2894 ⁨plugin - Copia (5).py⁩:2920 ⁨plugin - Copia.py⁩:1621
+#: plugin.py:2993 plugin~.py:1064
 msgid "Invalid .m3u item format"
 msgstr ""
 
-#: plugin.py:1059
+#: ⁨plugin - Copia (2).py⁩:1649 ⁨plugin - Copia (3).py⁩:2818
+#: ⁨plugin - Copia (4).py⁩:2897 ⁨plugin - Copia (5).py⁩:2923 ⁨plugin - Copia.py⁩:1624
+#: plugin.py:2996 plugin~.py:1067
 #, python-format
 msgid "Playing: %s"
 msgstr ""
 
-#: plugin.py:1118
+#: ⁨plugin - Copia (2).py⁩:1667 ⁨plugin - Copia (3).py⁩:2836
+#: ⁨plugin - Copia (4).py⁩:2915 ⁨plugin - Copia (5).py⁩:2941 ⁨plugin - Copia.py⁩:1642
+#: plugin.py:3014
+msgid "Playback error"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1699 ⁨plugin - Copia (3).py⁩:2914
+#: ⁨plugin - Copia (4).py⁩:2993 ⁨plugin - Copia (5).py⁩:3017 ⁨plugin - Copia.py⁩:1674
+#: plugin.py:3090 plugin~.py:1101
+msgid "Author: Lululla"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1700 ⁨plugin - Copia (3).py⁩:2915
+#: ⁨plugin - Copia (4).py⁩:2994 ⁨plugin - Copia (5).py⁩:3018 ⁨plugin - Copia.py⁩:1675
+#: plugin.py:3091 plugin~.py:1102
+msgid "License: CC BY-NC-SA 4.0"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1701 ⁨plugin - Copia (3).py⁩:2916
+#: ⁨plugin - Copia (4).py⁩:2995 ⁨plugin - Copia (5).py⁩:3019 ⁨plugin - Copia.py⁩:1676
+#: plugin.py:3092 plugin~.py:1103
+msgid "Developed for Enigma2"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1704 ⁨plugin - Copia (3).py⁩:2944
+#: ⁨plugin - Copia (4).py⁩:3023 ⁨plugin - Copia (5).py⁩:3047 ⁨plugin - Copia.py⁩:1679
+#: plugin.py:3120 plugin~.py:1106
+msgid "Press OK to close"
+msgstr ""
+
+#: ⁨plugin - Copia (2).py⁩:1762 ⁨plugin - Copia (3).py⁩:3002
+#: ⁨plugin - Copia (4).py⁩:3081 ⁨plugin - Copia (5).py⁩:3105 ⁨plugin - Copia.py⁩:1755
+#: plugin.py:3179 plugin~.py:1145
 msgid "Universal Converter"
 msgstr ""
 
-#: plugin.py:1119
+#: ⁨plugin - Copia (2).py⁩:1763 ⁨plugin - Copia (3).py⁩:3003
+#: ⁨plugin - Copia (4).py⁩:3082 ⁨plugin - Copia (5).py⁩:3106 ⁨plugin - Copia.py⁩:1756
+#: plugin.py:3180 plugin~.py:1146
 msgid "Convert between M3U and Enigma2 bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:173 ⁨plugin - Copia (4).py⁩:173
+#: ⁨plugin - Copia (5).py⁩:173 plugin.py:173
+msgid "Single Bouquet"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:173 ⁨plugin - Copia (4).py⁩:173
+#: ⁨plugin - Copia (5).py⁩:173 plugin.py:173
+msgid "Multiple Bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:1801 ⁨plugin - Copia (4).py⁩:1782
+#: ⁨plugin - Copia (5).py⁩:1816 plugin.py:1812
+msgid "No file selected for conversion"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:1808 ⁨plugin - Copia (4).py⁩:1789
+#: ⁨plugin - Copia (5).py⁩:1823 plugin.py:1840
+msgid "Converting..."
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:1822 ⁨plugin - Copia (3).py⁩:2718
+#: ⁨plugin - Copia (3).py⁩:2766 ⁨plugin - Copia (3).py⁩:2775
+#: ⁨plugin - Copia (4).py⁩:1803 ⁨plugin - Copia (4).py⁩:2797
+#: ⁨plugin - Copia (4).py⁩:2845 ⁨plugin - Copia (4).py⁩:2854
+#: ⁨plugin - Copia (5).py⁩:1837 ⁨plugin - Copia (5).py⁩:2830
+#: ⁨plugin - Copia (5).py⁩:2873 ⁨plugin - Copia (5).py⁩:2881 plugin.py:1853
+#: plugin.py:2903 plugin.py:2946 plugin.py:2954
+msgid "Convert"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:1826 ⁨plugin - Copia (4).py⁩:1807
+#: ⁨plugin - Copia (5).py⁩:1841 plugin.py:1856
+msgid "Error starting conversion"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2061 ⁨plugin - Copia (3).py⁩:2143
+#: ⁨plugin - Copia (4).py⁩:2041 ⁨plugin - Copia (4).py⁩:2123
+#: ⁨plugin - Copia (5).py⁩:2087 ⁨plugin - Copia (5).py⁩:2167 plugin.py:2102
+#: plugin.py:2182 plugin~.py:584
+#, python-format
+msgid "Processing: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2586 ⁨plugin - Copia (4).py⁩:2665
+#: ⁨plugin - Copia (5).py⁩:2698 plugin.py:2771
+#, python-format
+msgid "Creating single bouquet: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2725 ⁨plugin - Copia (4).py⁩:2804
+#: ⁨plugin - Copia (5).py⁩:2836 plugin.py:2909
+#, python-format
+msgid "Successfully converted %d channels"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2727 ⁨plugin - Copia (3).py⁩:2874
+#: ⁨plugin - Copia (4).py⁩:2806 ⁨plugin - Copia (4).py⁩:2953
+#: ⁨plugin - Copia (5).py⁩:2838 ⁨plugin - Copia (5).py⁩:2977 plugin.py:2911
+#: plugin.py:3050
+#, python-format
+msgid ""
+"\n"
+"EPG mapped for %d channels"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2729 ⁨plugin - Copia (4).py⁩:2808
+#: ⁨plugin - Copia (5).py⁩:2840 plugin.py:2913
+msgid "Conversion completed successfully"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2753 ⁨plugin - Copia (4).py⁩:2832
+#: ⁨plugin - Copia (5).py⁩:2862 plugin.py:2935
+msgid "Cancelling..."
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2769 ⁨plugin - Copia (4).py⁩:2848
+#: ⁨plugin - Copia (5).py⁩:2875 plugin.py:2948
+msgid "Conversion cancelled"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2778 ⁨plugin - Copia (4).py⁩:2857
+#: ⁨plugin - Copia (5).py⁩:2883 plugin.py:2956
+#, python-format
+msgid "Conversion error: %s"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2875 ⁨plugin - Copia (4).py⁩:2954
+#: ⁨plugin - Copia (5).py⁩:2978 plugin.py:3051
+msgid ""
+"\n"
+"EPG files generated in /etc/epgimport/"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2886 ⁨plugin - Copia (4).py⁩:2965
+#: ⁨plugin - Copia (5).py⁩:2989 plugin.py:3062
+msgid "Successfully converted items"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2900 ⁨plugin - Copia (4).py⁩:2979
+#: ⁨plugin - Copia (5).py⁩:3003 plugin.py:3076
+msgid "Conversion completed with unknown result"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2907 ⁨plugin - Copia (4).py⁩:2986
+#: ⁨plugin - Copia (5).py⁩:3010 plugin.py:3083
+msgid "Conversion completed"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2919 ⁨plugin - Copia (4).py⁩:2998
+#: ⁨plugin - Copia (5).py⁩:3022 plugin.py:3095
+msgid "------- Features -------"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2920 ⁨plugin - Copia (4).py⁩:2999
+#: ⁨plugin - Copia (5).py⁩:3023 plugin.py:3096
+msgid " • Convert M3U playlists to bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2921 ⁨plugin - Copia (4).py⁩:3000
+#: ⁨plugin - Copia (5).py⁩:3024 plugin.py:3097
+msgid " • M3U ➔ Enigma2 Bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2922 ⁨plugin - Copia (4).py⁩:3001
+#: ⁨plugin - Copia (5).py⁩:3025 plugin.py:3098
+msgid " • Enigma2 Bouquets ➔ M3U"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2923 ⁨plugin - Copia (4).py⁩:3002
+#: ⁨plugin - Copia (5).py⁩:3026 plugin.py:3099
+msgid " • JSON ➔ Enigma2 Bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2924 ⁨plugin - Copia (4).py⁩:3003
+#: ⁨plugin - Copia (5).py⁩:3027 plugin.py:3100
+msgid " • XSPF ➔ M3U Playlist"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2925 ⁨plugin - Copia (4).py⁩:3004
+#: ⁨plugin - Copia (5).py⁩:3028 plugin.py:3101
+msgid " • Remove M3U Bouquets"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2926 ⁨plugin - Copia (4).py⁩:3005
+#: ⁨plugin - Copia (5).py⁩:3029 plugin.py:3102
+msgid " • Auto mapping IPTV/DVB-S/C/T"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2927 ⁨plugin - Copia (4).py⁩:3006
+#: ⁨plugin - Copia (5).py⁩:3030 plugin.py:3103
+msgid " • Add EPG refs where available"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2928 ⁨plugin - Copia (4).py⁩:3007
+#: ⁨plugin - Copia (5).py⁩:3031 plugin.py:3104
+msgid " • Simple and lightweight"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2930 ⁨plugin - Copia (4).py⁩:3009
+#: ⁨plugin - Copia (5).py⁩:3033 plugin.py:3106
+msgid "------- Usage -------"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2931 ⁨plugin - Copia (4).py⁩:3010
+#: ⁨plugin - Copia (5).py⁩:3034 plugin.py:3107
+msgid " • Press Green to convert to TV"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2932 ⁨plugin - Copia (4).py⁩:3011
+#: ⁨plugin - Copia (5).py⁩:3035 plugin.py:3108
+msgid " • Press OK to play a stream"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2933 ⁨plugin - Copia (4).py⁩:3012
+#: ⁨plugin - Copia (5).py⁩:3036 plugin.py:3109
+msgid " • Press Back to return"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2935 ⁨plugin - Copia (4).py⁩:3014
+#: ⁨plugin - Copia (5).py⁩:3038 plugin.py:3111
+msgid "Enjoy your enhanced playlists!"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2937 ⁨plugin - Copia (4).py⁩:3016
+#: ⁨plugin - Copia (5).py⁩:3040 plugin.py:3113
+msgid "If you like this plugin, consider"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2938 ⁨plugin - Copia (4).py⁩:3017
+#: ⁨plugin - Copia (5).py⁩:3041 plugin.py:3114
+msgid "buying me a coffee ☕"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2939 ⁨plugin - Copia (4).py⁩:3018
+#: ⁨plugin - Copia (5).py⁩:3042 plugin.py:3115
+msgid "Scan the QR code to support development"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2940 ⁨plugin - Copia (4).py⁩:3019
+#: ⁨plugin - Copia (5).py⁩:3043 plugin.py:3116
+msgid "It helps keep the plugin alive"
+msgstr ""
+
+#: ⁨plugin - Copia (3).py⁩:2941 ⁨plugin - Copia (4).py⁩:3020
+#: ⁨plugin - Copia (5).py⁩:3044 plugin.py:3117
+msgid "and updated. Thank you!"
+msgstr ""
+
+#: plugin.py:1270
+msgid "M3U ➔ JSON"
+msgstr ""
+
+#: plugin.py:1383 plugin.py:1455
+msgid "M3U to JSON Conversion"
+msgstr ""
+
+#: plugin.py:1831
+msgid "Are you sure you want to convert this file?"
+msgstr ""
+
+#: plugin~.py:147
+msgid "Hard Disk"
+msgstr ""
+
+#: plugin~.py:151
+msgid "Temporary Storage"
+msgstr ""
+
+#: plugin~.py:155
+msgid "Disk"
+msgstr ""
+
+#: plugin~.py:162
+msgid "Network"
+msgstr ""
+
+#: plugin~.py:360
+msgid "Convert M3U to Enigma2 Bouquets"
+msgstr ""
+
+#: plugin~.py:361
+msgid "Convert Enigma2 Bouquets to M3U"
+msgstr ""
+
+#: plugin~.py:362
+msgid "Remove Enigma2 Bouquets Created with M3UConverter"
+msgstr ""
+
+#: plugin~.py:496
+msgid "Settings"
+msgstr ""
+
+#: plugin~.py:497
+msgid "Info"
+msgstr ""
+
+#: plugin~.py:564
+msgid "Unable to open file browser."
+msgstr ""
+
+#: plugin~.py:662
+#, python-format
+msgid ""
+"Error browser file:\n"
+"%s"
+msgstr ""
+
+#: plugin~.py:670 plugin~.py:676
+msgid "No files selected"
+msgstr ""
+
+#: plugin~.py:686
+msgid "Selected file does not exist"
+msgstr ""
+
+#: plugin~.py:695
+msgid "Select a valid M3U file"
+msgstr ""
+
+#: plugin~.py:698
+msgid "Select a valid TV bouquet"
+msgstr ""
+
+#: plugin~.py:716
+#, python-format
+msgid "Error: %s"
+msgstr ""
+
+#: plugin~.py:994
+#, python-format
+msgid "Error parsing bouquet: %s"
+msgstr ""
+
+#: plugin~.py:1006
+#, python-format
+msgid "Exporting: %s"
+msgstr ""
+
+#: plugin~.py:1044
+msgid "No item selected"
 msgstr ""

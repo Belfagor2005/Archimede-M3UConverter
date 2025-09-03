@@ -5,11 +5,11 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 1.8                                         #
+#  Version: 1.9                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "21:50 - 20250527"                    #
+#  Last Modified: "17:30 - 20250903"                    #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -27,15 +27,16 @@ import json
 import shutil
 import unicodedata
 from gettext import gettext as _
-from os import access, W_OK, listdir, remove, replace, chmod, fsync, system
-from os.path import exists, isdir, isfile, join, normpath
-from re import sub, findall, DOTALL, search
+from os import access, W_OK, listdir, remove, replace, chmod, fsync, system, mkdir
+from os.path import exists, isdir, isfile, join, normpath, basename, dirname
+from re import sub, findall, DOTALL, MULTILINE, IGNORECASE, search
 from threading import Lock
 from time import strftime
 from urllib.parse import unquote
 
 # Third-party libraries
 from twisted.internet import threads
+from collections import defaultdict
 
 # Enigma2 core
 from enigma import eDVBDB, eServiceReference, getDesktop, eTimer
@@ -51,7 +52,7 @@ from Components.config import config, ConfigSelection, ConfigSubsection, ConfigY
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
-from Tools.Directories import defaultRecordingLocation
+from Tools.Directories import defaultRecordingLocation, fileExists
 from enigma import eAVControl as AVSwitch
 
 from .Logger_clr import ColoredLogger
@@ -81,8 +82,8 @@ class AspectManager:
 
 
 # for my friend Archimede
-currversion = '1.8'
-last_date = "20250712"
+currversion = '1.9'
+last_date = "20250903"
 title_plug = _("Archimede Universal Converter v.%s by Lululla") % currversion
 ICON_STORAGE = 0
 ICON_PARENT = 1
@@ -106,8 +107,8 @@ except Exception:
 
 # Global instance with dual output
 logger = ColoredLogger(
-    log_file=join("/tmp", archimede_converter_path, "m3u_converter.log"),
-    secondary_log=join("/tmp", "archimede_converter", "debug.log"),
+    log_file=join(log_dir, "m3u_converter.log"),
+    secondary_log=join(log_dir, "debug.log"),
     clear_on_start=False
 )
 
@@ -161,6 +162,16 @@ def update_mounts():
 config.plugins.m3uconverter = ConfigSubsection()
 default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else defaultMoviePath()
 config.plugins.m3uconverter.lastdir = ConfigSelection(default=default_dir, choices=[])
+
+config.plugins.m3uconverter.epg_enabled = ConfigYesNo(default=True)
+config.plugins.m3uconverter.epg_source = ConfigSelection(
+    default="rytec",
+    choices=[("rytec", "Rytec"), ("internal", "Internal Mapping")]
+)
+config.plugins.m3uconverter.bouquet_mode = ConfigSelection(
+    default="multi",
+    choices=[("single", _("Single Bouquet")), ("multi", _("Multiple Bouquets"))]
+)
 config.plugins.m3uconverter.bouquet_position = ConfigSelection(
     default="bottom",
     choices=[("top", _("Top")), ("bottom", _("Bottom"))]
@@ -170,6 +181,7 @@ config.plugins.m3uconverter.filter_dead_channels = ConfigYesNo(default=False)
 config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
 config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
 config.plugins.m3uconverter.max_backups = ConfigNumber(default=3)
+
 update_mounts()
 
 
@@ -182,10 +194,78 @@ def create_backup():
         copy2(src, dst)
 
 
-def reload_services():
+def reload_services_orig():
     """Reload the list of services"""
     eDVBDB.getInstance().reloadServicelist()
     eDVBDB.getInstance().reloadBouquets()
+
+
+def reload_services():
+    """Reload bouquets in Enigma2 with multiple fallback methods"""
+    try:
+        import time
+        import subprocess
+
+        # Method 1: Use eDVBDB to reload bouquets (most reliable)
+        try:
+            from enigma import eDVBDB
+            db = eDVBDB.getInstance()
+            if db:
+                db.reloadBouquets()
+                logger.info("Bouquets reloaded using eDVBDB")
+                time.sleep(2)  # Wait for reload to complete
+                return True
+        except Exception as e:
+            logger.warning("eDVBDB reload failed: %s", str(e))
+
+        # Method 2: Use web interface reload
+        try:
+            result = subprocess.run([
+                'wget',
+                '--timeout=10',
+                '--tries=2',
+                '-qO-',
+                'http://127.0.0.1/web/servicelistreload?mode=0'
+            ], capture_output=True, text=True, timeout=15)
+
+            if result.returncode == 0:
+                logger.info("Bouquets reloaded via web interface")
+                time.sleep(2)
+                return True
+        except Exception as e:
+            logger.warning("Web interface reload failed: %s", str(e))
+
+        # Method 3: Use enigma2 restart script
+        try:
+            result = subprocess.run([
+                'systemctl', 'restart', 'enigma2'
+            ], capture_output=True, text=True, timeout=30)
+
+            if result.returncode == 0:
+                logger.info("Enigma2 restarted via systemctl")
+                time.sleep(5)
+                return True
+        except:
+            pass
+
+        # Method 4: Send HUP signal
+        try:
+            result = subprocess.run([
+                'pkill', '-HUP', 'enigma2'
+            ], capture_output=True, text=True, timeout=10)
+
+            logger.info("Sent HUP signal to enigma2")
+            time.sleep(3)
+            return True
+        except Exception as e:
+            logger.warning("HUP signal failed: %s", str(e))
+
+        logger.error("All bouquet reload methods failed")
+        return False
+
+    except Exception as e:
+        logger.error("Error reloading bouquets: %s", str(e))
+        return False
 
 
 def transliterate(text):
@@ -195,6 +275,734 @@ def transliterate(text):
 
 def clean_group_name(name):
     return name.encode("ascii", "ignore").decode().replace(" ", "_").replace("/", "_").replace(":", "_")[:50]
+
+
+class EPGServiceMapper:
+    def __init__(self, prefer_satellite=True):
+        self.prefer_satellite = prefer_satellite
+        self.channel_map = defaultdict(list)
+        self.rytec_map = {}
+        self.rytec_clean_map = {}
+        self._clean_name_cache = {}
+        self.enigma_config = self.load_enigma2_config()
+        self.country_code = self.get_country_code()
+        self.optimized_channel_map = {}
+
+        logger.info("EPGServiceMapper initialized with prefer_satellite=%s, country_code=%s",
+                    prefer_satellite, self.country_code)
+
+    def load_enigma2_config(self, settings_path="/etc/enigma2/settings"):
+        """Load Enigma2 configuration to determine configured satellites"""
+        config_data = {'satellites': set(), 'terrestrial': False, 'cable': False}
+
+        if not fileExists(settings_path):
+            logger.warning("Enigma2 settings file not found: %s", settings_path)
+            return config_data
+
+        try:
+            with open(settings_path, 'r') as f:
+                lines = f.readlines()
+
+            for line in lines:
+                line = line.strip()
+                if line.startswith('config.Nims.') and '.dvbs.diseqc' in line:
+                    parts = line.split('=')
+                    if len(parts) == 2 and parts[1].isdigit():
+                        sat_position = int(parts[1])
+                        if sat_position > 0:
+                            config_data['satellites'].add(sat_position)
+                elif line.startswith('config.Nims.') and '.dvbt.terrestrial' in line:
+                    config_data['terrestrial'] = True
+                elif line.startswith('config.Nims.') and '.dvbc.configMode' in line:
+                    config_data['cable'] = True
+
+            logger.info("Enigma2 configuration loaded: %s", config_data)
+            return config_data
+        except Exception as e:
+            logger.error("Error reading Enigma2 settings: %s", str(e))
+            return config_data
+
+    def is_service_compatible(self, service_ref):
+        """Check if service is compatible with current configuration"""
+        if not service_ref or service_ref.startswith('4097:'):
+            return True
+
+        parts = service_ref.split(':')
+        if len(parts) < 11:
+            return False
+
+        try:
+            onid = int(parts[5], 16) if parts[5] else 0
+            service_type = parts[2]
+            onid_to_position = {
+                0x13E: 130,     # 13.0°E Hotbird
+                0x110: 130,     # 13.0°E Eutelsat
+                0x1:   192,     # 19.2°E Astra
+                0x2:   282,     # 28.2°E Astra
+                0x11:  235,     # 23.5°E Astra
+                0x10:   90,     # 9.0°E Eutelsat 9B
+                0x212: 315,     # 31.5°E Astra
+                0x204: 330,     # 33.0°E Eutelsat
+                0x3:    360,    # 36.0°E Eutelsat
+                0x42:   420,    # 42.0°E Turksat
+                0x100:  450,    # 45.0°E Azerspace
+                0x318:  160,    # 16.0°E Eutelsat 16A
+                0x20:   260,    # 26.0°E Badr
+                0x30:   255,    # 25.5°E Es'hailSat
+                0x200:   70,    # 7.0°E Eutelsat 7
+                0x400:  1500,   # 15.0°W Intelsat
+                0x500:   50,    # 5.0°W Eutelsat 5W
+                0x600:  3000,   # 30.0°W Hispasat
+                0x700:   19,    # 1.9°E Astra
+                0x800:    8,    # 0.8°W Thor / Intelsat
+                0x900:  800,    # 8.0°W Eutelsat 8W
+                0xA00:   30,    # 3.0°E Eutelsat 3B
+                0xB00:   48,    # 4.8°E Astra 4A
+                0xC00:   70,    # 7.0°W Nilesat
+                0xFFFF:  0,     # Servizi via cavo (ONID speciale)
+                0xEEEE:  0,     # Servizi terrestri (ONID speciale)
+                # # --- DVB-C (Cavo) ---
+                # 0xFFFF: 0     # Cavo generico
+                # 0x2184: 0,    # DVB-C Germania
+                # 0x22F1: 0,    # DVB-C Olanda
+                # 0x233A: 0,    # DVB-C Svizzera
+                # 0x20D0: 0,    # DVB-C Austria
+                # 0x22C1: 0,    # DVB-C Belgio
+
+                # # --- DVB-T/T2 (Terrestre) ---
+                # 0x2170: 0,    # DVB-T Italia (Mediaset)
+                # 0x2171: 0,    # DVB-T Italia (RAI)
+                # 0x20FA: 0,    # DVB-T Germania
+                # 0x22F0: 0,    # DVB-T Olanda
+                # 0x22C0: 0,    # DVB-T Belgio
+                # 0x233B: 0,    # DVB-T Svizzera
+                # 0x22F2: 0,    # DVB-T Regno Unito
+            }
+
+            if onid in onid_to_position:
+                sat_position = onid_to_position[onid]
+                if sat_position > 0:
+                    return sat_position in self.enigma_config['satellites']
+                elif sat_position == 0:
+                    if onid == 0xFFFF and self.enigma_config['cable']:
+                        return True
+                    elif onid == 0xEEEE and self.enigma_config['terrestrial']:
+                        return True
+
+            if service_type == '16' and self.enigma_config['terrestrial']:
+                return True
+            elif service_type == '10' and self.enigma_config['cable']:
+                return True
+        except (ValueError, IndexError):
+            pass
+
+        return False
+
+    def classify_service(self, sref):
+        """Classify service type based on service reference"""
+        if not sref:
+            return "unknown"
+
+        if sref.startswith("1:0:1:") or sref.startswith("1:0:2:") or sref.startswith("1:0:19:"):
+            return "satellite"
+
+        elif sref.startswith("1:0:16:"):
+            return "dvb-t"
+
+        elif sref.startswith("1:0:10:"):
+            return "dvb-c"
+
+        # IPTV (Streaming)
+        elif sref.startswith("4097:"):
+            return "iptv"
+
+        # Marker or separator
+        elif "0:0:0:0:0:0:0:0:0" in sref:
+            return "marker"
+
+        # Special services (PVR, recording, etc.)
+        elif sref.startswith("1:0:0:") or sref.startswith("1:134:"):
+            return "special"
+
+        return "unknown"
+
+    def get_country_code(self):
+        """Get country code from Enigma2 settings"""
+        country_code = "it"  # Default to Italy
+        settings_path = "/etc/enigma2/settings"
+        if not fileExists(settings_path):
+            logger.warning("Enigma2 settings file not found, using default country code: %s", country_code)
+            return country_code
+
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('config.misc.country='):
+                        country_code = line.split('=', 1)[1].strip()
+                        break
+            return country_code.lower()
+        except Exception as e:
+            logger.error("Error reading Enigma2 settings: {0}".format(str(e)))
+            return country_code
+
+    def clean_channel_name(self, name):
+        """Clean channel name for matching"""
+        if not name:
+            return ""
+
+        if name in self._clean_name_cache:
+            return self._clean_name_cache[name]
+
+        try:
+            cleaned = name.lower().strip()
+            cleaned = sub(r'^\|[a-z]{2}\|\s*', '', cleaned)
+            cleaned = sub(r'^[a-z]{2}:\s*', '', cleaned)
+
+            quality_patterns = [
+                r'\b(4k|uhd|fhd|hd|sd|hq|uhq|sdq|hevc|h265|h264|h\.265|h\.264)\b',
+                r'\b(full hd|ultra hd|high definition|standard definition)\b',
+                r'\s*\(\d+p\)', r'\s*\d+p', r'\s*\[.*?\]', r'\s*\(.*?\)'
+            ]
+
+            for pattern in quality_patterns:
+                cleaned = sub(pattern, '', cleaned, flags=IGNORECASE)
+
+            for char in '()[]{}|/\\_—–-':
+                cleaned = cleaned.replace(char, ' ')
+
+            prefixes = ['canale', 'channel', 'tv', 'tele', 'it-', 'it_', 'the ']
+            for prefix in prefixes:
+                if cleaned.startswith(prefix) and not cleaned[len(prefix):].strip()[0].isdigit():
+                    cleaned = cleaned[len(prefix):].strip()
+
+            cleaned = sub(r'[^a-z0-9\s]', '', cleaned)
+            cleaned = ' '.join(cleaned.split()).strip()
+
+            if not cleaned:
+                cleaned = sub(r'[^a-z0-9]', '', name.lower())
+                logger.warning("Channel name '{0}' resulted in empty string, using fallback: '{1}'".format(name, cleaned))
+
+            self._clean_name_cache[name] = cleaned
+            logger.debug("Cleaned channel name: '{0}' -> '{1}'".format(name, cleaned))
+            return cleaned
+        except Exception as e:
+            logger.error("Error cleaning channel name '{0}': {1}".format(name, str(e)))
+            return sub(r'[^a-z0-9]', '', name.lower())
+
+    def optimize_matching(self):
+        """Optimize channel map structures for faster matching with satellite preference"""
+        self.optimized_channel_map = {}
+
+        for name, services in self.channel_map.items():
+            if not services:
+                continue
+
+            # Filter out terrestrial services if we prefer satellite
+            if self.prefer_satellite:
+                services = [s for s in services if s["type"] != "dvb-t"]
+
+            if not services:
+                continue
+
+            # Prefer satellite services over cable
+            satellite_services = [s for s in services if s["type"] == "satellite"]
+            cable_services = [s for s in services if s["type"] == "dvb-c"]
+
+            # Select the best service (satellite first, then cable)
+            if satellite_services:
+                main_service = satellite_services[0]
+            elif cable_services:
+                main_service = cable_services[0]
+            else:
+                main_service = services[0]
+
+            clean_name = self.clean_channel_name(name)
+
+            # Store both original and cleaned name for faster lookup
+            self.optimized_channel_map[name] = main_service
+            if clean_name not in self.optimized_channel_map:
+                self.optimized_channel_map[clean_name] = main_service
+
+        logger.info("Optimized channel map built: {0} entries".format(len(self.optimized_channel_map)))
+
+    def parse_lamedb(self, lamedb_path="/etc/enigma2/lamedb"):
+        """Parse both lamedb and lamedb5 for full coverage with 16-bit ONID"""
+        paths_to_try = [
+            "/etc/enigma2/lamedb5",
+            "/etc/enigma2/lamedb"
+        ]
+
+        for lamedb_path in paths_to_try:
+            if not fileExists(lamedb_path):
+                continue
+
+            try:
+                with open(lamedb_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+
+                # Identify the file format
+                if content.startswith("eDVB services /5/"):
+                    # lamedb5 format
+                    lines = content.split("\n")
+                    for line in lines:
+                        if line.startswith("s:"):
+                            parts = line.split(",")
+                            if len(parts) >= 2:
+                                sref_parts = parts[0].split(":")
+                                if len(sref_parts) >= 7:
+                                    service_id = sref_parts[1]
+                                    ts_id = sref_parts[2]
+                                    on_id = sref_parts[3]
+                                    namespace = sref_parts[6]
+
+                                    # Convert to 16-bit ONID
+                                    if len(on_id) > 4:
+                                        on_id = on_id[:4]  # Truncate to 4 hex digits
+
+                                    service_type = sref_parts[4]
+
+                                    # Create service reference with 16-bit ONID
+                                    sref = "1:0:{0}:{1}:{2}:{3}:{4}:0:0:0:".format(
+                                        service_type, service_id, ts_id, on_id, namespace
+                                    )
+                                    channel_name = parts[1].strip('"')
+                                    clean_name = self.clean_channel_name(channel_name)
+
+                                    self.channel_map[clean_name].append({
+                                        "sref": sref,
+                                        "type": self.classify_service(sref),
+                                        "source": "lamedb5",
+                                        "service_id": service_id,
+                                        "ts_id": ts_id,
+                                        "on_id": on_id
+                                    })
+                else:
+                    # Traditional lamedb format
+                    lines = content.split("\n")
+                    for line in lines:
+                        if line.startswith("s:"):
+                            parts = line.split(",")
+                            if len(parts) >= 2:
+                                # Extract service reference and channel name
+                                sref_part = parts[0]
+                                channel_name = parts[1].strip('"')
+
+                                # Extract components from service reference
+                                sref_parts = sref_part.split(":")
+                                if len(sref_parts) >= 6:
+                                    service_id = sref_parts[1]
+                                    on_id = sref_parts[2]
+                                    # Convert to 16-bit ONID
+                                    if len(on_id) > 4:
+                                        on_id = on_id[:4]  # Truncate to 4 hex digits
+
+                                    ts_id = sref_parts[3]
+                                    service_type = sref_parts[4]
+
+                                    sref = "1:0:{0}:{1}:{2}:{3}:820000:0:0:0:".format(
+                                        service_type, service_id, ts_id, on_id
+                                    )
+                                    clean_name = self.clean_channel_name(channel_name)
+
+                                    self.channel_map[clean_name].append({
+                                        "sref": sref,
+                                        "type": self.classify_service(sref),
+                                        "source": "lamedb",
+                                        "service_id": service_id,
+                                        "ts_id": ts_id,
+                                        "on_id": on_id
+                                    })
+
+                # After populating self.channel_map, filter incompatible services
+                for name in list(self.channel_map.keys()):
+                    compatible_services = self.filter_compatible_services(self.channel_map[name])
+                    if compatible_services:
+                        self.channel_map[name] = compatible_services
+                    else:
+                        del self.channel_map[name]
+
+                logger.info("Parsed {0} unique compatible DVB channel names from {1}".format(len(self.channel_map), lamedb_path))
+                return True
+
+            except Exception as e:
+                logger.error("Error parsing {0}: {1}".format(lamedb_path, str(e)))
+
+        logger.error("Could not find or parse any lamedb file")
+        return False
+
+    def parse_rytec_channels(self, rytec_path="/etc/epgimport/rytec.channels.xml"):
+        """Parse rytec.channels.xml with service type correction"""
+        self.rytec_map = {}
+        self.rytec_clean_map = {}
+
+        if not fileExists(rytec_path):
+            logger.warning("rytec.channels.xml file not found: %s", rytec_path)
+            return
+
+        try:
+            with open(rytec_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            channel_pattern = r'<channel id="([^"]+)">([^<]+)</channel>'
+            matches = findall(channel_pattern, content, IGNORECASE)
+
+            for channel_id, service_ref in matches:
+                # Normalize the service reference with correct namespace
+                normalized_ref = self.normalize_service_reference(service_ref)
+
+                # Only keep compatible services
+                if self.is_service_compatible(normalized_ref):
+                    self.rytec_map[channel_id] = normalized_ref
+
+                    # Extract base channel name for matching
+                    base_id = channel_id.split(".")[0] if "." in channel_id else channel_id
+                    clean_base_id = self.clean_channel_name(base_id)
+                    self.rytec_clean_map[clean_base_id] = normalized_ref
+
+            logger.info(
+                "Parsed %d compatible DVB service references from rytec.channels.xml",
+                len(self.rytec_map)
+            )
+
+        except Exception as e:
+            logger.error("Error parsing rytec.channels.xml: %s", str(e))
+
+    def filter_compatible_services(self, services):
+        """Keep only compatible service references"""
+        compatible_services = []
+        for service in services:
+            if self.is_service_compatible(service['sref']):
+                compatible_services.append(service)
+        return compatible_services
+
+    def find_best_service_match(self, clean_name, tvg_id=None):
+        # Exact match first
+        if tvg_id and tvg_id in self.rytec_map:
+            return self.rytec_map[tvg_id], 'rytec_exact'
+
+        # Try name variations
+        name_variations = self.generate_name_variations(clean_name)
+        for variation in name_variations:
+            if variation in self.rytec_clean_map:
+                return self.rytec_clean_map[variation], 'rytec_variation'
+            if variation in self.optimized_channel_map:
+                return self.optimized_channel_map[variation]['sref'], 'lamedb_variation'
+
+        return None, None
+
+    def find_best_service_match2(self, clean_name, tvg_id=None):
+        """Find best service match considering compatibility"""
+        matches = []
+
+        logger.debug("Searching for: '%s' (tvg_id: %s)", clean_name, tvg_id)
+
+        # Exact match in rytec by tvg_id
+        if tvg_id and tvg_id in self.rytec_map:
+            sref = self.rytec_map[tvg_id]
+            if self.is_service_compatible(sref):
+                logger.debug("Found exact tvg_id match: %s -> %s", tvg_id, sref)
+                matches.append((sref, 'rytec_exact', 100))
+
+        # Clean name match in rytec
+        if clean_name in self.rytec_clean_map:
+            sref = self.rytec_clean_map[clean_name]
+            if self.is_service_compatible(sref):
+                logger.debug("Found clean name match in rytec: %s -> %s", clean_name, sref)
+                matches.append((sref, 'rytec_clean', 90))
+
+        # Name variations in rytec
+        name_variations = self.generate_name_variations(clean_name)
+        for variation in name_variations:
+            if variation in self.rytec_clean_map:
+                sref = self.rytec_clean_map[variation]
+                if self.is_service_compatible(sref):
+                    logger.debug("Found variation match in rytec: %s -> %s", variation, sref)
+                    matches.append((sref, 'rytec_variation', 85))
+
+        # Partial matches in rytec
+        for rytec_name, rytec_sref in self.rytec_clean_map.items():
+            if clean_name in rytec_name or rytec_name in clean_name:
+                similarity = self.calculate_similarity(clean_name, rytec_name)
+                if similarity > 60 and self.is_service_compatible(rytec_sref):
+                    logger.debug("Found partial match in rytec: %s ~ %s -> %s", clean_name, rytec_name, rytec_sref)
+                    matches.append((rytec_sref, 'rytec_partial', similarity))
+
+        # Exact match in lamedb
+        if clean_name in self.optimized_channel_map:
+            service = self.optimized_channel_map[clean_name]
+            if self.is_service_compatible(service['sref']):
+                logger.debug("Found exact match in lamedb: %s -> %s", clean_name, service['sref'])
+                matches.append((service['sref'], 'lamedb_exact', 95))
+
+        # Partial matches in lamedb
+        for lamedb_name, service in self.optimized_channel_map.items():
+            if clean_name in lamedb_name or lamedb_name in clean_name:
+                similarity = self.calculate_similarity(clean_name, lamedb_name)
+                if similarity > 60 and self.is_service_compatible(service['sref']):
+                    logger.debug("Found partial match in lamedb: %s ~ %s -> %s", clean_name, lamedb_name, service['sref'])
+                    matches.append((service['sref'], 'lamedb_partial', similarity))
+
+        # Return best match by score
+        if matches:
+            matches.sort(key=lambda x: x[2], reverse=True)
+            logger.debug("Best match for '%s': %s with score %d", clean_name, matches[0][1], matches[0][2])
+            return matches[0][0], matches[0][1]
+
+        logger.debug("No compatible matches found for: '%s'", clean_name)
+        return None, None
+
+    def generate_name_variations(self, name):
+        """Generate variations of a channel name for matching"""
+        variations = set()
+        variations.add(name)
+        variations.add(name.replace(' ', ''))
+        variations.add(name.replace(' ', '_'))
+        variations.add(sub(r'\d+', '', name))
+        return variations
+
+    def calculate_similarity(self, name1, name2):
+        """Compute similarity between two names"""
+        if not name1 or not name2:
+            return 0
+
+        if name1 in name2 or name2 in name1:
+            return 0.8
+
+        try:
+            from difflib import SequenceMatcher
+            return SequenceMatcher(None, name1, name2).ratio()
+        except ImportError:
+            common_chars = set(name1) & set(name2)
+            return len(common_chars) / max(len(set(name1)), len(set(name2)))
+
+    def normalize_service_reference(self, sref, for_epg=False):
+        """Normalize service reference with correct namespace"""
+        if not sref or not isinstance(sref, str):
+            return sref
+
+        if sref.startswith('4097:'):
+            parts = sref.split(':')
+            if len(parts) < 11:
+                parts += ['0'] * (11 - len(parts))
+
+            if len(parts) >= 11 and parts[2] != '0' and parts[3] != '0' and parts[4] != '0' and parts[5] != '0':
+                parts[6] = '820000'
+
+            return ':'.join(parts)
+
+        parts = sref.split(':')
+        if len(parts) < 11:
+            parts += ['0'] * (11 - len(parts))
+
+        if len(parts) > 6:
+            parts[6] = '820000'
+
+        if for_epg and len(parts) > 5:
+            onid = parts[5]
+            if len(onid) > 4:
+                parts[5] = onid[:4]
+
+        return ':'.join(parts)
+
+    def generate_hybrid_sref(self, dvb_sref, url=None, for_epg=False):
+        """Generate hybrid service reference for bouquet or EPG"""
+        if not dvb_sref:
+            if url:
+                return self.generate_service_reference(url)
+            return None
+
+        # If the service reference is already IPTV (4097), handle directly
+        if dvb_sref.startswith('4097:'):
+            if for_epg:
+                # For EPG, remove URL if present
+                parts = dvb_sref.split(':')
+                if len(parts) > 10:
+                    return ':'.join(parts[:10]) + ':'
+            return dvb_sref
+
+        # Normalize DVB reference
+        dvb_sref = self.normalize_service_reference(dvb_sref, for_epg)
+
+        if for_epg:
+            # For EPG, do not include URL
+            return dvb_sref
+
+        # Convert DVB reference to IPTV format for bouquet
+        if dvb_sref.startswith('1:0:'):
+            parts = dvb_sref.split(':')
+            if len(parts) >= 11:
+                service_type = parts[2]
+                service_id = parts[3]
+                ts_id = parts[4]
+                on_id = parts[5]
+                namespace = parts[6]
+
+                # Ensure namespace is correct
+                if namespace in ['0', '00000000']:
+                    namespace = '820000'
+
+                base_sref = f"4097:0:{service_type}:{service_id}:{ts_id}:{on_id}:{namespace}:0:0:0:"
+
+                if url:
+                    encoded_url = url.replace(':', '%3a').replace(' ', '%20')
+                    return base_sref + encoded_url
+                return base_sref
+
+        # If not a valid DVB reference, generate pure IPTV reference
+        return self.generate_service_reference(url) if url else None
+
+    def generate_service_reference(self, url):
+        """Generate IPTV service reference (4097) with URL encoding"""
+        encoded_url = url.replace(':', '%3a')
+        encoded_url = encoded_url.replace(' ', '%20')
+        encoded_url = encoded_url.replace('?', '%3f')
+        encoded_url = encoded_url.replace('=', '%3d')
+        encoded_url = encoded_url.replace('&', '%26')
+        encoded_url = encoded_url.replace('#', '%23')
+        sref = "4097:0:1:0:0:0:0:0:0:0:%s" % encoded_url
+        logger.debug("Generated service reference: %s", sref)
+        return sref
+
+    def generate_epg_channels_file(self, epg_data, bouquet_name):
+        """Generate EPG file for epgimport in the proper directory"""
+        epgimport_path = "/etc/epgimport"
+        epg_filename = "%s.channels.xml" % bouquet_name
+        epg_path = join(epgimport_path, epg_filename)
+
+        if not fileExists(epgimport_path):
+            try:
+                mkdir(epgimport_path)
+                logger.info("Created epgimport directory: %s", epgimport_path)
+            except Exception as e:
+                logger.error("Could not create epgimport directory: %s", str(e))
+                return False
+
+        try:
+            with open(epg_path, 'w', encoding="utf-8") as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                f.write('<channels>\n')
+
+                for channel in epg_data:
+                    if channel.get('tvg_id') and channel.get('sref'):
+                        epg_sref = self.normalize_service_reference(channel['sref'], True)
+                        # Ensure the service reference is in the correct format for EPG
+                        if epg_sref.startswith('4097:'):
+                            # For IPTV service reference, remove the URL part if present
+                            parts = epg_sref.split(':')
+                            if len(parts) > 10:
+                                epg_sref = ':'.join(parts[:10]) + ':'
+                        f.write('  <channel id="%s">%s</channel>\n' % (channel["tvg_id"], epg_sref))
+                    else:
+                        logger.warning("Skipping channel due to missing tvg_id or sref: %s", channel.get('name'))
+                f.write('</channels>\n')
+
+            logger.info("Generated EPG channels file: %s", epg_path)
+            return True
+        except Exception as e:
+            logger.error("Error generating EPG channels file: %s", str(e))
+            return False
+
+    def generate_epg_sources_file(self, bouquet_name, epg_url=None):
+        """Generate EPG sources file for epgimport in the proper format"""
+        epgimport_path = "/etc/epgimport"
+        sources_filename = "ArchimedeConverter.sources.xml"
+        sources_path = join(epgimport_path, sources_filename)
+
+        # Create directory if missing
+        if not fileExists(epgimport_path):
+            try:
+                mkdir(epgimport_path)
+                logger.info("Created epgimport directory: %s", epgimport_path)
+            except Exception as e:
+                logger.error("Could not create epgimport directory: %s", str(e))
+                return False
+
+        try:
+            # Read existing file or initialize new
+            if fileExists(sources_path):
+                with open(sources_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Remove old source for this bouquet
+                pattern = r'<source type="gen_xmltv"[^>]*channels="%s\.channels\.xml"[^>]*>.*?</source>' % bouquet_name
+                content = sub(pattern, '', content, flags=DOTALL)
+
+                # Remove empty sourcecats
+                content = sub(r'<sourcecat[^>]*>\s*</sourcecat>', '', content)
+            else:
+                content = '<?xml version="1.0" encoding="utf-8"?>\n<sources>\n</sources>'
+
+            # Add new source
+            sourcecat_marker = r'<sourcecat sourcecatname="Archimede Converter by Lululla">'
+            if sourcecat_marker in content:
+                # Append to existing sourcecat
+                new_source = '    <source type="gen_xmltv" nocheck="1" channels="%s.channels.xml">\n' % bouquet_name
+                new_source += '      <description>%s</description>\n' % bouquet_name
+                if epg_url:
+                    new_source += '      <url><![CDATA[%s]]></url>\n' % epg_url
+                else:
+                    new_source += '      <url>http://www.xmltvepg.nl/rytecIPTV.xz</url>\n'
+                    new_source += '      <url>https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz</url>\n'
+                    new_source += '      <url>http://rytecepg.wanwizard.eu/rytecIPTV.xz</url>\n'
+                new_source += '    </source>\n'
+                content = content.replace(sourcecat_marker, sourcecat_marker + '\n' + new_source)
+            else:
+                # Create new sourcecat
+                new_sourcecat = '  <sourcecat sourcecatname="Archimede Converter by Lululla">\n'
+                new_sourcecat += '    <source type="gen_xmltv" nocheck="1" channels="%s.channels.xml">\n' % bouquet_name
+                new_sourcecat += '      <description>%s</description>\n' % bouquet_name
+                if epg_url:
+                    new_sourcecat += '      <url><![CDATA[%s]]></url>\n' % epg_url
+                else:
+                    new_sourcecat += '      <url>http://www.xmltvepg.nl/rytecIPTV.xz</url>\n'
+                    new_sourcecat += '      <url>https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz</url>\n'
+                    new_sourcecat += '      <url>http://rytecepg.wanwizard.eu/rytecIPTV.xz</url>\n'
+                new_sourcecat += '    </source>\n'
+                new_sourcecat += '  </sourcecat>\n'
+                content = content.replace('</sources>', new_sourcecat + '</sources>')
+
+            # Write back
+            with open(sources_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            logger.info("Generated/Updated EPG sources file: %s", sources_path)
+            return True
+        except Exception as e:
+            logger.error("Error generating EPG sources file: %s", str(e))
+            return False
+
+    def extract_epg_url_from_m3u(self, m3u_path):
+        """Search for an EPG URL in M3U file comments"""
+        try:
+            with open(m3u_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+
+            # Look for EPG URL in comments
+            epg_match = search(r'#EXTEPGURL:?(.*)$', content, MULTILINE)
+            if epg_match:
+                return epg_match.group(1).strip()
+
+            # Also check other common formats
+            epg_match = search(r'#EXTVLCOPT:epg-url=(.*)$', content, MULTILINE)
+            if epg_match:
+                return epg_match.group(1).strip()
+
+            return None
+        except:
+            return None
+
+    def initialize(self):
+        """Initialize the mapper by loading all necessary data"""
+        try:
+            self.parse_lamedb()
+            self.parse_rytec_channels()
+            self.optimize_matching()
+            logger.info("EPGServiceMapper initialized successfully")
+            return True
+        except Exception as e:
+            logger.error("Failed to initialize EPGServiceMapper: %s", str(e))
+            return False
 
 
 class CoreConverter:
@@ -459,6 +1267,7 @@ class ConversionSelector(Screen):
             (_("Enigma2 Bouquets ➔ M3U"), "tv_to_m3u", "tv"),
             (_("JSON ➔ Enigma2 Bouquets"), "json_to_tv", "json"),
             (_("XSPF ➔ M3U Playlist"), "xspf_to_m3u", "xspf"),
+            (_("M3U ➔ JSON"), "m3u_to_json", "m3u"),
             (_("Remove M3U Bouquets"), "purge_m3u_bouquets", None)
         ]
         self["list"] = MenuList([(x[0], x[1]) for x in self.menu])
@@ -480,14 +1289,14 @@ class ConversionSelector(Screen):
         self["key_yellow"] = StaticText(_("Remove Bouquets"))
 
     def purge_m3u_bouquets(self, directory="/etc/enigma2", pattern="_m3ubouquet.tv"):
-        """Remove all bouquet files created by M3UConverter"""
+        """Remove all bouquet files created by M3UConverter with correct pattern"""
         create_backup()
         removed_files = []
 
         # Remove matching bouquet files
         for f in listdir(directory):
             file_path = join(directory, f)
-            if isfile(file_path) and search(pattern, f):
+            if isfile(file_path) and f.endswith(pattern):
                 try:
                     remove(file_path)
                     removed_files.append(f)
@@ -501,7 +1310,7 @@ class ConversionSelector(Screen):
                 lines = f.readlines()
             with open(bouquets_file, "w", encoding="utf-8") as f:
                 for line in lines:
-                    if not search(pattern, line):
+                    if not line.endswith(pattern + '"'):
                         f.write(line)
 
         if removed_files:
@@ -529,7 +1338,8 @@ class ConversionSelector(Screen):
             "m3u_to_tv": r"(?i)^.*\.(m3u|m3u8)$",
             "tv_to_m3u": r"(?i)^.*\.tv$",
             "json_to_tv": r"(?i)^.*\.json$",
-            "xspf_to_m3u": r"(?i)^.*\.xspf$"
+            "xspf_to_m3u": r"(?i)^.*\.xspf$",
+            "m3u_to_json": r"(?i)^.*\.(m3u|m3u8)$",
         }
         start_dir = "/media/hdd" if isdir("/media/hdd") else "/tmp"
 
@@ -550,7 +1360,8 @@ class ConversionSelector(Screen):
             "m3u_to_tv": _("Select M3U file to convert"),
             "tv_to_m3u": _("Select Bouquet file to convert"),
             "json_to_tv": _("Select JSON file to convert"),
-            "xspf_to_m3u": _("Select XSPF playlist to convert")
+            "xspf_to_m3u": _("Select XSPF playlist to convert"),
+            "m3u_to_json": _("Select M3U file to convert")
         }
         return titles.get(conversion_type, _("Select file"))
 
@@ -568,13 +1379,16 @@ class ConversionSelector(Screen):
                 "m3u_to_tv": _("M3U to Enigma2 Bouquet Conversion"),
                 "tv_to_m3u": _("Enigma2 Bouquet to M3U Conversion"),
                 "json_to_tv": _("JSON to Enigma2 Bouquet Conversion"),
-                "xspf_to_m3u": _("XSPF to M3U Playlist Conversion")
+                "xspf_to_m3u": _("XSPF to M3U Playlist Conversion"),
+                "m3u_to_json": _("M3U to JSON Conversion")
             }
 
+            # Open the converter directly and start the conversion
             converter = UniversalConverter(
                 session=self.session,
                 conversion_type=conversion_type,
-                selected_file=res
+                selected_file=res,
+                auto_start=True
             )
 
             converter.setTitle(title_map.get(conversion_type, title_plug))
@@ -637,7 +1451,8 @@ class ConversionSelector(Screen):
             "m3u_to_tv": _("M3U to Enigma2 Bouquet Conversion"),
             "tv_to_m3u": _("Enigma2 Bouquet to M3U Conversion"),
             "json_to_tv": _("JSON to Enigma2 Bouquet Conversion"),
-            "xspf_to_m3u": _("XSPF to M3U Playlist Conversion")
+            "xspf_to_m3u": _("XSPF to M3U Playlist Conversion"),
+            "m3u_to_json": _("M3U to JSON Conversion")
         }.get(self.selected_conversion, _("Conversion information"))
 
         self.session.open(
@@ -657,15 +1472,15 @@ class UniversalConverter(Screen):
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
             <widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
             <widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
-            <widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+            <widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#05000603" transparent="1" foregroundColor="white" />
+            <widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="blue" />
             <eLabel name="" position="1200,810" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
             <eLabel name="" position="1200,865" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
             <eLabel name="" position="1200,920" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
             <widget source="session.CurrentService" render="Label" position="1220,125" size="640,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
                 <convert type="ServiceName">Name</convert>
             </widget>
-            <widget source="session.VideoPicture" render="Pig" position="1220,166" zPosition="20" size="640,360" backgroundColor="transparent" transparent="0" cornerRadius="14" />            
+            <widget source="session.VideoPicture" render="Pig" position="1220,166" zPosition="20" size="640,360" backgroundColor="transparent" transparent="0" cornerRadius="14" />
             <!--#####red####/-->
             <eLabel backgroundColor="#00ff0000" position="65,1035" size="280,6" zPosition="12" />
             <widget name="key_red" position="65,990" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
@@ -718,8 +1533,7 @@ class UniversalConverter(Screen):
             <widget source="key_blue" render="Label" position="797,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
         </screen>"""
 
-
-    def __init__(self, session, conversion_type, selected_file=None, auto_open_browser=False):
+    def __init__(self, session, conversion_type, selected_file=None, auto_open_browser=False, auto_start=False):
         Screen.__init__(self, session)
         self.setTitle(title_plug)
         self.conversion_type = conversion_type
@@ -729,6 +1543,8 @@ class UniversalConverter(Screen):
         self.selected_file = selected_file
         self.auto_open_browser = auto_open_browser
         self.progress = None
+        self.is_converting = False
+        self.auto_start = auto_start
         base_path = config.plugins.m3uconverter.lastdir.value
         self.full_path = base_path
         self["list"] = MenuList([])
@@ -747,7 +1563,7 @@ class UniversalConverter(Screen):
             "red": self.open_file,
             "green": self.start_conversion,
             "yellow": self.toggle_filter,
-            "blue": self.show_tools_menu,
+            "blue": self.blue_button_action,
             "menu": self.open_settings,
             "ok": self.key_ok,
             "cancel": self.keyClose,
@@ -763,6 +1579,36 @@ class UniversalConverter(Screen):
 
         if auto_open_browser and not selected_file:
             self.onFirstExecBegin.append(self.open_file)
+
+        if self.auto_start and self.selected_file:
+            self.onShown.append(self.start_conversion_after_show)
+
+    def blue_button_action(self):
+        """Gestione dinamica del tasto blue in base allo stato"""
+        if self.is_converting:
+            self.cancel_convert()
+        else:
+            self.show_tools_menu()
+
+    def start_conversion_after_show(self):
+        """Avvia la conversione automaticamente dopo che la schermata è stata mostrata"""
+        try:
+            self.onShown.remove(self.start_conversion_after_show)
+            if self.auto_start and self.selected_file:
+                # Please wait a moment to allow the UI to stabilize
+                self.start_timer = eTimer()
+                self.start_timer.callback.append(self.delayed_start)
+                self.start_timer.start(1000)  # 1 second delay
+        except:
+            pass
+
+    def delayed_start(self):
+        """Avvia la conversione con un leggero ritardo"""
+        try:
+            self.start_timer.stop()
+            self.start_conversion()
+        except Exception as e:
+            logger.error(f"Error in delayed_start: {str(e)}")
 
     # optional
     def create_manual_backup(self):
@@ -959,12 +1805,55 @@ class UniversalConverter(Screen):
             self.show_error(_("Unsupported file type"))
 
     def start_conversion(self):
-        self.converter.cleanup_old_backups(max_backups=3)
-        if self.conversion_type == "m3u_to_tv":
-            self.update_path()
-            self.convert_m3u_to_tv()
-        else:
-            self.convert_tv_to_m3u()
+        if self.is_converting:
+            return
+
+        if not hasattr(self, 'selected_file') or not self.selected_file:
+            self.session.open(MessageBox, _("No file selected for conversion"), MessageBox.TYPE_WARNING)
+            return
+
+        # Add this condition for the new conversion type
+        if self.conversion_type == "m3u_to_json":
+            if not self.m3u_list:
+                self.parse_m3u(self.selected_file)
+            self.convert_m3u_to_json()
+            return
+
+    # def start_conversion(self):
+        # if self.is_converting:
+            # return
+
+        # if not hasattr(self, 'selected_file') or not self.selected_file:
+            # self.session.open(MessageBox, _("No file selected for conversion"), MessageBox.TYPE_WARNING)
+            # return
+
+        # Show confirmation message box
+        message = _("Are you sure you want to convert this file?") + "\n" + self.selected_file
+        self.session.openWithCallback(self.confirmationCallback, MessageBox, message, MessageBox.TYPE_YESNO)
+
+    def confirmationCallback(self, confirmed):
+        if confirmed:
+            try:
+                # Disable buttons during conversion
+                self.is_converting = True
+                self.cancel_conversion = False
+                self["key_green"].setText(_("Converting..."))
+                self["key_blue"].setText(_("Cancel"))
+
+                # Start conversion in a separate thread
+                import threading
+                self.conversion_thread = threading.Thread(
+                    target=self._convert_thread,
+                    args=(self.selected_file, self.conversion_type)
+                )
+                self.conversion_thread.start()
+
+            except Exception as e:
+                self.is_converting = False
+                self["key_green"].setText(_("Convert"))
+                self["key_blue"].setText(_("Tools"))
+                logger.error(f"Error starting conversion: {str(e)}")
+                self.session.open(MessageBox, _("Error starting conversion"), MessageBox.TYPE_ERROR)
 
     def update_path(self):
         """Update path with all possible device locations"""
@@ -1117,6 +2006,249 @@ class UniversalConverter(Screen):
             return f"hls://{url}"
         return url
 
+    def _convert_thread(self, m3u_path, conversion_type):
+        """Threaded conversion to avoid blocking the UI"""
+        try:
+            def progress_callback(progress, text):
+                if hasattr(self, 'cancel_conversion') and self.cancel_conversion:
+                    raise Exception("Conversion cancelled by user")
+
+                from twisted.internet import reactor
+                reactor.callFromThread(self._update_progress_ui, progress, text)
+
+            # Perform conversion based on type
+            if conversion_type == "m3u_to_tv":
+                result = self._convert_m3u_to_tv_task(m3u_path, progress_callback)
+            elif conversion_type == "tv_to_m3u":
+                result = self._convert_tv_to_m3u_task(m3u_path, progress_callback)
+            else:
+                result = (False, "Unsupported conversion type")
+
+            # Update UI from the main thread
+            from twisted.internet import reactor
+            if self.cancel_conversion:
+                reactor.callFromThread(self._conversion_cancelled)
+            else:
+                reactor.callFromThread(self._conversion_finished, result)
+
+        except Exception as e:
+            from twisted.internet import reactor
+            if "cancelled" in str(e).lower():
+                reactor.callFromThread(self._conversion_cancelled)
+            else:
+                reactor.callFromThread(self._conversion_error, str(e))
+
+    def _convert_m3u_to_tv_task(self, m3u_path, progress_callback):
+        """Task for converting M3U to TV bouquet"""
+        try:
+            # Initial cancellation check
+            if self.cancel_conversion:
+                return (False, "Conversion cancelled")
+                
+            # Initialize EPG mapper
+            epg_mapper = EPGServiceMapper(prefer_satellite=True)
+            if not epg_mapper.initialize():
+                logger.warning("EPGServiceMapper failed to initialize, continuing without EPG support")
+            
+            # Extract EPG URL from the M3U file
+            epg_url = epg_mapper.extract_epg_url_from_m3u(m3u_path)
+            
+            # Read the M3U file
+            with open(m3u_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            
+            # Parse M3U content
+            self.m3u_list = self._parse_m3u_content(content)
+
+            # Normalize fields for consistency
+            normalized_list = []
+            for ch in self.m3u_list:
+                normalized_list.append({
+                    'name': ch.get('title', ''),          # use title as name
+                    'url': ch.get('uri', ''),             # use uri as url
+                    'group': ch.get('group-title', ''),   # optional
+                    'tvg_id': ch.get('tvg-id', ''),
+                    'tvg_name': ch.get('tvg-name', ''),
+                    'logo': ch.get('tvg-logo', ''),
+                    'user_agent': ch.get('user_agent', ''),
+                    'program_id': ch.get('program-id', '')
+                })
+            self.m3u_list = normalized_list
+
+            # Apply binary data filter
+            original_count = len(self.m3u_list)
+            self.m3u_list = self.filter_binary_data(self.m3u_list)
+            filtered_count = original_count - len(self.m3u_list)
+            
+            if filtered_count > 0:
+                logger.warning("Filtered out %d channels with binary data", filtered_count)
+            
+            total_channels = len(self.m3u_list)
+            
+            # If there are no valid channels, stop
+            if total_channels == 0:
+                return (False, "No valid channels found after filtering")
+
+            groups = {}
+            epg_data = []
+
+            # Phase 1: Group channels with EPG mapping
+            for idx, channel in enumerate(self.m3u_list):
+                # Periodic cancellation check
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled")
+                    
+                progress = (idx + 1) / total_channels * 100
+                progress_callback(progress, _("Processing: %s") % channel.get('name', 'Unknown'))
+                
+                # Find best matching service
+                clean_name = epg_mapper.clean_channel_name(channel['name'])
+                sref, match_type = epg_mapper.find_best_service_match(clean_name, channel.get('tvg_id'))
+                
+                if sref:
+                    # Use hybrid service reference for bouquet
+                    hybrid_sref = epg_mapper.generate_hybrid_sref(sref, channel['url'])
+                    # For EPG, we need DVB service reference (without URL)
+                    epg_sref = epg_mapper.generate_hybrid_sref(sref, for_epg=True)
+                    
+                    # Add to EPG data
+                    epg_data.append({
+                        'tvg_id': channel.get('tvg_id', channel['name']),
+                        'sref': epg_sref,
+                        'name': channel['name']
+                    })
+                    
+                    # Use hybrid reference for bouquet
+                    channel['url'] = hybrid_sref
+                else:
+                    # Fallback to standard IPTV service reference
+                    channel['url'] = epg_mapper.generate_service_reference(channel['url'])
+
+                group = channel.get('group', 'Default')
+                groups.setdefault(group, []).append(channel)
+
+            # Phase 2: Write bouquet(s)
+            bouquet_name = self.get_safe_filename(basename(m3u_path).split('.')[0])
+            
+            if config.plugins.m3uconverter.bouquet_mode.value == "single":
+                # Create one bouquet with all channels
+                all_channels = []
+                for group_channels in groups.values():
+                    all_channels.extend(group_channels)
+                
+                self.write_group_bouquet(bouquet_name, all_channels)
+            else:
+                # Create separate bouquets by group
+                for group_idx, (group, channels) in enumerate(groups.items()):
+                    safe_group_name = self.get_safe_filename(group)
+                    self.write_group_bouquet(safe_group_name, channels)
+
+            # Phase 3: Update main bouquet
+            if config.plugins.m3uconverter.bouquet_mode.value == "single":
+                self.update_main_bouquet([bouquet_name])
+            else:
+                self.update_main_bouquet([self.get_safe_filename(group) for group in groups.keys()])
+            
+            # Phase 4: Generate EPG files if data is available
+            if epg_data and config.plugins.m3uconverter.epg_enabled.value:
+                epg_mapper.generate_epg_channels_file(epg_data, bouquet_name)
+                epg_mapper.generate_epg_sources_file(bouquet_name, epg_url)
+
+            return (True, total_channels, len(epg_data))
+
+        except Exception as e:
+            logger.error(f"Error in M3U to TV conversion: {str(e)}")
+            return (False, str(e))
+
+    def _convert_tv_to_m3u_task(self, tv_path, progress_callback):
+        """Task specifico per conversione TV to M3U"""
+        try:
+            with open(tv_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            pattern = r'#SERVICE 4097:0:1:0:0:0:0:0:0:0:(.*?)\n#DESCRIPTION (.*?)\n'
+            matches = findall(pattern, content, DOTALL)
+
+            total_channels = len(matches)
+            output_file = join(dirname(tv_path), f"{basename(tv_path).split('.')[0]}.m3u")
+
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write('#EXTM3U\n')
+                for idx, (url, description) in enumerate(matches):
+                    if self.cancel_conversion:
+                        return (False, "Conversion cancelled")
+
+                    progress = (idx + 1) / total_channels * 100
+                    progress_callback(progress, _("Processing: %s") % description)
+
+                    decoded_url = unquote(url)
+                    f.write(f'#EXTINF:-1,{description}\n')
+                    f.write(f'{decoded_url}\n')
+
+            return (True, total_channels, output_file)
+
+        except Exception as e:
+            logger.error(f"Error in TV to M3U conversion: {str(e)}")
+            return (False, str(e))
+
+    def convert_m3u_to_json(self):
+        """Convert M3U playlist to JSON format"""
+        def _m3u_to_json_conversion():
+            try:
+                if not self.m3u_list:
+                    raise ValueError("No M3U data to convert")
+
+                # Create JSON structure
+                json_data = {"playlist": []}
+                
+                for channel in self.m3u_list:
+                    channel_data = {}
+                    
+                    # Add all available attributes
+                    if channel.get('tvg_id'):
+                        channel_data["tvg-id"] = channel['tvg_id']
+                    if channel.get('tvg_name'):
+                        channel_data["tvg-name"] = channel['tvg_name']
+                    if channel.get('logo'):
+                        channel_data["tvg-logo"] = channel['logo']
+                    if channel.get('group'):
+                        channel_data["group-title"] = channel['group']
+                    if channel.get('name'):
+                        channel_data["title"] = channel['name']
+                    if channel.get('url'):
+                        channel_data["url"] = channel['url']
+                    if channel.get('duration'):
+                        channel_data["duration"] = channel['duration']
+                    if channel.get('user_agent'):
+                        channel_data["user-agent"] = channel['user_agent']
+                    if channel.get('program_id'):
+                        channel_data["program-id"] = channel['program_id']
+                    
+                    json_data["playlist"].append(channel_data)
+
+                # Generate output filename
+                base_name = basename(self.selected_file).split('.')[0]
+                output_file = join(dirname(self.selected_file), f"{base_name}.json")
+                
+                # Write JSON file
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=4, ensure_ascii=False)
+                
+                return (True, output_file, len(json_data["playlist"]))
+                
+            except Exception as e:
+                logger.error(f"Error converting M3U to JSON: {str(e)}")
+                return (False, str(e))
+
+        # Run conversion in thread
+        def conversion_task():
+            try:
+                return _m3u_to_json_conversion()
+            except Exception as e:
+                return (False, str(e))
+
+        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+
     def update_main_bouquet(self, groups):
         """Update the main bouquet file with generated group bouquets"""
         main_file = "/etc/enigma2/bouquets.tv"
@@ -1153,8 +2285,7 @@ class UniversalConverter(Screen):
     def write_group_bouquet(self, group, channels):
         """
         Writes a bouquet file for a single group safely and efficiently,
-        handling cirillic characters by transliterating names and saving
-        the file in latin-1 encoding for Enigma2 compatibility.
+        with improved encoding handling.
         """
         try:
             safe_name = self.get_safe_filename(group)
@@ -1171,17 +2302,23 @@ class UniversalConverter(Screen):
                     name_bouquet = "Unnamed Group"
 
             # Add marker and main bouquet name
-            markera = "#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | M3UConverter | ---"
-            markerb = "#DESCRIPTION --- | M3UConverter | ---"
+            markera = "#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | Archimede Converter | ---"
+            markerb = "#DESCRIPTION --- | Archimede Converter | ---"
 
-            with open(temp_file, "w", encoding="latin-1", errors="replace") as f:
+            with open(temp_file, "w", encoding="utf-8") as f:  # Cambiato a UTF-8
                 f.write("#NAME " + name_bouquet + "\n")
-                f.write("#NAME {}\n".format(name_bouquet if name_bouquet else group))
                 f.write(markera + "\n")
                 f.write(markerb + "\n")
                 for idx, ch in enumerate(channels, 1):
-                    f.write("#SERVICE 4097:0:1:0:0:0:0:0:0:0:" + ch["url"] + "\n")
-                    desc = transliterate(ch["name"])
+                    # Use the URL directly without further processing
+                    f.write("#SERVICE " + ch["url"] + "\n")
+
+                    # Clean and transliterate the description
+                    desc = ch["name"]
+                    # Remove non-printable characters
+                    desc = ''.join(c for c in desc if c.isprintable() or c.isspace())
+                    # Transliterate if necessary
+                    desc = transliterate(desc)
                     f.write("#DESCRIPTION " + desc + "\n")
 
                     if idx % 50 == 0:
@@ -1201,18 +2338,22 @@ class UniversalConverter(Screen):
             logger.log("ERROR", f"Failed to write bouquet {str(group)} : {str(e)}")
             raise RuntimeError("Bouquet creation failed for " + group) from e
 
-    def get_safe_filename(self, group):
-        """Generate a secure file name for bouquets with a suffix for identification"""
-        normalized = unicodedata.normalize("NFKD", group)
-        safe_name = normalized.encode('ascii', 'ignore').decode('ascii')  # Remove accents and non-ASCII
-        safe_name = sub(r'[^a-z0-9_-]', '_', safe_name.lower())           # Replace unwanted chars
-        safe_name = sub(r'_+', '_', safe_name).strip('_')                 # Normalize underscores
+    def get_safe_filename(self, name):
+        """Generate a secure file name for bouquets without duplicate suffixes"""
+        # Remove any existing suffixes before processing
+        if name.endswith('_m3ubouquet'):
+            name = name[:-11]  # Remove "_m3ubouquet"
+        
+        normalized = unicodedata.normalize("NFKD", name)
+        safe_name = normalized.encode('ascii', 'ignore').decode('ascii')
+        safe_name = sub(r'[^a-z0-9_-]', '_', safe_name.lower())
+        safe_name = sub(r'_+', '_', safe_name).strip('_')
 
-        # Add a suffix to mark the bouquet as created by M3UConverter
+        # Add the suffix only once
         suffix = "_m3ubouquet"
         base_name = safe_name[:50 - len(suffix)] if len(safe_name) > 50 - len(suffix) else safe_name
 
-        return base_name + suffix if base_name else "my_m3uconverter" + suffix
+        return base_name + suffix if base_name else "m3uconverter_bouquet"
 
     def _get_output_filename(self):
         """Generate a unique file name for export"""
@@ -1279,6 +2420,24 @@ class UniversalConverter(Screen):
     def _parse_m3u_content(self, data):
         """Advanced parser for M3U content"""
 
+        def is_textual_data(text):
+            """Check if data is likely textual (not binary)"""
+            if not text:
+                return False
+                
+            # Check for common binary data patterns (removed binary_indicators unused)
+            text = str(text)
+            # If text is too long, it's likely binary
+            if len(text) > 200:
+                return False
+                
+            # Check for high percentage of non-printable characters
+            printable_count = sum(1 for c in text if c.isprintable() or c.isspace())
+            if printable_count / len(text) < 0.7:  # Less than 70% printable
+                return False
+                
+            return True
+
         def get_attributes(txt, first_key_as_length=False):
             attribs = {}
             current_key = ''
@@ -1332,33 +2491,94 @@ class UniversalConverter(Screen):
                 current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
                 parts = line[8:].split(',', 1)
                 if len(parts) > 1:
-                    current_params['title'] = parts[1].strip()
+                    title = parts[1].strip()
+                    # Filter non-text data
+                    if not is_textual_data(title):
+                        logger.warning("Skipping non-textual channel name: %s", title[:50] + "..." if len(title) > 50 else title)
+                        current_params = {}
+                        continue
+                    current_params['title'] = title
                 attribs = get_attributes(parts[0], first_key_as_length=True)
                 current_params.update(attribs)
 
             elif line.startswith('#EXTGRP:'):
-                current_params['group-title'] = line[8:].strip()
+                group_value = line[8:].strip()
+                if is_textual_data(group_value):
+                    current_params['group-title'] = group_value
+                else:
+                    logger.warning("Skipping non-textual group title")
 
             elif line.startswith('#EXTVLCOPT:'):
                 opts = line[11:].split('=', 1)
                 if len(opts) == 2:
                     key = opts[0].lower().strip()
                     value = opts[1].strip()
-                    if key == 'http-user-agent':
-                        current_params['user_agent'] = value
-                    elif key == 'program':
-                        current_params['program-id'] = value
+                    if is_textual_data(value):
+                        if key == 'http-user-agent':
+                            current_params['user_agent'] = value
+                        elif key == 'program':
+                            current_params['program-id'] = value
 
             elif line.startswith('#'):
                 continue
 
             else:
                 if current_params.get('title'):
-                    current_params['uri'] = line.strip()
-                    entries.append(current_params)
+                    # Filtra URL non validi
+                    if line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://', 'udp://', 'rtp://')):
+                        current_params['uri'] = line.strip()
+                        entries.append(current_params)
+                    else:
+                        logger.warning("Skipping non-HTTP URL: %s", line[:50] + "..." if len(line) > 50 else line)
                     current_params = {}
 
         return entries
+
+    def filter_binary_data(self, channels):
+        """Filter out channels with binary data in names or URLs"""
+        filtered_channels = []
+
+        for channel in channels:
+            # Check channel name
+            name = channel.get('name', '')
+            if not self._is_valid_text(name):
+                logger.warning("Skipping channel with binary name: %s", name[:50] + "..." if len(name) > 50 else name)
+                continue
+
+            # Check group name
+            group = channel.get('group', '')
+            if group and not self._is_valid_text(group):
+                logger.warning("Skipping channel with binary group: %s", group[:50] + "..." if len(group) > 50 else group)
+                continue
+
+            # Check URL
+            url = channel.get('url', '')
+            if not url.startswith(('http://', 'https://', 'rtsp://', 'rtmp://', 'udp://', 'rtp://', '4097:')):
+                logger.warning("Skipping channel with invalid URL: %s", url[:50] + "..." if len(url) > 50 else url)
+                continue
+
+            filtered_channels.append(channel)
+
+        return filtered_channels
+
+    def _is_valid_text(self, text):
+        """Check if text is valid (not binary data)"""
+        if not text or not isinstance(text, str):
+            return False
+            
+        # Check for common binary patterns (rimosso binary_patterns non utilizzato)
+        text_str = str(text)
+        
+        # Length check
+        if len(text_str) > 200:
+            return False
+            
+        # Printable characters check
+        printable_count = sum(1 for c in text_str if c.isprintable() or c.isspace())
+        if printable_count / len(text_str) < 0.7:  # Less than 70% printable
+            return False
+            
+        return True
 
     # TV to M3U Conversion Methods
     def parse_tv(self, filename=None):
@@ -1479,16 +2699,57 @@ class UniversalConverter(Screen):
         ).addBoth(self.conversion_finished)
 
     def convert_m3u_to_tv(self):
-
         def _real_conversion_task():
             try:
+                # Initialize EPG service mapper
+                epg_mapper = EPGServiceMapper(prefer_satellite=True)
+                if not epg_mapper.initialize():
+                    logger.warning("EPGServiceMapper failed to initialize, continuing without EPG support")
+
+                # Extract EPG URL from M3U file
+                epg_url = epg_mapper.extract_epg_url_from_m3u(self.selected_file)
+                logger.debug("Extracted EPG URL: %s", epg_url)
+
                 groups = {}
+                epg_data = []
                 total_channels = len(self.m3u_list)
 
-                # Phase 1: Channel Grouping
+                # Phase 1: Channel Grouping with EPG mapping
                 for idx, channel in enumerate(self.m3u_list):
                     if not channel.get('url'):  # Skip channels without URLs
                         continue
+
+                    clean_name = epg_mapper.clean_channel_name(channel['name'])
+                    tvg_id = channel.get('tvg_id')
+                    logger.debug("Processing channel: %s (tvg_id: %s)", channel['name'], tvg_id)
+
+                    # Get the best service reference for EPG
+                    sref, match_type = epg_mapper.find_best_service_match(clean_name, tvg_id)
+
+                    if sref:
+                        logger.debug("Found service reference for %s: %s (match type: %s)", channel['name'], sref, match_type)
+                        # Use hybrid service reference for bouquet
+                        hybrid_sref = epg_mapper.generate_hybrid_sref(sref, channel['url'])
+                        # For EPG, we need the DVB service reference (without URL)
+                        epg_sref = epg_mapper.generate_hybrid_sref(sref, for_epg=True)
+
+                        # Add to EPG data
+                        epg_data.append({
+                            'tvg_id': tvg_id or channel['name'],
+                            'sref': epg_sref,
+                            'name': channel['name']
+                        })
+
+                        # Use the hybrid reference for the bouquet
+                        channel['url'] = hybrid_sref
+                    else:
+                        logger.debug("No service reference found for %s, using standard IPTV reference", channel['name'])
+                        # Fallback to standard IPTV reference
+                        channel['url'] = epg_mapper.generate_service_reference(channel['url'])
+
+                    logger.debug("Original URL: %s", channel['url'])
+                    logger.debug("Generated service reference for bouquet: %s", hybrid_sref)
+                    logger.debug("Generated service reference for EPG: %s", epg_sref)
 
                     group = channel.get('group', 'Default')
                     groups.setdefault(group, []).append(channel)
@@ -1497,17 +2758,61 @@ class UniversalConverter(Screen):
                     self.update_progress(idx + 1, _("Processing: %s (%d%%)") % (name, progress))
 
                 # Phase 2: Writing bouquets
-                for group_idx, (group, channels) in enumerate(groups.items()):
-                    self.write_group_bouquet(group, channels)
+                if config.plugins.m3uconverter.bouquet_mode.value == "single":
+                    # Create a single bouquet with all channels
+                    all_channels = []
+                    for group_channels in groups.values():
+                        all_channels.extend(group_channels)
+
+                    bouquet_name = self.get_safe_filename(basename(self.selected_file).split('.')[0])
+                    self.write_group_bouquet(bouquet_name, all_channels)
                     self.update_progress(
-                        total_channels + group_idx,
-                        _("Creating bouquet: %s") % group
+                        total_channels + 1,
+                        _("Creating single bouquet: %s") % bouquet_name
                     )
+                else:
+                    # Create separate bouquets for each group
+                    for group_idx, (group, channels) in enumerate(groups.items()):
+                        self.write_group_bouquet(group, channels)
+                        self.update_progress(
+                            total_channels + group_idx,
+                            _("Creating bouquet: %s") % group
+                        )
 
                 # Phase 3: Main bouquet update
-                self.update_main_bouquet(groups.keys())
+                if config.plugins.m3uconverter.bouquet_mode.value == "single":
+                    self.update_main_bouquet([bouquet_name])
+                else:
+                    self.update_main_bouquet(groups.keys())
 
-                return (True, total_channels)
+                # Phase 4: Generate EPG files if we have EPG data
+                if epg_data and config.plugins.m3uconverter.epg_enabled.value:
+                    if config.plugins.m3uconverter.bouquet_mode.value == "single":
+                        bouquet_name_for_epg = bouquet_name
+                    else:
+                        bouquet_name_for_epg = "all_groups"  # Usa un nome unico per EPG multi-bouquet
+
+                    logger.debug("Generating EPG files for bouquet: %s", bouquet_name_for_epg)
+                    logger.debug("EPG data for %d channels", len(epg_data))
+
+                    # Generate channels.xml
+                    channels_success = epg_mapper.generate_epg_channels_file(epg_data, bouquet_name_for_epg)
+                    if not channels_success:
+                        logger.error("Failed to generate EPG channels file")
+
+                    # Generate sources.xml
+                    sources_success = epg_mapper.generate_epg_sources_file(bouquet_name_for_epg, epg_url)
+                    if not sources_success:
+                        logger.error("Failed to generate EPG sources file")
+
+                    if channels_success and sources_success:
+                        logger.info("Generated EPG files for %d channels", len(epg_data))
+                    else:
+                        logger.warning("Failed to generate some EPG files")
+                else:
+                    logger.warning("No EPG data to generate files or EPG disabled")
+
+                return (True, total_channels, len(epg_data) if epg_data else 0)
             except Exception as e:
                 logger.exception(f"Error during real conversion {str(e)}")
                 raise
@@ -1591,21 +2896,64 @@ class UniversalConverter(Screen):
             self.converter.safe_convert(_xspf_conversion)
         ).addBoth(self.conversion_finished)
 
+    def _conversion_finished(self, result):
+        """Handle conversion finished"""
+        self.is_converting = False
+        self.cancel_conversion = False
+        self["key_green"].setText(_("Convert"))
+        self["key_blue"].setText(_("Tools"))
+
+        if result[0]:  # Success
+            if len(result) == 3:
+                total_channels, epg_channels = result[1], result[2]
+                msg = _("Successfully converted %d channels") % total_channels
+                if epg_channels > 0:
+                    msg += _("\nEPG mapped for %d channels") % epg_channels
+            else:
+                msg = _("Conversion completed successfully")
+
+            self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=10)
+        else:
+            self.session.open(MessageBox, _("Conversion failed: %s") % result[1], MessageBox.TYPE_ERROR, timeout=10)
+
     def conversion_finished(self, result):
         self["progress_source"].setValue(0)
-        success, data = result
-        msg = ''
-        if success:
-            msg = _("Successfully converted %d items") % data if isinstance(data, int) else _("File saved to: %s") % data
-            self.show_info(msg)
-            self["progress_source"].setValue(0)
-        else:
-            msg = _("Conversion failed: %s") % data
-            self.show_error(msg)
-            self["progress_source"].setValue(0)
+        from twisted.internet import reactor
+        reactor.callFromThread(self._show_conversion_result, result)
 
-        self["status"].setText(msg)
-        self["progress_text"].setText("")
+    def _check_conversion_status(self):
+        """Check if the conversion was canceled successfully"""
+        self.cancel_timer.stop()
+        if self.is_converting:
+            logger.warning("Conversion not cancelled properly, forcing termination")
+            self._conversion_cancelled()
+
+    def cancel_convert(self):
+        """Cancel the ongoing conversion"""
+        if self.is_converting:
+            self.cancel_conversion = True
+            self["key_blue"].setText(_("Cancelling..."))
+            logger.info("Conversion cancellation requested")
+
+            self.cancel_timer = eTimer()
+            self.cancel_timer.callback.append(self._check_conversion_status)
+            self.cancel_timer.start(1000)
+
+    def _conversion_cancelled(self):
+        """Handle conversion cancellation"""
+        self.is_converting = False
+        self.cancel_conversion = False
+        self["key_green"].setText(_("Convert"))
+        self["key_blue"].setText(_("Tools"))  # Ripristina il testo originale
+        self.session.open(MessageBox, _("Conversion cancelled"), MessageBox.TYPE_INFO, timeout=5)
+
+    def _conversion_error(self, error_msg):
+        """Handle conversion error"""
+        self.is_converting = False
+        self.cancel_conversion = False
+        self["key_green"].setText(_("Convert"))
+        self["key_blue"].setText(_("Tools"))  # Ripristina il testo originale
+        self.session.open(MessageBox, _("Conversion error: %s") % error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
     def update_progress(self, value, text):
         from twisted.internet import reactor
@@ -1680,8 +3028,6 @@ class UniversalConverter(Screen):
         try:
             if hasattr(self, 'initial_service') and self.initial_service:
                 self.session.nav.playService(self.initial_service)
-            # else:
-                # self.session.nav.stopService()
 
             if hasattr(self, 'aspect_manager'):
                 self.aspect_manager.restore_aspect()
@@ -1690,6 +3036,52 @@ class UniversalConverter(Screen):
         except Exception as e:
             logger.error(f"Error during close: {str(e)}")
             self.close()
+
+    def _show_conversion_result(self, result):
+        """Show the conversion result (called in the main thread)"""
+        try:
+            if isinstance(result, tuple) and len(result) == 2:
+                success, data = result
+                if success:
+                    if isinstance(data, tuple) and len(data) == 3:
+                        total_channels, epg_channels, _ = data
+                        msg = _("Successfully converted %d items") % total_channels
+                        if epg_channels > 0:
+                            msg += _("\nEPG mapped for %d channels") % epg_channels
+                            msg += _("\nEPG files generated in /etc/epgimport/")
+
+                        self.session.open(
+                            MessageBox,
+                            msg,
+                            MessageBox.TYPE_INFO,
+                            timeout=10
+                        )
+                    else:
+                        self.session.open(
+                            MessageBox,
+                            _("Successfully converted items"),
+                            MessageBox.TYPE_INFO,
+                            timeout=5
+                        )
+                else:
+                    self.session.open(
+                        MessageBox,
+                        _("Conversion failed: %s") % data,
+                        MessageBox.TYPE_ERROR,
+                        timeout=10
+                    )
+            else:
+                self.session.open(
+                    MessageBox,
+                    _("Conversion completed with unknown result"),
+                    MessageBox.TYPE_INFO,
+                    timeout=5
+                )
+        except Exception as e:
+            logger.error(f"Error showing conversion result: {str(e)}")
+
+        self["status"].setText(_("Conversion completed"))
+        self["progress_text"].setText("")
 
     def show_plugin_info(self):
         """Show plugin information and credits"""
@@ -1700,6 +3092,31 @@ class UniversalConverter(Screen):
             _("Developed for Enigma2"),
             _(f"Last modified: {last_date}"),
             "",
+            _("------- Features -------"),
+            _(" • Convert M3U playlists to bouquets"),
+            _(" • M3U ➔ Enigma2 Bouquets"),
+            _(" • Enigma2 Bouquets ➔ M3U"),
+            _(" • JSON ➔ Enigma2 Bouquets"),
+            _(" • XSPF ➔ M3U Playlist"),
+            _(" • Remove M3U Bouquets"),
+            _(" • Auto mapping IPTV/DVB-S/C/T"),
+            _(" • Add EPG refs where available"),
+            _(" • Simple and lightweight"),
+            "",
+            _("------- Usage -------"),
+            _(" • Press Green to convert to TV"),
+            _(" • Press OK to play a stream"),
+            _(" • Press Back to return"),
+            "",
+            _("Enjoy your enhanced playlists!"),
+            "",
+            _("If you like this plugin, consider"),
+            _("buying me a coffee ☕"),
+            _("Scan the QR code to support development"),
+            _("It helps keep the plugin alive"),
+            _("and updated. Thank you!"),
+            "",
+            "bye bye Lululla",
             _("Press OK to close")
         ]
         self.session.open(
@@ -1750,7 +3167,8 @@ def get_pattern_for_type(conversion_type):
         "m3u_to_tv": r"(?i)^.*\.(m3u|m3u8)$",
         "tv_to_m3u": r"(?i)^.*\.tv$",
         "json_to_tv": r"(?i)^.*\.json$",
-        "xspf_to_m3u": r"(?i)^.*\.xspf$"
+        "xspf_to_m3u": r"(?i)^.*\.xspf$",
+        "m3u_to_json": r"(?i)^.*\.(m3u|m3u8)$",
     }
     return patterns.get(conversion_type, r".*")
 
