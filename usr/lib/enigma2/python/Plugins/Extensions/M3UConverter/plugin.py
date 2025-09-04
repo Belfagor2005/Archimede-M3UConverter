@@ -26,7 +26,7 @@ import codecs
 import json
 import shutil
 import unicodedata
-from gettext import gettext as _
+# from gettext import gettext as _
 from os import access, W_OK, listdir, remove, replace, chmod, fsync, system, mkdir
 from os.path import exists, isdir, isfile, join, normpath, basename, dirname
 from re import sub, findall, DOTALL, MULTILINE, IGNORECASE, search
@@ -55,6 +55,7 @@ from Screens.Setup import Setup
 from Tools.Directories import defaultRecordingLocation, fileExists
 from enigma import eAVControl as AVSwitch
 
+from . import _
 from .Logger_clr import ColoredLogger
 
 
@@ -1122,7 +1123,7 @@ core_converter = CoreConverter()
 
 
 class M3UFileBrowser(Screen):
-    def __init__(self, session, startdir="/etc/enigma2", matchingPattern=r"(?i)^.*\.tv$", conversion_type=None, title=None):
+    def __init__(self, session, startdir="/etc/enigma2", matchingPattern=r"(?i)^.*\.(tv|m3u|m3u8|json|xspf)$", conversion_type=None, title=None):
         Screen.__init__(self, session)
         if title:
             self.setTitle(title)
@@ -1267,7 +1268,7 @@ class ConversionSelector(Screen):
             (_("Enigma2 Bouquets ➔ M3U"), "tv_to_m3u", "tv"),
             (_("JSON ➔ Enigma2 Bouquets"), "json_to_tv", "json"),
             (_("XSPF ➔ M3U Playlist"), "xspf_to_m3u", "xspf"),
-            (_("M3U ➔ JSON"), "m3u_to_json", "m3u"),
+            (_("M3U ➔ JSON"), "m3u_to_json", "m3u"),  # New option
             (_("Remove M3U Bouquets"), "purge_m3u_bouquets", None)
         ]
         self["list"] = MenuList([(x[0], x[1]) for x in self.menu])
@@ -1648,8 +1649,12 @@ class UniversalConverter(Screen):
 
         try:
             path = "/etc/enigma2" if self.conversion_type == "tv_to_m3u" else config.plugins.m3uconverter.lastdir.value
-            pattern = r"(?i)^.*\.tv$" if self.conversion_type == "tv_to_m3u" else r"(?i)^.*\.(m3u|m3u8)$"
-
+            # pattern = r"(?i)^.*\.tv$" if self.conversion_type == "tv_to_m3u" else r"(?i)^.*\.(m3u|m3u8)$"
+            pattern = (
+                r"(?i)^.*\.(tv|m3u|m3u8|json|xspf)$"
+                if self.conversion_type == "tv_to_m3u"
+                else r"(?i)^.*\.(m3u|m3u8|json|xspf)$"
+            )
             if not path or not isdir(path):
                 path = "/media/hdd" if isdir("/media/hdd") else "/tmp"
 
@@ -1814,8 +1819,6 @@ class UniversalConverter(Screen):
 
         # Add this condition for the new conversion type
         if self.conversion_type == "m3u_to_json":
-            if not self.m3u_list:
-                self.parse_m3u(self.selected_file)
             self.convert_m3u_to_json()
             return
 
@@ -1950,6 +1953,8 @@ class UniversalConverter(Screen):
                     self.parse_m3u(selected_path)
                 elif self.conversion_type == "tv_to_m3u":
                     self.parse_tv(selected_path)
+                elif self.conversion_type == "m3u_to_json":  # Add this condition
+                    self.parse_m3u(selected_path)
 
                 # Update states
                 self.file_loaded = True
@@ -2044,19 +2049,19 @@ class UniversalConverter(Screen):
             # Initial cancellation check
             if self.cancel_conversion:
                 return (False, "Conversion cancelled")
-                
+
             # Initialize EPG mapper
             epg_mapper = EPGServiceMapper(prefer_satellite=True)
             if not epg_mapper.initialize():
                 logger.warning("EPGServiceMapper failed to initialize, continuing without EPG support")
-            
+
             # Extract EPG URL from the M3U file
             epg_url = epg_mapper.extract_epg_url_from_m3u(m3u_path)
-            
+
             # Read the M3U file
             with open(m3u_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-            
+
             # Parse M3U content
             self.m3u_list = self._parse_m3u_content(content)
 
@@ -2079,12 +2084,12 @@ class UniversalConverter(Screen):
             original_count = len(self.m3u_list)
             self.m3u_list = self.filter_binary_data(self.m3u_list)
             filtered_count = original_count - len(self.m3u_list)
-            
+
             if filtered_count > 0:
                 logger.warning("Filtered out %d channels with binary data", filtered_count)
-            
+
             total_channels = len(self.m3u_list)
-            
+
             # If there are no valid channels, stop
             if total_channels == 0:
                 return (False, "No valid channels found after filtering")
@@ -2097,27 +2102,27 @@ class UniversalConverter(Screen):
                 # Periodic cancellation check
                 if self.cancel_conversion:
                     return (False, "Conversion cancelled")
-                    
+
                 progress = (idx + 1) / total_channels * 100
                 progress_callback(progress, _("Processing: %s") % channel.get('name', 'Unknown'))
-                
+
                 # Find best matching service
                 clean_name = epg_mapper.clean_channel_name(channel['name'])
                 sref, match_type = epg_mapper.find_best_service_match(clean_name, channel.get('tvg_id'))
-                
+
                 if sref:
                     # Use hybrid service reference for bouquet
                     hybrid_sref = epg_mapper.generate_hybrid_sref(sref, channel['url'])
                     # For EPG, we need DVB service reference (without URL)
                     epg_sref = epg_mapper.generate_hybrid_sref(sref, for_epg=True)
-                    
+
                     # Add to EPG data
                     epg_data.append({
                         'tvg_id': channel.get('tvg_id', channel['name']),
                         'sref': epg_sref,
                         'name': channel['name']
                     })
-                    
+
                     # Use hybrid reference for bouquet
                     channel['url'] = hybrid_sref
                 else:
@@ -2129,13 +2134,13 @@ class UniversalConverter(Screen):
 
             # Phase 2: Write bouquet(s)
             bouquet_name = self.get_safe_filename(basename(m3u_path).split('.')[0])
-            
+
             if config.plugins.m3uconverter.bouquet_mode.value == "single":
                 # Create one bouquet with all channels
                 all_channels = []
                 for group_channels in groups.values():
                     all_channels.extend(group_channels)
-                
+
                 self.write_group_bouquet(bouquet_name, all_channels)
             else:
                 # Create separate bouquets by group
@@ -2148,7 +2153,7 @@ class UniversalConverter(Screen):
                 self.update_main_bouquet([bouquet_name])
             else:
                 self.update_main_bouquet([self.get_safe_filename(group) for group in groups.keys()])
-            
+
             # Phase 4: Generate EPG files if data is available
             if epg_data and config.plugins.m3uconverter.epg_enabled.value:
                 epg_mapper.generate_epg_channels_file(epg_data, bouquet_name)
@@ -2190,64 +2195,6 @@ class UniversalConverter(Screen):
         except Exception as e:
             logger.error(f"Error in TV to M3U conversion: {str(e)}")
             return (False, str(e))
-
-    def convert_m3u_to_json(self):
-        """Convert M3U playlist to JSON format"""
-        def _m3u_to_json_conversion():
-            try:
-                if not self.m3u_list:
-                    raise ValueError("No M3U data to convert")
-
-                # Create JSON structure
-                json_data = {"playlist": []}
-                
-                for channel in self.m3u_list:
-                    channel_data = {}
-                    
-                    # Add all available attributes
-                    if channel.get('tvg_id'):
-                        channel_data["tvg-id"] = channel['tvg_id']
-                    if channel.get('tvg_name'):
-                        channel_data["tvg-name"] = channel['tvg_name']
-                    if channel.get('logo'):
-                        channel_data["tvg-logo"] = channel['logo']
-                    if channel.get('group'):
-                        channel_data["group-title"] = channel['group']
-                    if channel.get('name'):
-                        channel_data["title"] = channel['name']
-                    if channel.get('url'):
-                        channel_data["url"] = channel['url']
-                    if channel.get('duration'):
-                        channel_data["duration"] = channel['duration']
-                    if channel.get('user_agent'):
-                        channel_data["user-agent"] = channel['user_agent']
-                    if channel.get('program_id'):
-                        channel_data["program-id"] = channel['program_id']
-                    
-                    json_data["playlist"].append(channel_data)
-
-                # Generate output filename
-                base_name = basename(self.selected_file).split('.')[0]
-                output_file = join(dirname(self.selected_file), f"{base_name}.json")
-                
-                # Write JSON file
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(json_data, f, indent=4, ensure_ascii=False)
-                
-                return (True, output_file, len(json_data["playlist"]))
-                
-            except Exception as e:
-                logger.error(f"Error converting M3U to JSON: {str(e)}")
-                return (False, str(e))
-
-        # Run conversion in thread
-        def conversion_task():
-            try:
-                return _m3u_to_json_conversion()
-            except Exception as e:
-                return (False, str(e))
-
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
     def update_main_bouquet(self, groups):
         """Update the main bouquet file with generated group bouquets"""
@@ -2343,7 +2290,7 @@ class UniversalConverter(Screen):
         # Remove any existing suffixes before processing
         if name.endswith('_m3ubouquet'):
             name = name[:-11]  # Remove "_m3ubouquet"
-        
+
         normalized = unicodedata.normalize("NFKD", name)
         safe_name = normalized.encode('ascii', 'ignore').decode('ascii')
         safe_name = sub(r'[^a-z0-9_-]', '_', safe_name.lower())
@@ -2417,32 +2364,83 @@ class UniversalConverter(Screen):
             self.m3u_list = []
             raise
 
+    def convert_m3u_to_json(self):
+        """Convert M3U playlist to JSON format"""
+        def _m3u_to_json_conversion():
+            try:
+                # Parse the M3U file if not already parsed
+                if not self.m3u_list:
+                    with open(self.selected_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    self.m3u_list = self._parse_m3u_content(content)
+
+                if not self.m3u_list:
+                    raise ValueError("No valid channels found in M3U file")
+
+                # Create JSON structure
+                json_data = {"playlist": []}
+
+                for idx, channel in enumerate(self.m3u_list):
+                    # Update progress
+                    progress = (idx + 1) / len(self.m3u_list) * 100
+                    self.update_progress(
+                        idx + 1,
+                        _("Converting to JSON: %s (%d%%)") % (channel.get('title', 'Unknown'), progress)
+                    )
+
+                    # Copy all attributes found in parsing
+                    channel_data = {}
+                    for key, value in channel.items():
+                        channel_data[key] = value
+
+                    json_data["playlist"].append(channel_data)
+
+                # Generate output filename
+                base_name = basename(self.selected_file).split('.')[0]
+                output_dir = dirname(self.selected_file)
+                output_file = join(output_dir, f"{base_name}.json")
+
+                # Write JSON file
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=4, ensure_ascii=False)
+
+                return (True, output_file, len(json_data["playlist"]))
+
+            except Exception as e:
+                logger.error(f"Error converting M3U to JSON: {str(e)}")
+                return (False, str(e))
+
+        # Start conversion in thread
+        self.is_converting = True
+        self.cancel_conversion = False
+        self["key_green"].setText(_("Converting..."))
+        self["key_blue"].setText(_("Cancel"))
+
+        def conversion_task():
+            try:
+                return _m3u_to_json_conversion()
+            except Exception as e:
+                return (False, str(e))
+
+        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+
     def _parse_m3u_content(self, data):
-        """Advanced parser for M3U content"""
+        """Advanced parser for M3U content with support for VLCOPT, KODIPROP, EXTHTTP"""
 
         def is_textual_data(text):
-            """Check if data is likely textual (not binary)"""
             if not text:
                 return False
-                
-            # Check for common binary data patterns (removed binary_indicators unused)
             text = str(text)
-            # If text is too long, it's likely binary
             if len(text) > 200:
                 return False
-                
-            # Check for high percentage of non-printable characters
             printable_count = sum(1 for c in text if c.isprintable() or c.isspace())
-            if printable_count / len(text) < 0.7:  # Less than 70% printable
-                return False
-                
-            return True
+            return printable_count / len(text) >= 0.7
 
         def get_attributes(txt, first_key_as_length=False):
             attribs = {}
             current_key = ''
             current_value = ''
-            parse_state = 0  # 0=key, 1=value
+            parse_state = 0
             txt = txt.strip()
 
             for char in txt:
@@ -2475,7 +2473,6 @@ class UniversalConverter(Screen):
                         parse_state = 0
                     else:
                         current_value += char
-
             return attribs
 
         entries = []
@@ -2492,9 +2489,8 @@ class UniversalConverter(Screen):
                 parts = line[8:].split(',', 1)
                 if len(parts) > 1:
                     title = parts[1].strip()
-                    # Filter non-text data
                     if not is_textual_data(title):
-                        logger.warning("Skipping non-textual channel name: %s", title[:50] + "..." if len(title) > 50 else title)
+                        logger.warning("Skipping non-textual channel name: %s", title[:50])
                         current_params = {}
                         continue
                     current_params['title'] = title
@@ -2505,8 +2501,6 @@ class UniversalConverter(Screen):
                 group_value = line[8:].strip()
                 if is_textual_data(group_value):
                     current_params['group-title'] = group_value
-                else:
-                    logger.warning("Skipping non-textual group title")
 
             elif line.startswith('#EXTVLCOPT:'):
                 opts = line[11:].split('=', 1)
@@ -2515,24 +2509,235 @@ class UniversalConverter(Screen):
                     value = opts[1].strip()
                     if is_textual_data(value):
                         if key == 'http-user-agent':
-                            current_params['user_agent'] = value
+                            current_params['user-agent'] = value
                         elif key == 'program':
                             current_params['program-id'] = value
+                        elif key == 'http-referrer':
+                            current_params['http-referrer'] = value
+
+            elif line.startswith('#KODIPROP:'):
+                opts = line[10:].split('=', 1)
+                if len(opts) == 2:
+                    key = opts[0].lower().strip()
+                    value = opts[1].strip()
+                    if is_textual_data(value):
+                        current_params[key] = value
+
+            elif line.startswith('#EXTHTTP:'):
+                try:
+                    http_data = json.loads(line[9:].strip())
+                    if isinstance(http_data, dict):
+                        for k, v in http_data.items():
+                            if is_textual_data(v):
+                                current_params[k.lower()] = v
+                except Exception:
+                    logger.warning("Invalid EXTHTTP line: %s", line)
 
             elif line.startswith('#'):
                 continue
 
             else:
-                if current_params.get('title'):
-                    # Filtra URL non validi
-                    if line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://', 'udp://', 'rtp://')):
-                        current_params['uri'] = line.strip()
-                        entries.append(current_params)
-                    else:
-                        logger.warning("Skipping non-HTTP URL: %s", line[:50] + "..." if len(line) > 50 else line)
-                    current_params = {}
+                if current_params.get('title') and line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://', 'udp://', 'rtp://')):
+                    current_params['uri'] = line.strip()
+                    entries.append(current_params)
+                current_params = {}
 
         return entries
+
+    # def convert_m3u_to_json(self):
+        # """Convert M3U playlist to JSON format"""
+        # def _m3u_to_json_conversion():
+            # try:
+                # # Parse the M3U file if not already parsed
+                # if not self.m3u_list:
+                    # with open(self.selected_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        # content = f.read()
+                    # self.m3u_list = self._parse_m3u_content(content)
+
+                # if not self.m3u_list:
+                    # raise ValueError("No valid channels found in M3U file")
+
+                # # Create JSON structure
+                # json_data = {"playlist": []}
+
+                # for idx, channel in enumerate(self.m3u_list):
+                    # # Update progress
+                    # progress = (idx + 1) / len(self.m3u_list) * 100
+                    # self.update_progress(
+                        # idx + 1,
+                        # _("Converting to JSON: %s (%d%%)") % (channel.get('name', 'Unknown'), progress)
+                    # )
+
+                    # # Create channel data
+                    # channel_data = {}
+
+                    # # Add all available attributes
+                    # if channel.get('title'):
+                        # channel_data["title"] = channel['title']
+                    # if channel.get('uri'):
+                        # channel_data["url"] = channel['uri']
+                    # if channel.get('group-title'):
+                        # channel_data["group-title"] = channel['group-title']
+                    # if channel.get('tvg-id'):
+                        # channel_data["tvg-id"] = channel['tvg-id']
+                    # if channel.get('tvg-name'):
+                        # channel_data["tvg-name"] = channel['tvg-name']
+                    # if channel.get('tvg-logo'):
+                        # channel_data["tvg-logo"] = channel['tvg-logo']
+                    # if channel.get('length'):
+                        # channel_data["duration"] = channel['length']
+                    # if channel.get('user_agent'):
+                        # channel_data["user-agent"] = channel['user_agent']
+                    # if channel.get('program-id'):
+                        # channel_data["program-id"] = channel['program-id']
+
+                    # json_data["playlist"].append(channel_data)
+
+                # # Generate output filename
+                # base_name = basename(self.selected_file).split('.')[0]
+                # output_dir = dirname(self.selected_file)
+                # output_file = join(output_dir, f"{base_name}.json")
+
+                # # Write JSON file
+                # with open(output_file, 'w', encoding='utf-8') as f:
+                    # json.dump(json_data, f, indent=4, ensure_ascii=False)
+
+                # return (True, output_file, len(json_data["playlist"]))
+
+            # except Exception as e:
+                # logger.error(f"Error converting M3U to JSON: {str(e)}")
+                # return (False, str(e))
+
+        # # Start conversion in thread
+        # self.is_converting = True
+        # self.cancel_conversion = False
+        # self["key_green"].setText(_("Converting..."))
+        # self["key_blue"].setText(_("Cancel"))
+
+        # def conversion_task():
+            # try:
+                # return _m3u_to_json_conversion()
+            # except Exception as e:
+                # return (False, str(e))
+
+        # threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+
+    # def _parse_m3u_content(self, data):
+        # """Advanced parser for M3U content"""
+
+        # def is_textual_data(text):
+            # """Check if data is likely textual (not binary)"""
+            # if not text:
+                # return False
+
+            # # Check for common binary data patterns (removed binary_indicators unused)
+            # text = str(text)
+            # # If text is too long, it's likely binary
+            # if len(text) > 200:
+                # return False
+
+            # # Check for high percentage of non-printable characters
+            # printable_count = sum(1 for c in text if c.isprintable() or c.isspace())
+            # if printable_count / len(text) < 0.7:  # Less than 70% printable
+                # return False
+
+            # return True
+
+        # def get_attributes(txt, first_key_as_length=False):
+            # attribs = {}
+            # current_key = ''
+            # current_value = ''
+            # parse_state = 0  # 0=key, 1=value
+            # txt = txt.strip()
+
+            # for char in txt:
+                # if parse_state == 0:
+                    # if char == '=':
+                        # parse_state = 1
+                        # if first_key_as_length and not attribs:
+                            # attribs['length'] = current_key.strip()
+                            # current_key = ''
+                        # else:
+                            # current_key = current_key.strip()
+                    # else:
+                        # current_key += char
+                # elif parse_state == 1:
+                    # if char == '"':
+                        # if current_value:
+                            # attribs[current_key] = current_value
+                            # current_key = ''
+                            # current_value = ''
+                            # parse_state = 0
+                        # else:
+                            # parse_state = 2
+                    # else:
+                        # current_value += char
+                # elif parse_state == 2:
+                    # if char == '"':
+                        # attribs[current_key] = current_value
+                        # current_key = ''
+                        # current_value = ''
+                        # parse_state = 0
+                    # else:
+                        # current_value += char
+
+            # return attribs
+
+        # entries = []
+        # current_params = {}
+        # data = data.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+        # for line in data:
+            # line = line.strip()
+            # if not line:
+                # continue
+
+            # if line.startswith('#EXTINF:'):
+                # current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
+                # parts = line[8:].split(',', 1)
+                # if len(parts) > 1:
+                    # title = parts[1].strip()
+                    # # Filter non-text data
+                    # if not is_textual_data(title):
+                        # logger.warning("Skipping non-textual channel name: %s", title[:50] + "..." if len(title) > 50 else title)
+                        # current_params = {}
+                        # continue
+                    # current_params['title'] = title
+                # attribs = get_attributes(parts[0], first_key_as_length=True)
+                # current_params.update(attribs)
+
+            # elif line.startswith('#EXTGRP:'):
+                # group_value = line[8:].strip()
+                # if is_textual_data(group_value):
+                    # current_params['group-title'] = group_value
+                # else:
+                    # logger.warning("Skipping non-textual group title")
+
+            # elif line.startswith('#EXTVLCOPT:'):
+                # opts = line[11:].split('=', 1)
+                # if len(opts) == 2:
+                    # key = opts[0].lower().strip()
+                    # value = opts[1].strip()
+                    # if is_textual_data(value):
+                        # if key == 'http-user-agent':
+                            # current_params['user_agent'] = value
+                        # elif key == 'program':
+                            # current_params['program-id'] = value
+
+            # elif line.startswith('#'):
+                # continue
+
+            # else:
+                # if current_params.get('title'):
+                    # # Filtra URL non validi
+                    # if line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://', 'udp://', 'rtp://')):
+                        # current_params['uri'] = line.strip()
+                        # entries.append(current_params)
+                    # else:
+                        # logger.warning("Skipping non-HTTP URL: %s", line[:50] + "..." if len(line) > 50 else line)
+                    # current_params = {}
+
+        # return entries
 
     def filter_binary_data(self, channels):
         """Filter out channels with binary data in names or URLs"""
@@ -2565,19 +2770,19 @@ class UniversalConverter(Screen):
         """Check if text is valid (not binary data)"""
         if not text or not isinstance(text, str):
             return False
-            
+
         # Check for common binary patterns (rimosso binary_patterns non utilizzato)
         text_str = str(text)
-        
+
         # Length check
         if len(text_str) > 200:
             return False
-            
+
         # Printable characters check
         printable_count = sum(1 for c in text_str if c.isprintable() or c.isspace())
         if printable_count / len(text_str) < 0.7:  # Less than 70% printable
             return False
-            
+
         return True
 
     # TV to M3U Conversion Methods
@@ -3040,48 +3245,35 @@ class UniversalConverter(Screen):
     def _show_conversion_result(self, result):
         """Show the conversion result (called in the main thread)"""
         try:
-            if isinstance(result, tuple) and len(result) == 2:
-                success, data = result
+            if isinstance(result, tuple) and len(result) >= 2:
+                success, data = result[0], result[1:]
                 if success:
-                    if isinstance(data, tuple) and len(data) == 3:
-                        total_channels, epg_channels, _ = data
+                    if self.conversion_type == "m3u_to_json" and len(data) >= 2:
+                        output_file, channel_count = data[0], data[1]
+                        msg = _("Successfully converted %d channels to JSON\nSaved to: %s") % (channel_count, output_file)
+                    elif len(data) >= 3:
+                        total_channels, epg_channels, sx = data
                         msg = _("Successfully converted %d items") % total_channels
                         if epg_channels > 0:
                             msg += _("\nEPG mapped for %d channels") % epg_channels
                             msg += _("\nEPG files generated in /etc/epgimport/")
-
-                        self.session.open(
-                            MessageBox,
-                            msg,
-                            MessageBox.TYPE_INFO,
-                            timeout=10
-                        )
                     else:
-                        self.session.open(
-                            MessageBox,
-                            _("Successfully converted items"),
-                            MessageBox.TYPE_INFO,
-                            timeout=5
-                        )
+                        msg = _("Successfully converted items")
+
+                    self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=10)
                 else:
-                    self.session.open(
-                        MessageBox,
-                        _("Conversion failed: %s") % data,
-                        MessageBox.TYPE_ERROR,
-                        timeout=10
-                    )
+                    self.session.open(MessageBox, _("Conversion failed: %s") % data, MessageBox.TYPE_ERROR, timeout=10)
             else:
-                self.session.open(
-                    MessageBox,
-                    _("Conversion completed with unknown result"),
-                    MessageBox.TYPE_INFO,
-                    timeout=5
-                )
+                self.session.open(MessageBox, _("Conversion completed with unknown result"), MessageBox.TYPE_INFO, timeout=5)
         except Exception as e:
             logger.error(f"Error showing conversion result: {str(e)}")
 
         self["status"].setText(_("Conversion completed"))
         self["progress_text"].setText("")
+        self.is_converting = False
+        self.cancel_conversion = False
+        self["key_green"].setText(_("Convert"))
+        self["key_blue"].setText(_("Tools"))
 
     def show_plugin_info(self):
         """Show plugin information and credits"""
@@ -3168,7 +3360,7 @@ def get_pattern_for_type(conversion_type):
         "tv_to_m3u": r"(?i)^.*\.tv$",
         "json_to_tv": r"(?i)^.*\.json$",
         "xspf_to_m3u": r"(?i)^.*\.xspf$",
-        "m3u_to_json": r"(?i)^.*\.(m3u|m3u8)$",
+        "m3u_to_json": r"(?i)^.*\.(m3u|m3u8)$",  # New pattern
     }
     return patterns.get(conversion_type, r".*")
 
