@@ -21,13 +21,14 @@ from __future__ import absolute_import, print_function
 """
 __author__ = "Lululla"
 
+# ==================== IMPORTS ====================
 # Standard library
 import codecs
 import json
 import shutil
 import unicodedata
-# from gettext import gettext as _
-from os import access, W_OK, listdir, remove, replace, chmod, fsync, system, mkdir
+from collections import defaultdict
+from os import access, W_OK, listdir, remove, replace, chmod, fsync, system, mkdir, makedirs
 from os.path import exists, isdir, isfile, join, normpath, basename, dirname
 from re import sub, findall, DOTALL, MULTILINE, IGNORECASE, search
 from threading import Lock
@@ -36,10 +37,9 @@ from urllib.parse import unquote
 
 # Third-party libraries
 from twisted.internet import threads
-from collections import defaultdict
 
 # Enigma2 core
-from enigma import eDVBDB, eServiceReference, getDesktop, eTimer
+from enigma import eServiceReference, getDesktop, eTimer, eAVControl as AVSwitch
 
 # Enigma2 components
 from Components.ActionMap import ActionMap
@@ -53,36 +53,11 @@ from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.Setup import Setup
 from Tools.Directories import defaultRecordingLocation, fileExists
-from enigma import eAVControl as AVSwitch
 
 from . import _
 from .Logger_clr import ColoredLogger
 
-
-class AspectManager:
-
-    def __init__(self):
-        self.init_aspect = self.get_current_aspect()
-        print("[INFO] Initial aspect ratio:", self.init_aspect)
-
-    def get_current_aspect(self):
-        """Returns the current aspect ratio of the device."""
-        try:
-            return int(AVSwitch().getAspectRatioSetting())
-        except Exception as e:
-            print("[ERROR] Failed to get aspect ratio:", str(e))
-            return 0
-
-    def restore_aspect(self):
-        """Restores the original aspect ratio when the plugin exits."""
-        try:
-            print("[INFO] Restoring aspect ratio to:", self.init_aspect)
-            AVSwitch().setAspectRatio(self.init_aspect)
-        except Exception as e:
-            print("[ERROR] Failed to restore aspect ratio:", str(e))
-
-
-# for my friend Archimede
+# ==================== CONSTANTS AND GLOBALS ====================
 currversion = '2.0'
 last_date = "20250903"
 title_plug = _("Archimede Universal Converter v.%s by Lululla") % currversion
@@ -90,18 +65,13 @@ ICON_STORAGE = 0
 ICON_PARENT = 1
 ICON_CURRENT = 2
 
-
-aspect_manager = AspectManager()
-screenwidth = getDesktop(0).size()
-screen_width = screenwidth.width()
-
 archimede_converter_path = "archimede_converter"
 log_dir = join("/tmp", archimede_converter_path)
 main_log = join(log_dir, "unified_converter.log")
 
+
 # Create directory if it does not exist
 try:
-    from os import makedirs
     makedirs(log_dir, exist_ok=True)
 except Exception:
     pass
@@ -114,7 +84,7 @@ logger = ColoredLogger(
 )
 
 
-# Ensure movie path
+# ==================== UTILITY FUNCTIONS ====================
 def defaultMoviePath():
     result = config.usage.default_path.value
     if not result.endswith("/"):
@@ -159,33 +129,6 @@ def update_mounts():
     config.plugins.m3uconverter.lastdir.save()
 
 
-# Init Config
-config.plugins.m3uconverter = ConfigSubsection()
-default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else defaultMoviePath()
-config.plugins.m3uconverter.lastdir = ConfigSelection(default=default_dir, choices=[])
-
-config.plugins.m3uconverter.epg_enabled = ConfigYesNo(default=True)
-config.plugins.m3uconverter.epg_source = ConfigSelection(
-    default="rytec",
-    choices=[("rytec", "Rytec"), ("internal", "Internal Mapping")]
-)
-config.plugins.m3uconverter.bouquet_mode = ConfigSelection(
-    default="multi",
-    choices=[("single", _("Single Bouquet")), ("multi", _("Multiple Bouquets"))]
-)
-config.plugins.m3uconverter.bouquet_position = ConfigSelection(
-    default="bottom",
-    choices=[("top", _("Top")), ("bottom", _("Bottom"))]
-)
-config.plugins.m3uconverter.hls_convert = ConfigYesNo(default=True)
-config.plugins.m3uconverter.filter_dead_channels = ConfigYesNo(default=False)
-config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
-config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
-config.plugins.m3uconverter.max_backups = ConfigNumber(default=3)
-
-update_mounts()
-
-
 def create_backup():
     """Create a backup of bouquets.tv only"""
     from shutil import copy2
@@ -193,12 +136,6 @@ def create_backup():
     dst = "/etc/enigma2/bouquets.tv.bak"
     if exists(src):
         copy2(src, dst)
-
-
-def reload_services_orig():
-    """Reload the list of services"""
-    eDVBDB.getInstance().reloadServicelist()
-    eDVBDB.getInstance().reloadBouquets()
 
 
 def reload_services():
@@ -214,7 +151,7 @@ def reload_services():
             if db:
                 db.reloadBouquets()
                 logger.info("Bouquets reloaded using eDVBDB")
-                time.sleep(2)  # Wait for reload to complete
+                time.sleep(2)
                 return True
         except Exception as e:
             logger.warning("eDVBDB reload failed: %s", str(e))
@@ -276,6 +213,63 @@ def transliterate(text):
 
 def clean_group_name(name):
     return name.encode("ascii", "ignore").decode().replace(" ", "_").replace("/", "_").replace(":", "_")[:50]
+
+
+# ==================== CONFIG INITIALIZATION ====================
+config.plugins.m3uconverter = ConfigSubsection()
+default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else defaultMoviePath()
+config.plugins.m3uconverter.lastdir = ConfigSelection(default=default_dir, choices=[])
+
+config.plugins.m3uconverter.epg_enabled = ConfigYesNo(default=True)
+config.plugins.m3uconverter.epg_source = ConfigSelection(
+    default="rytec",
+    choices=[("rytec", "Rytec"), ("internal", "Internal Mapping")]
+)
+config.plugins.m3uconverter.bouquet_mode = ConfigSelection(
+    default="multi",
+    choices=[("single", _("Single Bouquet")), ("multi", _("Multiple Bouquets"))]
+)
+config.plugins.m3uconverter.bouquet_position = ConfigSelection(
+    default="bottom",
+    choices=[("top", _("Top")), ("bottom", _("Bottom"))]
+)
+config.plugins.m3uconverter.hls_convert = ConfigYesNo(default=True)
+config.plugins.m3uconverter.filter_dead_channels = ConfigYesNo(default=False)
+config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
+config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
+config.plugins.m3uconverter.max_backups = ConfigNumber(default=3)
+
+update_mounts()
+
+
+# ==================== CORE CLASSES ====================
+class AspectManager:
+    def __init__(self):
+        self.init_aspect = self.get_current_aspect()
+        print("[INFO] Initial aspect ratio:", self.init_aspect)
+
+    def get_current_aspect(self):
+        """Returns the current aspect ratio of the device."""
+        try:
+            return int(AVSwitch().getAspectRatioSetting())
+        except Exception as e:
+            print("[ERROR] Failed to get aspect ratio:", str(e))
+            return 0
+
+    def restore_aspect(self):
+        """Restores the original aspect ratio when the plugin exits."""
+        try:
+            print("[INFO] Restoring aspect ratio to:", self.init_aspect)
+            AVSwitch().setAspectRatio(self.init_aspect)
+        except Exception as e:
+            print("[ERROR] Failed to restore aspect ratio:", str(e))
+
+
+# ==================== GLOBAL INSTANCES ====================
+
+aspect_manager = AspectManager()
+screenwidth = getDesktop(0).size()
+screen_width = screenwidth.width()
 
 
 class EPGServiceMapper:
@@ -1022,7 +1016,6 @@ class CoreConverter:
         if not self.__initialized:
             self.backup_dir = join(archimede_converter_path, "archimede_backup")
             self.log_file = join(archimede_converter_path, "archimede_converter.log")
-
             self.__create_dirs()
             self.__initialized = True
 
@@ -1119,7 +1112,7 @@ class CoreConverter:
             self._log_error(f"Cleanup failed: {str(e)}")
 
 
-core_converter = CoreConverter()
+# ==================== SCREEN CLASSES ====================
 
 
 class M3UFileBrowser(Screen):
@@ -1150,31 +1143,26 @@ class M3UFileBrowser(Screen):
         filtered = []
         for entry in self["filelist"].list:
             if not entry or not isinstance(entry[0], tuple):
-                continue  # Skip invalid entries
+                continue
 
             file_data = entry[0]
             path = None
             is_dir = False
 
-            # Handle different tuple formats
             if len(file_data) >= 2:
-                # Standard format: (path, is_dir, ...)
                 path = file_data[0]
                 is_dir = file_data[1]
 
             elif len(file_data) == 1 and isinstance(file_data[0], str):
-                # Special case for parent directory: ('..',)
                 path = file_data[0]
                 is_dir = True
             else:
                 logger.log("DEBUG", f"Skipping invalid entry: {file_data}")
                 continue
 
-            # Handle special cases like parent directory
             if path == ".." or is_dir:
                 filtered.append(entry)
             else:
-                # Only include .tv files with HTTP content
                 if path and path.lower().endswith(".tv") and self._contains_http(path):
                     filtered.append(entry)
 
@@ -1184,7 +1172,6 @@ class M3UFileBrowser(Screen):
     def _contains_http(self, filename):
         """Check if file contains 'http' (case-insensitive) with full path"""
         try:
-            # Get the current directory to form the full path
             current_dir = self["filelist"].getCurrentDirectory()
             full_path = join(current_dir, filename)
 
@@ -1224,7 +1211,6 @@ class M3UFileBrowser(Screen):
 
     def close(self, result=None):
         try:
-            # self.session.nav.stopService()
             super(M3UFileBrowser, self).close(result)
         except Exception as e:
             logger.error(f"Error closing browser: {str(e)}")
@@ -1257,7 +1243,6 @@ class ConversionSelector(Screen):
         </screen>"""
 
     def __init__(self, session):
-        print("[M3UConverter] ConversionSelector initialized")
         Screen.__init__(self, session)
         self.session = session
         self.skinName = "ConversionSelector"
@@ -1278,12 +1263,10 @@ class ConversionSelector(Screen):
         self["text"] = Label('')
         self["status"] = Label(_("We're ready: what do you want to do?"))
         self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
-            # "red": lambda: self.close(None),
             "red": self.close,
             "green": self.select_item,
             "ok": self.select_item,
             "yellow": self.purge_m3u_bouquets,
-            # "cancel": lambda: self.close(None)
             "cancel": self.close
         })
         self["key_red"] = StaticText(_("Close"))
@@ -1295,7 +1278,6 @@ class ConversionSelector(Screen):
         create_backup()
         removed_files = []
 
-        # Remove matching bouquet files
         for f in listdir(directory):
             file_path = join(directory, f)
             if isfile(file_path) and f.endswith(pattern):
@@ -1305,7 +1287,6 @@ class ConversionSelector(Screen):
                 except Exception as e:
                     logger.log("ERROR", f"Failed to remove: {str(f)} Error {str(e)}")
 
-        # Remove matching lines from bouquets.tv
         bouquets_file = join(directory, "bouquets.tv")
         if exists(bouquets_file):
             with open(bouquets_file, "r", encoding="utf-8") as f:
@@ -1335,7 +1316,6 @@ class ConversionSelector(Screen):
                 self.open_file_browser(conversion_type)
 
     def open_file_browser(self, conversion_type):
-        print(f"[DEBUG] Opening browser for {conversion_type}")
         patterns = {
             "m3u_to_tv": r"(?i)^.*\.(m3u|m3u8)$",
             "tv_to_m3u": r"(?i)^.*\.tv$",
@@ -1358,17 +1338,6 @@ class ConversionSelector(Screen):
             conversion_type=conversion_type
         )
 
-    def _get_browser_title(self, conversion_type):
-        titles = {
-            "m3u_to_tv": _("Select M3U file to convert"),
-            "tv_to_m3u": _("Select Bouquet file to convert"),
-            "json_to_tv": _("Select JSON file to convert"),
-            "json_to_m3u": _("Select JSON file to convert"),
-            "xspf_to_m3u": _("Select XSPF playlist to convert"),
-            "m3u_to_json": _("Select M3U file to convert")
-        }
-        return titles.get(conversion_type, _("Select file"))
-
     def fileSelected(self, res, conversion_type):
         logger.debug(f"File selected callback. Result: {res}")
         try:
@@ -1388,7 +1357,6 @@ class ConversionSelector(Screen):
                 "m3u_to_json": _("M3U to JSON Conversion")
             }
 
-            # Open the converter directly and start the conversion
             converter = UniversalConverter(
                 session=self.session,
                 conversion_type=conversion_type,
@@ -1415,47 +1383,6 @@ class ConversionSelector(Screen):
             UniversalConverter,
             conversion_type=selection[1],
             auto_open_browser=False
-        )
-
-    def show_pre_conversion_dialog(self):
-        from Screens.ChoiceBox import ChoiceBox
-
-        options = [
-            (_("Proceed to file selection"), "open_browser"),
-            (_("Show conversion info"), "show_info"),
-            (_("Cancel"), "cancel")
-        ]
-
-        self.session.openWithCallback(
-            self.handle_pre_conversion_choice,
-            ChoiceBox,
-            title=_("How do you want to proceed?"),
-            list=options
-        )
-
-    def handle_pre_conversion_choice(self, choice):
-        if choice and choice[1] == "open_browser":
-            self.open_file_browser(self.selected_conversion)
-        elif choice and choice[1] == "show_info":
-            self.show_conversion_info()
-            self.show_pre_conversion_dialog()
-
-    def show_conversion_info(self):
-        """Show specific information for the conversion type"""
-        info = {
-            "m3u_to_tv": _("M3U to Enigma2 Bouquet Conversion"),
-            "tv_to_m3u": _("Enigma2 Bouquet to M3U Conversion"),
-            "json_to_tv": _("JSON to Enigma2 Bouquet Conversion"),
-            "json_to_m3u": _("JSON to M3U Conversion"),
-            "xspf_to_m3u": _("XSPF to M3U Playlist Conversion"),
-            "m3u_to_json": _("M3U to JSON Conversion")
-        }.get(self.selected_conversion, _("Conversion information"))
-
-        self.session.open(
-            MessageBox,
-            info,
-            MessageBox.TYPE_INFO,
-            timeout=5
         )
 
 
@@ -1567,7 +1494,6 @@ class UniversalConverter(Screen):
         }, -1)
 
         self["status"] = Label(_("Ready: Select the file from the %s you configured in settings.") % self.full_path)
-
         self.file_loaded = False if selected_file is None else True
 
         if self.conversion_type == "tv_to_m3u":
@@ -2065,7 +1991,6 @@ class UniversalConverter(Screen):
             filename = join("/etc/enigma2", "userbouquet." + safe_name + ".tv")
             temp_file = filename + ".tmp"
 
-            # Transliterate group name and provide fallback
             name_bouquet = transliterate(group).capitalize()
             if not name_bouquet.strip():
                 match = search(r"([^/\\]+)\.m3u$", self.selected_file, flags=DOTALL)
@@ -2079,7 +2004,7 @@ class UniversalConverter(Screen):
             markerb = "#DESCRIPTION --- | Archimede Converter | ---"
 
             with open(temp_file, "w", encoding="utf-8") as f:  # Cambiato a UTF-8
-                f.write("#NAME " + name_bouquet + "\n")
+                f.write("#NAME " + name_bouquet + "\n")  # Usa name_bouquet invece di safe_name
                 f.write(markera + "\n")
                 f.write(markerb + "\n")
                 for idx, ch in enumerate(channels, 1):
@@ -3290,6 +3215,10 @@ class UniversalConverter(Screen):
             timeout=5
         )
         self["status"].setText(message)
+        # self.parent = parent
+
+    # def keySave(self):
+        # Setup.keySave(self)
 
 
 class M3UConverterSettings(Setup):
@@ -3301,21 +3230,10 @@ class M3UConverterSettings(Setup):
         Setup.keySave(self)
 
 
+# ==================== PLUGIN ENTRY POINT ====================
 def main(session, **kwargs):
     core_converter.cleanup_old_backups(config.plugins.m3uconverter.max_backups.value)
     session.open(ConversionSelector)
-
-
-def get_pattern_for_type(conversion_type):
-    patterns = {
-        "m3u_to_tv": r"(?i)^.*\.(m3u|m3u8)$",
-        "tv_to_m3u": r"(?i)^.*\.tv$",
-        "json_to_tv": r"(?i)^.*\.json$",
-        "json_to_m3u": r"(?i)^.*\.json$",  # New pattern
-        "xspf_to_m3u": r"(?i)^.*\.xspf$",
-        "m3u_to_json": r"(?i)^.*\.(m3u|m3u8)$",
-    }
-    return patterns.get(conversion_type, r".*")
 
 
 def Plugins(**kwargs):
@@ -3327,3 +3245,6 @@ def Plugins(**kwargs):
         icon="plugin.png",
         fnc=main)
     ]
+
+
+core_converter = CoreConverter()
