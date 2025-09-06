@@ -55,7 +55,7 @@ from Screens.Setup import Setup
 from Tools.Directories import defaultRecordingLocation, fileExists
 
 from . import _
-from .Logger_clr import ColoredLogger
+from .Logger_clr import get_logger
 
 # ==================== CONSTANTS AND GLOBALS ====================
 currversion = '2.0'
@@ -77,10 +77,16 @@ except Exception:
     pass
 
 # Global instance with dual output
-logger = ColoredLogger(
-    log_file=join(log_dir, "m3u_converter.log"),
-    secondary_log=join(log_dir, "debug.log"),
-    clear_on_start=False
+# logger = ColoredLogger(
+    # log_file=join(log_dir, "m3u_converter.log"),
+    # secondary_log=join(log_dir, "debug.log"),
+    # clear_on_start=False
+# )
+logger = get_logger(
+    log_path="/tmp/m3u_converter.log",
+    plugin_name="M3U_CONVERTER",
+    clear_on_start=True,
+    max_size_mb=1
 )
 
 

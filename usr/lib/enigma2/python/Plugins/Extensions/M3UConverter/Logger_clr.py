@@ -4,12 +4,12 @@ from __future__ import absolute_import, print_function
 """
 #########################################################
 #                                                       #
-#  Archimede Universal Converter Plugin                 #
-#  Version: 1.1                                         #
+#  Universal Logger Module                              #
+#  Version: 1.0                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "21:50 - 20250527"                    #
+#  Last Modified: 2025-05-27                            #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -19,78 +19,149 @@ from __future__ import absolute_import, print_function
 #  please maintain this credit header.                  #
 #########################################################
 """
-__author__ = "Lululla"
 
-from os import remove
-from os.path import join
+from os import makedirs, remove
+from os.path import join, exists
 from threading import Lock
 from time import strftime
-# import logging
-# from logging.handlers import RotatingFileHandler
 
 
-# add lululla for debug
 class ColoredLogger:
     LEVELS = {
-        "DEBUG": ("\033[92m", "[DEBUG]"),       # green
-        "INFO": ("\033[97m", "[INFO] "),        # white
-        "WARNING": ("\033[93m", "[WARN] "),     # yellow
-        "ERROR": ("\033[91m", "[ERROR]"),       # red
+        "DEBUG": ("\033[92m", "[DEBUG]"),           # green
+        "INFO": ("\033[97m", "[INFO] "),            # white
+        "WARNING": ("\033[93m", "[WARN] "),         # yellow
+        "ERROR": ("\033[91m", "[ERROR]"),           # red
+        "CRITICAL": ("\033[95m", "[CRITICAL]"),     # magenta
     }
     END = "\033[0m"
-    _instance = None
+    _instances = {}
     _lock = Lock()
 
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
+    def __new__(cls, log_path=None, plugin_name="generic", clear_on_start=True, max_size_mb=1):
+        """Singleton for log_path + plugin_name combination"""
+        instance_key = f"{log_path}_{plugin_name}"
 
-    def __init__(self, log_file=None, clear_on_start=True, secondary_log=None):  # Aggiunto secondary_log
-        if not hasattr(self, '_initialized'):
-            self.log_file = log_file
-            self.secondary_log = secondary_log  # Aggiungi questa linea
-            if self.log_file and clear_on_start:
+        if instance_key not in cls._instances:
+            with cls._lock:
+                if instance_key not in cls._instances:
+                    instance = super().__new__(cls)
+                    cls._instances[instance_key] = instance
+                    instance._initialize(log_path, plugin_name, clear_on_start, max_size_mb)
+
+        return cls._instances[instance_key]
+
+    def _initialize(self, log_path, plugin_name, clear_on_start, max_size_mb):
+        """Initializing the instance"""
+        self.plugin_name = plugin_name
+        self.max_size_mb = max_size_mb
+
+        # Determine the path of the log file
+        if log_path:
+            # Create the directory if it does not exist
+            if not exists(log_path):
+                try:
+                    makedirs(log_path)
+                except Exception as e:
+                    print(f"Error creating log directory {log_path}: {e}")
+                    log_path = None
+
+        if log_path:
+            self.log_file = join(log_path, f"{plugin_name}.log")
+
+            if clear_on_start and exists(self.log_file):
                 try:
                     remove(self.log_file)
-                except Exception:
-                    pass
-            self._initialized = True
+                except Exception as e:
+                    print(f"Error removing old log file: {e}")
+        else:
+            self.log_file = None
+
+        self._initialized = True
 
     def log(self, level, message):
         """Base logging method"""
-        prefix, label = self.LEVELS.get(level.upper(), ("", "[LOG] "))
+        if not hasattr(self, '_initialized'):
+            return
+
+        color, label = self.LEVELS.get(level.upper(), ("", "[LOG] "))
         timestamp = strftime("%Y-%m-%d %H:%M:%S")
-        log_message = f"{timestamp} {label} {message}"
+        formatted_message = f"{timestamp} {self.plugin_name} {label} {message}"
 
-        print(f"{timestamp} {label} {prefix}{message}{self.END}")
+        # Output colored console
+        print(f"{timestamp} {self.plugin_name} {label} {color}{message}{self.END}")
 
+        # Scrittura su file
         if self.log_file:
-            self._write_to_file(self.log_file, log_message)
-        
-        if hasattr(self, 'secondary_log') and self.secondary_log:
-            self._write_to_file(self.secondary_log, log_message)
+            self._write_to_file(formatted_message)
+            self._check_rotation()
 
-    def show_message(self, text, timeout=5):
-        from Screens.MessageBox import MessageBox
-        self.session.openWithCallback(
-            self.log_message_closed,
-            MessageBox,
-            text=text,
-            type=MessageBox.TYPE_INFO,
-            timeout=timeout
-        )
-    
-    def log_message_closed(self, ret=None):
-        self.log("DEBUG", "MessageBox closed")
+    def _write_to_file(self, message):
+        """Secure file writing with timeout"""
+        try:
+            with open(self.log_file, "a") as f:
+                f.write(message + "\n")
+                f.flush()
+        except Exception as e:
+            print(f"[LOG ERROR] Cannot write to {self.log_file}: {e}")
 
-    # Standard logging methods
+    def _check_rotation(self):
+        """Check if you need to rotate the log"""
+        try:
+            if not exists(self.log_file):
+                return
+
+            file_size = self._get_file_size_mb()
+            if file_size > self.max_size_mb:
+                self._rotate_logs()
+        except Exception as e:
+            print(f"[LOG ERROR] Rotation check failed: {e}")
+
+    def _get_file_size_mb(self):
+        """Returns the file size in MB"""
+        try:
+            from os.path import getsize
+            return getsize(self.log_file) / (1024 * 1024)
+        except:
+            return 0
+
+    def _rotate_logs(self):
+        """Perform log rotation"""
+        try:
+            import glob
+            import os
+
+            base_name = self.log_file
+            pattern = f"{base_name}.*"
+
+            # Find all existing backup files
+            backups = sorted(glob.glob(pattern), reverse=True)
+
+            # Delete the oldest backups (keep only the last 5)
+            for old_backup in backups[4:]:
+                try:
+                    os.remove(old_backup)
+                except:
+                    pass
+
+            # Rename existing files
+            for i in range(min(len(backups), 4), 0, -1):
+                old_name = f"{base_name}.{i}" if i > 1 else base_name
+                new_name = f"{base_name}.{i + 1}"
+
+                if exists(old_name):
+                    try:
+                        os.rename(old_name, new_name)
+                    except:
+                        pass
+
+        except Exception as e:
+            print(f"[LOG ERROR] Log rotation failed: {e}")
+
     def debug(self, message, *args):
         self.log("DEBUG", message % args if args else message)
 
-    def info(self, message, *args):  # <-- METODO AGGIUNTO
+    def info(self, message, *args):
         self.log("INFO", message % args if args else message)
 
     def warning(self, message, *args):
@@ -100,143 +171,161 @@ class ColoredLogger:
         self.log("ERROR", message % args if args else message)
 
     def critical(self, message, *args):
-        self.log("ERROR", "CRITICAL: " + (message % args if args else message))
+        self.log("CRITICAL", message % args if args else message)
 
     def exception(self, message, *args):
-        exc_info = self._get_exception_info()
-        self.log("ERROR", f"EXCEPTION: {message % args if args else message}\n{exc_info}")
-
-    def _get_exception_info(self):
-        """Get formatted exception info"""
+        """Log an exception with traceback"""
         import sys
         import traceback
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        return ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        exc_info = sys.exc_info()
+        traceback_text = ''.join(traceback.format_exception(*exc_info))
+        full_message = f"{message % args if args else message}\n{traceback_text}"
+        self.log("ERROR", full_message)
 
-    def _write_to_file(self, filepath, message):
-        """Helper method per scrivere su file (versione ottimizzata)"""
+    def show_message(self, session, text, timeout=5):
+        """Display a message on the screen (requires session)"""
         try:
-            from functools import partial
-            from threading import Timer
-            import os
-            
-            timeout = 2
-            
-            def write_operation(f, msg):
-                try:
-                    f.write(msg + "\n")
-                    f.flush()
-                    os.fsync(f.fileno())
-                except Exception as e:
-                    raise IOError(f"Write failed: {str(e)}")
-            
-            try:
-                with open(filepath, "a") as f:
-                    timer = Timer(timeout, partial(os._exit, 1))
-                    timer.start()
-                    try:
-                        write_operation(f, message)
-                    finally:
-                        timer.cancel()
-            except Exception as e:
-                print(f"[LOG CRITICAL] File write timeout to {filepath} Error {str(e)}")
-
+            from Screens.MessageBox import MessageBox
+            session.openWithCallback(
+                self._message_closed,
+                MessageBox,
+                text=text,
+                type=MessageBox.TYPE_INFO,
+                timeout=timeout
+            )
         except Exception as e:
-            print(f"[LOG ERROR] File access error: {str(e)}")
+            self.error("Cannot show message: %s", e)
 
-    def rotate_logs(self):
-        """Perform log rotation"""
-        try:
-            import os
-            from glob import glob
-            
-            for log_path in [self.log_file, self.secondary_log]:
-                if not log_path:
-                    continue
-                    
-                if os.path.exists(log_path) and os.path.getsize(log_path) > 1 * 1024 * 1024:
-                    base, ext = os.path.splitext(log_path)
-                    backups = sorted(glob(f"{base}.*{ext}"), reverse=True)
-                    
-                    for old in backups[2:]:
-                        os.remove(old)
-                    
-                    for i in range(min(len(backups), 2), 0, -1):
-                        os.rename(
-                            f"{base}.{i - 1}{ext}" if i > 1 else log_path,
-                            f"{base}.{i}{ext}"
-                        )
-        except Exception as e:
-            self.log("ERROR", f"Log rotation failed: {str(e)}")
+    def _message_closed(self, ret=None):
+        """Callback for closed message"""
+        self.debug("MessageBox closed")
 
 
-# Global singleton Instance
-logger = ColoredLogger(log_file=join("/tmp", "archimede_converter", "m3u_converter.log"))
+def get_logger(log_path=None, plugin_name="generic", clear_on_start=True, max_size_mb=1):
+    """
+    Factory function to get a logger instance
+    Args:
+        log_path (str): Path to save the log file
+        plugin_name (str): Plugin name (used for file name)
+        clear_on_start (bool): Whether to clear the log on startup
+        max_size_mb (int): Maximum size in MB before rotation
+    Returns:
+        ColoredLogger: Logger instance
+    """
+    return ColoredLogger(
+        log_path=log_path,
+        plugin_name=plugin_name,
+        clear_on_start=clear_on_start,
+        max_size_mb=max_size_mb
+    )
 
-# Test
+
+"""
+````markdown
+# 🎉 My Universal Logger Plugin
+
+A simple and flexible Python logging utility designed for plugins.
+Keep your plugin logs organized, easy to read, and automatically handled!
+
+---
+
+## 🚀 Features
+
+- Custom logger for each plugin
+- Automatic log file creation and rotation
+- Clear logs on startup (optional)
+- Debug, info, warning, error messages
+- Full exception tracking
+- Display messages directly to users
+
+---
+
+## 🛠 Installation
+
+Simply copy the logger module (`your_logger_module.py`) into your plugin folder.
+No extra dependencies needed — just pure Python magic! ✨
+
+---
+
+## 📝 Quick Start
+
+```python
 if __name__ == "__main__":
-    print("\n" + "=" * 50)
-    print("FULL COLOREDLOGGER TEST".center(50))
-    print("=" * 50 + "\n")
-    
-    # Basic configuration test
-    print("[CONFIG] Logger initialized with:")
-    print(" - Main file: %s" % logger.log_file)
-    print(" - Secondary file: %s" % getattr(logger, "secondary_log", "None"))
-    print("-" * 50 + "\n")
-    
-    # Log level test
-    print("[TEST] Log level verification:")
-    logger.debug("Debug message (lowest level)")
-    logger.info("Informational message")
-    logger.warning("Warning message")
-    logger.error("Error message")
-    logger.critical("CRITICAL message")
-    
-    # Exception test
-    print("\n[TEST] Exception logging verification:")
+    # Example of module usage
+    logger = get_logger(
+        log_path="/tmp/my_plugin_logs",
+        plugin_name="my_awesome_plugin",
+        clear_on_start=True,
+        max_size_mb=2
+    )
+
+    logger.debug("This is a debug message")
+    logger.info("This is an informational message")
+    logger.warning("Warning!")
+    logger.error("Error!")
+
     try:
-        1 / 0
+        raise ValueError("Sample error")
     except Exception as e:
-        logger.exception("Caught exception: Division by zero - %s" % str(e))
-    
-    # File writing test
-    print("\n[TEST] Log file writing verification:")
-    import os
-    if logger.log_file and os.path.exists(logger.log_file):
-        print("Main log content (last 5 lines):")
-        with open(logger.log_file, "r") as f:
-            lines = f.readlines()[-5:]
-            print("".join(lines).strip())
-    
-    if hasattr(logger, "secondary_log") and logger.secondary_log and os.path.exists(logger.secondary_log):
-        print("\nSecondary log content (last 5 lines):")
-        with open(logger.secondary_log, "r") as f:
-            lines = f.readlines()[-5:]
-            print("".join(lines).strip())
-    
-    # Log rotation test
-    print("\n[TEST] Log rotation verification:")
+        logger.exception("Caught exception: %s", e)
+````
+
+---
+
+## 🔧 Using the Logger in Your Plugins
+
+1. **Import the module**
+
+```python
+from .UniLogger import get_logger
+```
+
+2. **Create a logger instance**
+
+```python
+class MyPlugin:
+    def __init__(self):
+        self.logger = get_logger(
+            log_path="/tmp/my_plugin_logs",
+            plugin_name="MyPlugin",
+            clear_on_start=True,
+            max_size_mb=1
+        )
+```
+
+3. **Log messages in your functions**
+
+```python
+def my_function(self):
+    self.logger.debug("Starting function")
+    self.logger.info("Operation completed")
+
     try:
-        print("Forcing log rotation...")
-        logger.rotate_logs()
-        print("Rotation completed successfully")
+        # code that may raise errors
+        pass
     except Exception as e:
-        logger.error("Error during rotation: %s" % str(e))
-    
-    # Available methods check
-    print("\n[TEST] Logger interface verification:")
-    required_methods = ["debug", "info", "warning", "error", "critical", "exception"]
-    missing = [m for m in required_methods if not hasattr(logger, m)]
-    if not missing:
-        print("✔ All required methods are present")
-    else:
-        print("✖ Missing methods: %s" % ", ".join(missing))
-    
-    print("\n" + "=" * 50)
-    print("TEST COMPLETED".center(50))
-    print("=" * 50 + "\n")
-    
-    # Additional test for title_plug (only if it exists)
-    if "title_plug" in globals():
-        logger.log("INFO", "PLUGIN TEST: ColoredLogger")
+        self.logger.exception("Error during operation: %s", e)
+```
+
+4. **Show messages to users**
+
+```python
+def show_info(self, session):
+    self.logger.show_message(session, "Operation completed successfully!")
+```
+
+---
+
+## 📂 Where Logs Go
+
+Logs are saved in the path you specify (`log_path`).
+Each plugin can have its own log folder and file size limit for easy rotation.
+
+---
+
+## ⚡ License
+
+MIT License — free to use and modify!
+
+```
+"""
