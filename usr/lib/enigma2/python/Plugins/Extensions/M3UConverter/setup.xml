@@ -3,8 +3,8 @@
         <item level="0" text="Default folder" description="Folder used by default to open or save M3U files.">config.plugins.m3uconverter.lastdir</item>
         <item level="0" text="EPG on Bouqet Enabled" description="Epg on Bouquet TV if Enabled.">config.plugins.m3uconverter.epg_enabled</item>
         <if conditional="config.plugins.m3uconverter.epg_enabled.value">
-                <item level="0" text="Epg Language:" description="Use language select for Epg sources.">config.plugins.m3uconverter.language</item>    
-                <item level="0" text="Epg Source Type" description="Select the type of Match Import.">config.plugins.m3uconverter.epg_source</item>
+                <item level="0" text="- Epg Language:" description="Use language select for Epg sources.">config.plugins.m3uconverter.language</item>    
+                <item level="0" text="- Epg Source Type" description="Select the type of Match Import.">config.plugins.m3uconverter.epg_source</item>
 		</if>
         <item level="0" text="Bouquet Mode" description="Bouquet List Mode.">config.plugins.m3uconverter.bouquet_mode</item>
         <item level="0" text="Position of M3U bouquets in main list" description="Place generated bouquets at the top or bottom of the bouquet list.">config.plugins.m3uconverter.bouquet_position</item>

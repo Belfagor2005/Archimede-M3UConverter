@@ -78,7 +78,7 @@ except Exception:
 
 
 logger = get_logger(
-    log_path=join(log_dir, "m3u_converter.log"),
+    log_path=log_dir,  # join(log_dir, "m3u_converter.log"),
     plugin_name="M3U_CONVERTER",
     clear_on_start=True,
     max_size_mb=1
