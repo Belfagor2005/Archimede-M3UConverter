@@ -29,7 +29,7 @@ import shutil
 import unicodedata
 from collections import defaultdict
 from os import access, W_OK, listdir, remove, replace, chmod, fsync, system, mkdir, makedirs
-from os.path import exists, isdir, isfile, join, normpath, basename, dirname
+from os.path import exists, isdir, isfile, join, normpath, basename, dirname, getsize
 from re import sub, findall, DOTALL, MULTILINE, IGNORECASE, search
 from threading import Lock
 from time import strftime
@@ -76,14 +76,9 @@ try:
 except Exception:
     pass
 
-# Global instance with dual output
-# logger = ColoredLogger(
-    # log_file=join(log_dir, "m3u_converter.log"),
-    # secondary_log=join(log_dir, "debug.log"),
-    # clear_on_start=False
-# )
+
 logger = get_logger(
-    log_path="/tmp/m3u_converter.log",
+    log_path=join(log_dir, "m3u_converter.log"),
     plugin_name="M3U_CONVERTER",
     clear_on_start=True,
     max_size_mb=1
@@ -244,6 +239,28 @@ config.plugins.m3uconverter.filter_dead_channels = ConfigYesNo(default=False)
 config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
 config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
 config.plugins.m3uconverter.max_backups = ConfigNumber(default=3)
+
+config.plugins.m3uconverter.language = ConfigSelection({
+    "it": "Italiano",
+    "en": "English",
+    "de": "Deutsch",
+    "fr": "Français",
+    "es": "Español",
+    "pt": "Português",
+    "nl": "Nederlands",
+    "tr": "Türkçe",
+    "pl": "Polski",
+    "gr": "Ελληνικά",
+    "cz": "Čeština",
+    "hu": "Magyar",
+    "ro": "Română",
+    "se": "Svenska",
+    "no": "Norsk",
+    "dk": "Dansk",
+    "fi": "Suomi",
+    "all": "All Cowntry - IPTV",
+}, default="all")
+
 
 update_mounts()
 
@@ -428,14 +445,17 @@ class EPGServiceMapper:
         return "unknown"
 
     def get_country_code(self):
-        """Get country code from Enigma2 settings"""
-        country_code = "it"  # Default to Italy
-        settings_path = "/etc/enigma2/settings"
-        if not fileExists(settings_path):
-            logger.warning("Enigma2 settings file not found, using default country code: %s", country_code)
-            return country_code
-
+        """Get country code from plugin configuration"""
         try:
+            if hasattr(config.plugins, 'm3uconverter') and hasattr(config.plugins.m3uconverter, 'language'):
+                return config.plugins.m3uconverter.language.value
+
+            country_code = "it"  # Default to Italy
+            settings_path = "/etc/enigma2/settings"
+            if not fileExists(settings_path):
+                logger.warning("Enigma2 settings file not found, using default country code: %s", country_code)
+                return country_code
+
             with open(settings_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
@@ -444,8 +464,8 @@ class EPGServiceMapper:
                         break
             return country_code.lower()
         except Exception as e:
-            logger.error("Error reading Enigma2 settings: {0}".format(str(e)))
-            return country_code
+            logger.error("Error reading country code: {0}".format(str(e)))
+            return "it"
 
     def clean_channel_name(self, name):
         """Clean channel name for matching"""
@@ -457,26 +477,25 @@ class EPGServiceMapper:
 
         try:
             cleaned = name.lower().strip()
-            cleaned = sub(r'^\|[a-z]{2}\|\s*', '', cleaned)
-            cleaned = sub(r'^[a-z]{2}:\s*', '', cleaned)
 
             quality_patterns = [
                 r'\b(4k|uhd|fhd|hd|sd|hq|uhq|sdq|hevc|h265|h264|h\.265|h\.264)\b',
                 r'\b(full hd|ultra hd|high definition|standard definition)\b',
-                r'\s*\(\d+p\)', r'\s*\d+p', r'\s*\[.*?\]', r'\s*\(.*?\)'
+                r'\s*\(\d+p\)', r'\s*\d+p'
             ]
 
             for pattern in quality_patterns:
                 cleaned = sub(pattern, '', cleaned, flags=IGNORECASE)
 
-            for char in '()[]{}|/\\_—–-':
+            for char in '()[]{}|/\\_—–-+':
                 cleaned = cleaned.replace(char, ' ')
 
+            """
             prefixes = ['canale', 'channel', 'tv', 'tele', 'it-', 'it_', 'the ']
             for prefix in prefixes:
                 if cleaned.startswith(prefix) and not cleaned[len(prefix):].strip()[0].isdigit():
                     cleaned = cleaned[len(prefix):].strip()
-
+            """
             cleaned = sub(r'[^a-z0-9\s]', '', cleaned)
             cleaned = ' '.join(cleaned.split()).strip()
 
@@ -485,10 +504,11 @@ class EPGServiceMapper:
                 logger.warning("Channel name '{0}' resulted in empty string, using fallback: '{1}'".format(name, cleaned))
 
             self._clean_name_cache[name] = cleaned
-            logger.debug("Cleaned channel name: '{0}' -> '{1}'".format(name, cleaned))
+            logger.debug(f"Cleaned channel name: '{name}' -> '{cleaned}'")
             return cleaned
+
         except Exception as e:
-            logger.error("Error cleaning channel name '{0}': {1}".format(name, str(e)))
+            logger.error(f"Error cleaning channel name '{name}': {str(e)}")
             return sub(r'[^a-z0-9]', '', name.lower())
 
     def optimize_matching(self):
@@ -636,6 +656,7 @@ class EPGServiceMapper:
         """Parse rytec.channels.xml with service type correction"""
         self.rytec_map = {}
         self.rytec_clean_map = {}
+        self.rytec_extended_map = defaultdict(list)
 
         if not fileExists(rytec_path):
             logger.warning("rytec.channels.xml file not found: %s", rytec_path)
@@ -645,29 +666,91 @@ class EPGServiceMapper:
             with open(rytec_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            channel_pattern = r'<channel id="([^"]+)">([^<]+)</channel>'
-            matches = findall(channel_pattern, content, IGNORECASE)
+            # CORRECT PATTERN for comments BEFORE and AFTER
+            pattern = r'(<!--\s*([^>]+)\s*-->)?\s*<channel id="([^"]+)">([^<]+)</channel>\s*(?:<!--\s*([^>]+)\s*-->)?'
+            matches = findall(pattern, content)
 
-            for channel_id, service_ref in matches:
-                # Normalize the service reference with correct namespace
-                normalized_ref = self.normalize_service_reference(service_ref)
+            for match in matches:
+                comment_before, source_info, channel_id, service_ref, comment_after = match
 
-                # Only keep compatible services
+                # PICK the RIGHT COMMENT (before or after)
+                comment = comment_before or comment_after or ""
+
+                # EXTRACT the REAL CHANNEL NAME
+                channel_name = self._extract_real_channel_name(comment)
+
+                normalized_ref = self.normalize_service_reference(service_ref, for_epg=True)
+
                 if self.is_service_compatible(normalized_ref):
-                    self.rytec_map[channel_id] = normalized_ref
+                    # EXTENDED DATABASE with ALL INFO
+                    self.rytec_extended_map[channel_id].append({
+                        'sref': normalized_ref,
+                        'comment': comment.strip(),
+                        'channel_name': channel_name,
+                        'source_type': self._get_source_type(comment),
+                        'sat_position': self._extract_sat_position(comment)
+                    })
 
-                    # Extract base channel name for matching
-                    base_id = channel_id.split(".")[0] if "." in channel_id else channel_id
-                    clean_base_id = self.clean_channel_name(base_id)
+                    # KEEP COMPATIBILITY
+                    if channel_id not in self.rytec_map:
+                        self.rytec_map[channel_id] = normalized_ref
+
+                    clean_base_id = self.clean_channel_name(channel_id.split('.')[0])
                     self.rytec_clean_map[clean_base_id] = normalized_ref
-
-            logger.info(
-                "Parsed %d compatible DVB service references from rytec.channels.xml",
-                len(self.rytec_map)
-            )
-
+            logger.info("Parsed %d Rytec channels with extended info", len(self.rytec_extended_map))
         except Exception as e:
             logger.error("Error parsing rytec.channels.xml: %s", str(e))
+
+    def _extract_real_channel_name(self, comment):
+        """Extract the real channel name from the FINAL comment"""
+        if not comment:
+            return ""
+
+        # LOOK for the LAST part after the last -->
+        parts = comment.split('-->')
+        if len(parts) > 1:
+            return parts[-1].strip()
+
+        return comment.strip()
+
+    def _extract_sat_position(self, comment):
+        """Extract the satellite position from the comment"""
+        position_match = search(r'(\d+\.\d+[EW])', comment)
+        return position_match.group(1) if position_match else None
+
+    def _extract_name_from_comment(self, comment):
+        """Extract the channel name from the comment"""
+        if '-->' in comment and '<!--' not in comment:
+            return comment.split('-->')[-1].strip()
+        return comment.strip()
+
+    def _get_source_type(self, comment):
+        """Determine the source type - IMPROVED VERSION"""
+        if not comment:
+            return 'unknown'
+
+        comment_lower = comment.lower()
+
+        if any(x in comment_lower for x in [
+            '13.0e', '19.2e', '5.0w', '9.0e', '8.0w', '7.0w', '4.8e', '4.0w',
+            '45.0e', '42.0e', '39.0e', '36e', '33.0e', '31.5e', '30.0w', '28.4e',
+            '26.0e', '23.5e', '16.0e', '15w', '15.0w', '1.9e', '0.8w'
+        ]):
+            return 'satellite'
+
+        if 'iptv' in comment_lower or 'http' in comment_lower:
+            return 'iptv'
+
+        if 'misc' in comment_lower:
+            return 'misc'
+
+        if 'terrestre' in comment_lower or 'dvb-t' in comment_lower:
+            return 'terrestrial'
+
+        if 'cable' in comment_lower:
+            return 'cable'
+
+        return 'unknown'
 
     def filter_compatible_services(self, services):
         """Keep only compatible service references"""
@@ -677,81 +760,124 @@ class EPGServiceMapper:
                 compatible_services.append(service)
         return compatible_services
 
-    def find_best_service_match(self, clean_name, tvg_id=None):
-        # Exact match first
-        if tvg_id and tvg_id in self.rytec_map:
-            return self.rytec_map[tvg_id], 'rytec_exact'
+    def find_best_service_match(self, clean_name, tvg_id=None, original_name=""):
+        """Super detailed debug"""
 
-        # Try name variations
+        logger.debug(f"🎯 MATCHING START: '{original_name}' -> clean: '{clean_name}', tvg_id: '{tvg_id}'")
+
+        # 1. Check if the rytec file was loaded correctly
+        if not hasattr(self, 'rytec_extended_map') or not self.rytec_extended_map:
+            logger.debug("❌ rytec_extended_map NOT LOADED or EMPTY")
+
+        # 2. Universal system with extended debug
+        logger.debug("🔍 Trying UNIVERSAL matching...")
+        universal_match, match_type = self.find_universal_service_match(clean_name, tvg_id, original_name)
+        if universal_match:
+            logger.debug(f"✅ UNIVERSAL MATCH: {match_type} -> {universal_match}")
+            return universal_match, match_type
+
+        # 3. Debug universal failure
+        logger.debug("❌ NO UNIVERSAL MATCH - Checking why...")
+
+        # 4. Check if the ID exists but is not compatible
+        if tvg_id:
+            logger.debug(f"🔍 Checking tvg_id: {tvg_id}")
+            if tvg_id in self.rytec_map:
+                sref = self.rytec_map[tvg_id]
+                compatible = self.is_service_compatible(sref)
+                logger.debug(f"📡 ID EXISTS: {tvg_id} -> {sref} (compatible: {compatible})")
+                if compatible:
+                    return sref, 'rytec_exact'
+                else:
+                    logger.debug(f"🚫 ID NOT COMPATIBLE: {tvg_id}")
+            else:
+                logger.debug(f"🔍 tvg_id NOT FOUND in rytec_map: {tvg_id}")
+
+                # Search for ID variants
+                base_id = tvg_id.split('.')[0] if '.' in tvg_id else tvg_id
+                logger.debug(f"🔍 Searching for base_id: {base_id}")
+                for rytec_id in self.rytec_map.keys():
+                    if base_id in rytec_id:
+                        logger.debug(f"🔍 Found similar ID: {rytec_id}")
+
+        # 5. Debug name variations
+        logger.debug("🔍 Trying NAME VARIATIONS...")
         name_variations = self.generate_name_variations(clean_name)
-        for variation in name_variations:
-            if variation in self.rytec_clean_map:
-                return self.rytec_clean_map[variation], 'rytec_variation'
-            if variation in self.optimized_channel_map:
-                return self.optimized_channel_map[variation]['sref'], 'lamedb_variation'
+        logger.debug(f"🔍 Generated variations: {name_variations}")
 
-        return None, None
-
-    def find_best_service_match2(self, clean_name, tvg_id=None):
-        """Find best service match considering compatibility"""
-        matches = []
-
-        logger.debug("Searching for: '%s' (tvg_id: %s)", clean_name, tvg_id)
-
-        # Exact match in rytec by tvg_id
-        if tvg_id and tvg_id in self.rytec_map:
-            sref = self.rytec_map[tvg_id]
-            if self.is_service_compatible(sref):
-                logger.debug("Found exact tvg_id match: %s -> %s", tvg_id, sref)
-                matches.append((sref, 'rytec_exact', 100))
-
-        # Clean name match in rytec
-        if clean_name in self.rytec_clean_map:
-            sref = self.rytec_clean_map[clean_name]
-            if self.is_service_compatible(sref):
-                logger.debug("Found clean name match in rytec: %s -> %s", clean_name, sref)
-                matches.append((sref, 'rytec_clean', 90))
-
-        # Name variations in rytec
-        name_variations = self.generate_name_variations(clean_name)
         for variation in name_variations:
             if variation in self.rytec_clean_map:
                 sref = self.rytec_clean_map[variation]
-                if self.is_service_compatible(sref):
-                    logger.debug("Found variation match in rytec: %s -> %s", variation, sref)
-                    matches.append((sref, 'rytec_variation', 85))
+                compatible = self.is_service_compatible(sref)
+                logger.debug(f"🔍 Variation '{variation}' -> {sref} (compatible: {compatible})")
+                if compatible:
+                    return sref, 'rytec_variation'
 
-        # Partial matches in rytec
-        for rytec_name, rytec_sref in self.rytec_clean_map.items():
-            if clean_name in rytec_name or rytec_name in clean_name:
-                similarity = self.calculate_similarity(clean_name, rytec_name)
-                if similarity > 60 and self.is_service_compatible(rytec_sref):
-                    logger.debug("Found partial match in rytec: %s ~ %s -> %s", clean_name, rytec_name, rytec_sref)
-                    matches.append((rytec_sref, 'rytec_partial', similarity))
+            if variation in self.optimized_channel_map:
+                sref = self.optimized_channel_map[variation]['sref']
+                compatible = self.is_service_compatible(sref)
+                logger.debug(f"🔍 Lamedb variation '{variation}' -> {sref} (compatible: {compatible})")
+                if compatible:
+                    return sref, 'lamedb_variation'
 
-        # Exact match in lamedb
-        if clean_name in self.optimized_channel_map:
-            service = self.optimized_channel_map[clean_name]
-            if self.is_service_compatible(service['sref']):
-                logger.debug("Found exact match in lamedb: %s -> %s", clean_name, service['sref'])
-                matches.append((service['sref'], 'lamedb_exact', 95))
+        # 6. Search in the extended database by name
+        logger.debug("🔍 Searching in EXTENDED database by name...")
+        best_extended = None
+        best_score = 0
 
-        # Partial matches in lamedb
-        for lamedb_name, service in self.optimized_channel_map.items():
-            if clean_name in lamedb_name or lamedb_name in clean_name:
-                similarity = self.calculate_similarity(clean_name, lamedb_name)
-                if similarity > 60 and self.is_service_compatible(service['sref']):
-                    logger.debug("Found partial match in lamedb: %s ~ %s -> %s", clean_name, lamedb_name, service['sref'])
-                    matches.append((service['sref'], 'lamedb_partial', similarity))
+        for channel_id, variants in self.rytec_extended_map.items():
+            for variant in variants:
+                if variant['channel_name']:
+                    score = self._calculate_similarity(clean_name, variant['channel_name'])
+                    if score > 0.6 and score > best_score:
+                        best_score = score
+                        best_extended = variant['sref']
+                        logger.debug(f"🔍 Extended match: {variant['channel_name']} -> score: {score}")
 
-        # Return best match by score
-        if matches:
-            matches.sort(key=lambda x: x[2], reverse=True)
-            logger.debug("Best match for '%s': %s with score %d", clean_name, matches[0][1], matches[0][2])
-            return matches[0][0], matches[0][1]
+        if best_extended and best_score > 0.7:
+            logger.debug(f"✅ EXTENDED MATCH: score {best_score} -> {best_extended}")
+            return best_extended, 'extended_fallback'
 
-        logger.debug("No compatible matches found for: '%s'", clean_name)
+        logger.debug("❌ NO MATCH FOUND AT ALL")
         return None, None
+
+    def _find_in_extended_map(self, clean_name):
+        """Cerca nel database esteso per similarità del nome"""
+        best_match = None
+        best_score = 0
+
+        for channel_id, variants in self.rytec_extended_map.items():
+            for variant in variants:
+                if variant['channel_name']:
+                    score = self._calculate_similarity(clean_name, variant['channel_name'])
+
+                    # Considera solo match con score decente e compatibile
+                    if score > 0.6 and score > best_score and self.is_service_compatible(variant['sref']):
+                        best_score = score
+                        best_match = variant['sref']
+
+        return best_match if best_score > 0.7 else None
+
+    """
+    # def generate_name_variations(self, name):
+        # variations = set()
+        # variations.add(name)
+        # variations.add(name.replace(' ', ''))
+        # variations.add(name.replace(' ', '_'))
+
+        # # 👇 Add variations with numbers (for Sky Uno +1, etc.)
+        # if any(char.isdigit() for char in name):
+            # # Sky Uno +1 -> skyuno1, skyunoplus1
+            # variations.add(name.replace(' ', '').replace('+', 'plus'))
+            # variations.add(name.replace('+', '').replace(' ', ''))
+
+        # # 👇 Keep versions with "tele" if present
+        # if name.startswith('tele'):
+            # variations.add(name[4:])  # without "tele"
+            # variations.add(name)      # with "tele"
+
+        # return variations
+    """
 
     def generate_name_variations(self, name):
         """Generate variations of a channel name for matching"""
@@ -866,7 +992,7 @@ class EPGServiceMapper:
         return sref
 
     def generate_epg_channels_file(self, epg_data, bouquet_name):
-        """Generate EPG file for epgimport in the proper directory"""
+        """Genera file channels.xml compatibile con EPGImport - USANDO NOMI CANALI"""
         epgimport_path = "/etc/epgimport"
         epg_filename = "%s.channels.xml" % bouquet_name
         epg_path = join(epgimport_path, epg_filename)
@@ -878,33 +1004,149 @@ class EPGServiceMapper:
             except Exception as e:
                 logger.error("Could not create epgimport directory: %s", str(e))
                 return False
-
         try:
             with open(epg_path, 'w', encoding="utf-8") as f:
                 f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
                 f.write('<channels>\n')
 
                 for channel in epg_data:
-                    if channel.get('tvg_id') and channel.get('sref'):
+                    if channel.get('sref'):
+                        # 👇 USARE il NOME DEL CANALE come ID (non tvg_id)
+                        channel_name = channel.get('name', 'Unknown')
+                        channel_id = self._normalize_channel_id_for_epgimport(channel_name)
+
                         epg_sref = self.normalize_service_reference(channel['sref'], True)
-                        # Ensure the service reference is in the correct format for EPG
-                        if epg_sref.startswith('4097:'):
-                            # For IPTV service reference, remove the URL part if present
-                            parts = epg_sref.split(':')
-                            if len(parts) > 10:
-                                epg_sref = ':'.join(parts[:10]) + ':'
-                        f.write('  <channel id="%s">%s</channel>\n' % (channel["tvg_id"], epg_sref))
+
+                        f.write('  <channel id="%s">%s</channel>\n' % (channel_id, epg_sref))
+                        logger.debug("EPG Channel: %s -> %s", channel_id, epg_sref)
                     else:
-                        logger.warning("Skipping channel due to missing tvg_id or sref: %s", channel.get('name'))
+                        logger.warning("Skipping channel due to missing sref: %s", channel.get('name'))
+
                 f.write('</channels>\n')
 
-            logger.info("Generated EPG channels file: %s", epg_path)
+            logger.info("Generated EPG channels file with channel names: %s", epg_path)
             return True
+
         except Exception as e:
             logger.error("Error generating EPG channels file: %s", str(e))
             return False
 
+    def _normalize_channel_id_for_epgimport(self, channel_name):
+        """Normalizza il nome canale per match con EPGImport"""
+        if not channel_name:
+            return "unknown"
+
+        # Converti in lowercase e rimuovi caratteri speciali
+        cleaned = channel_name.lower()
+
+        # Rimuovi indicatori di qualità ma mantieni il nome base
+        quality_indicators = [
+            'h265', 'h264', 'hevc', '4k', 'uhd', 'fhd', 'hd', 'sd',
+            'hq', 'uhq', 'sdq', 'stream', 'live', 'tv'
+        ]
+
+        for indicator in quality_indicators:
+            cleaned = sub(r'\b%s\b' % indicator, '', cleaned)
+
+        # Rimuovi simboli e spazi multipli
+        cleaned = sub(r'[^a-z0-9\s]', ' ', cleaned)
+        cleaned = ' '.join(cleaned.split()).strip()
+
+        # Mapping specifico per canali italiani
+        name_mapping = {
+            'rai1': 'rai 1',
+            'rai2': 'rai 2',
+            'rai3': 'rai 3',
+            'rete4': 'rete 4',
+            'canale5': 'canale 5',
+            'italia1': 'italia 1',
+            'italia2': 'italia 2',
+            'skyuno': 'sky uno',
+            'skytg24': 'sky tg24',
+            'skysport': 'sky sport',
+            'skynature': 'sky nature',
+            'skyatlantic': 'sky atlantic',
+            'skyarte': 'sky arte',
+            'skycinema': 'sky cinema',
+            'la7': 'la7',
+            'la7d': 'la7d',
+            'mediaset': 'canale 5',  # fallback
+            'telecolor': 'telecolor'
+        }
+
+        # Applica mapping se esiste, altrimenti usa il cleaned
+        return name_mapping.get(cleaned, cleaned)
+
+    def _clean_epg_channel_id(self, channel_id):
+        """Clean the channel ID for EPGImport"""
+        if not channel_id:
+            return ""
+
+        # Remove problematic characters for XML
+        cleaned = channel_id.replace('&', 'and').replace('<', '').replace('>', '').replace('"', '')
+        cleaned = cleaned.replace('+', 'plus').replace('#', '').replace('*', '')
+
+        return cleaned.strip()
+
     def generate_epg_sources_file(self, bouquet_name, epg_url=None):
+        """Genera sources.xml che punta correttamente ai file channels"""
+        epgimport_path = "/etc/epgimport"
+        sources_filename = "ArchimedeConverter.sources.xml"
+        sources_path = join(epgimport_path, sources_filename)
+
+        try:
+            # Crea directory se mancante
+            if not fileExists(epgimport_path):
+                mkdir(epgimport_path)
+
+            # Leggi o inizializza il file
+            if fileExists(sources_path):
+                with open(sources_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            else:
+                content = '<?xml version="1.0" encoding="utf-8"?>\n<sources>\n</sources>'
+
+            # Rimuovi vecchia source per questo bouquet
+            pattern = r'<source type="gen_xmltv"[^>]*channels="%s\.channels\.xml"[^>]*>.*?</source>' % bouquet_name
+            content = sub(pattern, '', content, flags=DOTALL)
+
+            # 👇 CREA la NUOVA SOURCE corretta
+            new_source = '    <source type="gen_xmltv" nocheck="1" channels="%s.channels.xml">\n' % bouquet_name
+            new_source += '      <description>%s</description>\n' % bouquet_name
+
+            if epg_url:
+                new_source += '      <url><![CDATA[%s]]></url>\n' % epg_url
+            else:
+                # Aggiungi URL predefiniti basati sulla lingua
+                language_code = self.get_country_code().upper()
+                urls = self._get_epg_urls_for_language(language_code)
+                for url in urls:
+                    new_source += '      <url>%s</url>\n' % url
+
+            new_source += '    </source>\n'
+
+            # Aggiungi al content
+            sourcecat_marker = '<sourcecat sourcecatname="Archimede Converter by Lululla">'
+            if sourcecat_marker in content:
+                content = content.replace(sourcecat_marker, sourcecat_marker + '\n' + new_source)
+            else:
+                new_sourcecat = '  <sourcecat sourcecatname="Archimede Converter by Lululla">\n'
+                new_sourcecat += new_source
+                new_sourcecat += '  </sourcecat>\n'
+                content = content.replace('</sources>', new_sourcecat + '</sources>')
+
+            # Scrivi il file
+            with open(sources_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            logger.info("Updated EPG sources file: %s", sources_path)
+            return True
+
+        except Exception as e:
+            logger.error("Error generating EPG sources file: %s", str(e))
+            return False
+
+    def generate_epg_sources_file2(self, bouquet_name, epg_url=None):
         """Generate EPG sources file for epgimport in the proper format"""
         epgimport_path = "/etc/epgimport"
         sources_filename = "ArchimedeConverter.sources.xml"
@@ -918,6 +1160,85 @@ class EPGServiceMapper:
             except Exception as e:
                 logger.error("Could not create epgimport directory: %s", str(e))
                 return False
+
+        # Get language from configuration
+        # language_code = self.get_country_code().upper()
+        try:
+            if hasattr(config.plugins, 'm3uconverter') and hasattr(config.plugins.m3uconverter, 'language'):
+                language_code = config.plugins.m3uconverter.language.value.upper()
+            else:
+                language_code = "ALL"  # Default
+        except:
+            language_code = "ALL"
+
+        # Comprehensive language to source mapping based on your XML
+        language_to_sources = {
+            'ALL': [
+                ('All Cowntry - IPTV (gz)',
+                 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+            ],
+            'IT': [
+                ('IT1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_IT1.xml.gz'),
+                ('All Cowntry - IPTV (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+            ],
+            'EN': [
+                ('UK1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_UK1.xml.gz'),
+                ('US1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_US1.xml.gz'),
+                ('AU en (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_AU1.xml.gz'),
+                ('CA1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_CA1.xml.gz'),
+                ('All Cowntry - IPTV (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+            ],
+            'DE': [
+                ('DE1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_DE1.xml.gz'),
+                ('All Cowntry - IPTV (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+            ],
+            'FR': [
+                ('FR1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_FR1.xml.gz'),
+                ('All Cowntry - IPTV (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+            ],
+            'ES': [
+                ('ES1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ES1.xml.gz'),
+                ('All Cowntry - IPTV (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+            ],
+            'AR': [('AR', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_AR1.xml.gz')],
+            'NL': [('NL1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_NL1.xml.gz')],
+            'PT': [
+                ('PT1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_PT1.xml.gz'),
+                ('BR1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_BR1.xml.gz')
+            ],
+            'TR': [('TR1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_TR1.xml.gz')],
+            'PL': [('PL1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_PL1.xml.gz')],
+            'GR': [('GR1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_GR1.xml.gz')],
+            'CZ': [('CZ1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_CZ1.xml.gz')],
+            'HU': [('HU1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_HU1.xml.gz')],
+            'RO': [
+                ('RO1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_RO1.xml.gz'),
+                ('RO2 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_RO2.xml.gz')
+            ],
+            'SE': [('SE1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_SE1.xml.gz')],
+            'NO': [('NO1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_NO1.xml.gz')],
+            'DK': [('DK1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_DK1.xml.gz')],
+            'FI': [('FI1 (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_FI1.xml.gz')],
+        }
+
+        # Default to all sources if language not found
+        selected_sources = language_to_sources.get(language_code, [
+            ('All Cowntry - IPTV (gz)', 'https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/epg_ripper_ALL_SOURCES1.gz')
+        ])
+
+        # Always add mirrors for each source
+        sources_with_mirrors = []
+        for desc, url in selected_sources:
+            # Add mirror if available
+            if "githubusercontent" in url:
+                mirror_url = url.replace(
+                    "https://raw.githubusercontent.com/Belfagor2005/epgimportgz/gh-pages/",
+                    "https://epgshare01.online/epgshare01/"
+                )
+                sources_with_mirrors.append((desc, url))
+                sources_with_mirrors.append((f"{desc} [Mirror]", mirror_url))
+            else:
+                sources_with_mirrors.append((desc, url))
 
         try:
             # Read existing file or initialize new
@@ -939,26 +1260,25 @@ class EPGServiceMapper:
             if sourcecat_marker in content:
                 # Append to existing sourcecat
                 new_source = '    <source type="gen_xmltv" nocheck="1" channels="%s.channels.xml">\n' % bouquet_name
-                new_source += '      <description>%s</description>\n' % bouquet_name
+                new_source += '      <description>%s (%s)</description>\n' % (bouquet_name, language_code)
                 if epg_url:
                     new_source += '      <url><![CDATA[%s]]></url>\n' % epg_url
                 else:
-                    new_source += '      <url>http://www.xmltvepg.nl/rytecIPTV.xz</url>\n'
-                    new_source += '      <url>https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz</url>\n'
-                    new_source += '      <url>http://rytecepg.wanwizard.eu/rytecIPTV.xz</url>\n'
+                    # Add language-specific sources with mirrors
+                    for desc, url in sources_with_mirrors:
+                        new_source += '      <url>%s</url>\n' % url
                 new_source += '    </source>\n'
                 content = content.replace(sourcecat_marker, sourcecat_marker + '\n' + new_source)
             else:
                 # Create new sourcecat
                 new_sourcecat = '  <sourcecat sourcecatname="Archimede Converter by Lululla">\n'
                 new_sourcecat += '    <source type="gen_xmltv" nocheck="1" channels="%s.channels.xml">\n' % bouquet_name
-                new_sourcecat += '      <description>%s</description>\n' % bouquet_name
+                new_sourcecat += '      <description>%s (%s)</description>\n' % (bouquet_name, language_code)
                 if epg_url:
                     new_sourcecat += '      <url><![CDATA[%s]]></url>\n' % epg_url
                 else:
-                    new_sourcecat += '      <url>http://www.xmltvepg.nl/rytecIPTV.xz</url>\n'
-                    new_sourcecat += '      <url>https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz</url>\n'
-                    new_sourcecat += '      <url>http://rytecepg.wanwizard.eu/rytecIPTV.xz</url>\n'
+                    for desc, url in sources_with_mirrors:
+                        new_sourcecat += '      <url>%s</url>\n' % url
                 new_sourcecat += '    </source>\n'
                 new_sourcecat += '  </sourcecat>\n'
                 content = content.replace('</sources>', new_sourcecat + '</sources>')
@@ -967,7 +1287,7 @@ class EPGServiceMapper:
             with open(sources_path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
-            logger.info("Generated/Updated EPG sources file: %s", sources_path)
+            logger.info("Generated/Updated EPG sources file for language %s: %s", language_code, sources_path)
             return True
         except Exception as e:
             logger.error("Error generating EPG sources file: %s", str(e))
@@ -1004,6 +1324,65 @@ class EPGServiceMapper:
         except Exception as e:
             logger.error("Failed to initialize EPGServiceMapper: %s", str(e))
             return False
+
+    def find_universal_service_match(self, clean_name, tvg_id, original_name):
+        """Search for a match in the extended Rytec database"""
+        if not hasattr(self, 'rytec_extended_map'):
+            return None, None
+
+        candidates = []
+
+        # 1. Search by exact ID in the extended database
+        if tvg_id and tvg_id in self.rytec_extended_map:
+            for variant in self.rytec_extended_map[tvg_id]:
+                if self.is_service_compatible(variant['sref']):
+                    candidates.append({
+                        'sref': variant['sref'],
+                        'score': 100,  # Exact match
+                        'type': 'exact_id'
+                    })
+
+        # 2. Search by name similarity in the comments
+        for channel_id, variants in self.rytec_extended_map.items():
+            for variant in variants:
+                if variant['channel_name']:
+                    similarity = self._calculate_similarity(clean_name, variant['channel_name'])
+                    if similarity > 0.7 and self.is_service_compatible(variant['sref']):
+                        candidates.append({
+                            'sref': variant['sref'],
+                            'score': int(similarity * 100),
+                            'type': 'name_similarity'
+                        })
+
+        # 3. Select the best candidate
+        if candidates:
+            candidates.sort(key=lambda x: x['score'], reverse=True)
+            best = candidates[0]
+            return best['sref'], f'universal_{best["type"]}'
+
+        return None, None
+
+    def _calculate_similarity(self, name1, name2):
+        """Calculate similarity between two names"""
+        if not name1 or not name2:
+            return 0
+
+        name1 = name1.lower().replace(' ', '')
+        name2 = name2.lower().replace(' ', '')
+
+        if name1 == name2:
+            return 1.0
+
+        # Check if one contains the other
+        if name1 in name2 or name2 in name1:
+            return 0.8
+
+        # Similarity based on common tokens
+        tokens1 = set(name1)
+        tokens2 = set(name2)
+        common = tokens1 & tokens2
+
+        return len(common) / max(len(tokens1), len(tokens2))
 
 
 class CoreConverter:
@@ -1228,24 +1607,29 @@ class ConversionSelector(Screen):
     skin = """
         <screen name="ConversionSelector" position="center,center" size="1280,720" title="..::ConversionSelector::.." backgroundColor="#20000000" flags="wfNoBorder">
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
-            <widget source="Title" render="Label" position="64,13" size="1120,52" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
-            <widget name="list" position="15,135" size="1250,491" scrollbarMode="showOnDemand" transparent="1" itemHeight="35" zPosition="5" foregroundColor="#00a0a0a0" foregroundColorSelected="#ffffff" backgroundColor="#20000000" backgroundColorSelected="#0b2049" />
-            <widget name="status" position="14,79" size="1250,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" zPosition="5" />
-
+            <widget source="Title" render="Label" position="25,8" size="1120,52" font="Regular; 24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="left" />
+            <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
+            <widget name="list" position="25,60" size="840,518" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
+            <widget name="status" position="23,608" size="1185,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
+            <eLabel name="" position="1220,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
+            <widget source="session.CurrentService" render="Label" position="872,54" size="400,34" font="Regular; 28" borderWidth="1" backgroundColor="background" transparent="1" halign="center" foregroundColor="white" zPosition="30" valign="center" noWrap="1">
+                <convert type="ServiceName">Name</convert>
+            </widget>
+            <widget source="session.VideoPicture" render="Pig" position="871,92" zPosition="20" size="400,220" backgroundColor="transparent" transparent="0" cornerRadius="14" />
             <widget name="info" position="0,0" size="1,1" font="Regular;1" transparent="1" />
             <widget name="text" position="0,0" size="1,1" font="Regular;1" transparent="1" />
             <!--#####red####/-->
-            <eLabel backgroundColor="#00ff0000" position="31,685" size="280,6" zPosition="12" />
-            <widget name="key_red" position="30,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
-            <widget source="key_red" render="Label" position="30,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <eLabel backgroundColor="#00ff0000" position="25,700" size="250,6" zPosition="12" />
+            <widget name="key_red" position="25,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="25,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
             <!--#####green####/-->
-            <eLabel backgroundColor="#0000ff00" position="338,685" size="280,6" zPosition="12" />
-            <widget name="key_green" position="340,645" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
-            <widget source="key_green" render="Label" position="340,645" size="280,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <eLabel backgroundColor="#0000ff00" position="280,700" size="250,6" zPosition="12" />
+            <widget name="key_green" position="280,660" size="250,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="280,660" size="250,45" zPosition="11" font="Regular; 30" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
             <!--#####yellow####/-->
-            <eLabel backgroundColor="#00ffff00" position="645,685" size="280,6" zPosition="12" />
-            <widget name="key_yellow" position="645,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
-            <widget source="key_yellow" render="Label" position="645,645" size="280,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
+            <eLabel backgroundColor="#00ffff00" position="541,700" size="250,6" zPosition="12" />
+            <widget name="key_yellow" position="539,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
+            <widget source="key_yellow" render="Label" position="539,660" size="250,45" zPosition="11" font="Regular; 30" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
         </screen>"""
 
     def __init__(self, session):
@@ -1268,9 +1652,10 @@ class ConversionSelector(Screen):
         self["info"] = Label('')
         self["text"] = Label('')
         self["status"] = Label(_("We're ready: what do you want to do?"))
-        self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
+        self["actions"] = ActionMap(["ColorActions", "OkCancelActions", "MenuActions"], {
             "red": self.close,
             "green": self.select_item,
+            "menu": self.open_settings,
             "ok": self.select_item,
             "yellow": self.purge_m3u_bouquets,
             "cancel": self.close
@@ -1278,6 +1663,9 @@ class ConversionSelector(Screen):
         self["key_red"] = StaticText(_("Close"))
         self["key_green"] = StaticText(_("Select"))
         self["key_yellow"] = StaticText(_("Remove Bouquets"))
+
+    def open_settings(self):
+        self.session.open(M3UConverterSettings)
 
     def purge_m3u_bouquets(self, directory="/etc/enigma2", pattern="_m3ubouquet.tv"):
         """Remove all bouquet files created by M3UConverter with correct pattern"""
@@ -1897,6 +2285,7 @@ class UniversalConverter(Screen):
         new_lines = []
         for group in groups:
             safe_name = self.get_safe_filename(group)
+
             bouquet_path = "userbouquet." + safe_name + ".tv"
             line_to_add = '#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "' + bouquet_path + '" ORDER BY bouquet\n'
 
@@ -1993,24 +2382,19 @@ class UniversalConverter(Screen):
         with improved encoding handling.
         """
         try:
-            safe_name = self.get_safe_filename(group)
+            safe_name = self.get_safe_filename(group)  # Per il nome file: include _m3ubouquet
             filename = join("/etc/enigma2", "userbouquet." + safe_name + ".tv")
             temp_file = filename + ".tmp"
 
-            name_bouquet = transliterate(group).capitalize()
-            if not name_bouquet.strip():
-                match = search(r"([^/\\]+)\.m3u$", self.selected_file, flags=DOTALL)
-                if match:
-                    name_bouquet = transliterate(match.group(1)).capitalize()
-                else:
-                    name_bouquet = "Unnamed Group"
+            # Per il #NAME usa il nome originale SENZA suffisso
+            name_bouquet = self.remove_suffixes(group)  # Nome pulito senza _m3ubouquet
 
             # Add marker and main bouquet name
             markera = "#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | Archimede Converter | ---"
             markerb = "#DESCRIPTION --- | Archimede Converter | ---"
 
-            with open(temp_file, "w", encoding="utf-8") as f:  # Cambiato a UTF-8
-                f.write("#NAME " + name_bouquet + "\n")  # Usa name_bouquet invece di safe_name
+            with open(temp_file, "w", encoding="utf-8") as f:
+                f.write("#NAME " + name_bouquet + "\n")  # Nome senza suffisso
                 f.write(markera + "\n")
                 f.write(markerb + "\n")
                 for idx, ch in enumerate(channels, 1):
@@ -2042,18 +2426,28 @@ class UniversalConverter(Screen):
             logger.log("ERROR", f"Failed to write bouquet {str(group)} : {str(e)}")
             raise RuntimeError("Bouquet creation failed for " + group) from e
 
+    def remove_suffixes(self, name):
+        """Remove all known suffixes from the name for display purposes"""
+        suffixes = ['_m3ubouquet', '_bouquet', '_iptv', '_tv']
+        
+        for suffix in suffixes:
+            if name.endswith(suffix):
+                name = name[:-len(suffix)]
+                break  # Rimuovi solo il primo suffisso trovato
+        
+        return name
+
     def get_safe_filename(self, name):
-        """Generate a secure file name for bouquets without duplicate suffixes"""
-        # Remove any existing suffixes before processing
-        if name.endswith('_m3ubouquet'):
-            name = name[:-11]  # Remove "_m3ubouquet"
+        """Generate a secure file name for bouquets with duplicate suffixes"""
+        for suffix in ['_m3ubouquet', '_bouquet', '_iptv', '_tv']:
+            if name.endswith(suffix):
+                name = name[:-len(suffix)]
 
         normalized = unicodedata.normalize("NFKD", name)
         safe_name = normalized.encode('ascii', 'ignore').decode('ascii')
-        safe_name = sub(r'[^a-z0-9_-]', '_', safe_name.lower())
+        safe_name = sub(r'[^a-zA-Z0-9_-]', '_', safe_name)
         safe_name = sub(r'_+', '_', safe_name).strip('_')
 
-        # Add the suffix only once
         suffix = "_m3ubouquet"
         base_name = safe_name[:50 - len(suffix)] if len(safe_name) > 50 - len(suffix) else safe_name
 
@@ -2106,64 +2500,230 @@ class UniversalConverter(Screen):
 
         return filtered_channels
 
+    def handle_very_large_file(self, filename):
+        """Handle extremely large M3U files with sampling"""
+        self["status"].setText(_("Very large file detected. Sampling first 1000 channels..."))
+
+        entries = []
+        count = 0
+        max_channels = 1000  # Limit for very large files
+
+        try:
+            with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+                current_params = {}
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    if count >= max_channels:
+                        break
+
+                    if line.startswith('#EXTINF:'):
+                        current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
+                        parts = line[8:].split(',', 1)
+                        if len(parts) > 1:
+                            current_params['title'] = parts[1].strip()
+
+                    elif line.startswith('#EXTGRP:'):
+                        current_params['group-title'] = line[8:].strip()
+
+                    elif line.startswith('#'):
+                        continue
+
+                    else:
+                        if current_params and line:
+                            current_params['uri'] = line.strip()
+                            if current_params.get('title'):
+                                entries.append(current_params.copy())
+                                count += 1
+                            current_params = {}
+
+        except Exception as e:
+            logger.error(f"Large file sampling error: {str(e)}")
+
+        return entries
+
     def parse_m3u(self, filename=None):
-        """M3U parsing with detailed debugging"""
-        logger.debug("Starting M3U parsing")
+        """M3U parsing with size-based optimization"""
         try:
             file_to_parse = filename or self.selected_file
             if not file_to_parse:
                 raise ValueError(_("No file specified"))
 
-            logger.info(f"Starting M3U parsing: {file_to_parse}")
-            # Backup
-            if config.plugins.m3uconverter.backup_enable.value:
-                create_backup()
+            file_size = getsize(file_to_parse)
 
-            with open(file_to_parse, 'r', encoding='utf-8', errors='replace') as f:
-                data = f.read()
+            if file_size > 10 * 1024 * 1024:  # > 10MB
+                self.m3u_list = self.handle_very_large_file(file_to_parse)
+            elif file_size > 1 * 1024 * 1024:  # > 1MB
+                self.m3u_list = self._parse_m3u_incremental(file_to_parse)
+            else:
+                with open(file_to_parse, 'r', encoding='utf-8', errors='replace') as f:
+                    data = f.read()
+                self.m3u_list = self._parse_m3u_content(data)
 
-            # Reset
-            self.m3u_list = []
-            self.filename = file_to_parse
+            if file_size > 1 * 1024 * 1024:
+                self["progress_source"].setRange(0, 0)
+                self["progress_text"].setText(_("Reading large file..."))
 
-            channels = self._parse_m3u_content(data)
-
-            for channel in channels:
-                if not channel.get('uri'):
-                    continue
-
-                self.m3u_list.append({
-                    'name': channel.get('title', ''),
-                    'group': channel.get('group-title', ''),
-                    'tvg_name': channel.get('tvg-name', ''),
-                    'logo': channel.get('tvg-logo', ''),
-                    'url': self.process_url(channel['uri']),
-                    'duration': channel.get('length', ''),
-                    'user_agent': channel.get('user_agent', ''),
-                    'program_id': channel.get('program-id', '')
-                })
-
-            display_list = []
+            # Filter and process channels
+            filtered_channels = []
             for channel in self.m3u_list:
+                if channel.get('uri'):
+                    filtered_channels.append({
+                        'name': channel.get('title', ''),
+                        'url': self.process_url(channel['uri']),
+                        'group': channel.get('group-title', ''),
+                        'tvg_id': channel.get('tvg-id', ''),
+                        'tvg_name': channel.get('tvg-name', ''),
+                        'logo': channel.get('tvg-logo', ''),
+                        'user_agent': channel.get('user-agent', '')
+                    })
+
+            self.m3u_list = filtered_channels
+
+            # Update UI
+            display_list = []
+            for idx, channel in enumerate(self.m3u_list[:100]):  # Show only first 100
                 name = sub(r'\[.*?\]', '', channel['name']).strip()
                 group = channel.get('group', '')
-                display_list.append(f"{group + ' - ' if group else ''}{name}")
+                display_list.append(f"{idx + 1:03d}. {group + ' - ' if group else ''}{name}")
 
             self["list"].setList(display_list)
-            logger.debug(f"Parsing complete, found {len(self.m3u_list)} channels")
-            # self.update_channel_list()
-            # self.m3u_list = channels
-            # self["list"].setList([c[0] for c in channels])
             self.file_loaded = True
             self._update_ui_success(len(self.m3u_list))
-            self["key_green"].setText(_("Converting"))
+
         except Exception as e:
             logger.error(f"Error parsing M3U: {str(e)}")
             self.file_loaded = False
             self.m3u_list = []
-            raise
+            self.session.open(
+                MessageBox,
+                _("Error parsing file. File may be too large or corrupt."),
+                MessageBox.TYPE_ERROR,
+                timeout=5
+            )
 
     def _parse_m3u_content(self, data):
+        """Advanced parser for M3U content with memory optimization"""
+        entries = []
+        current_params = {}
+        lines_processed = 0
+
+        # Process in chunks to avoid memory issues
+        lines = data.split('\n')
+        # total_lines = len(lines)
+
+        for line in lines:
+            lines_processed += 1
+            line = line.strip()
+            if not line:
+                continue
+
+            # Periodically yield control to avoid UI freeze
+            if lines_processed % 100 == 0:
+                from enigma import eTimer
+                eTimer().start(10, True)  # Small delay to keep UI responsive
+
+            if line.startswith('#EXTINF:'):
+                current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
+                # Extract length and attributes
+                parts = line[8:].split(',', 1)
+                if len(parts) > 1:
+                    current_params['title'] = parts[1].strip()
+
+                # Parse attributes efficiently
+                attr_part = parts[0] if len(parts) > 0 else ''
+                attributes = {}
+                for attr in attr_part.split(' '):
+                    if '=' in attr:
+                        key, value = attr.split('=', 1)
+                        attributes[key.strip()] = value.strip().strip('"')
+
+                current_params.update(attributes)
+
+            elif line.startswith('#EXTGRP:'):
+                current_params['group-title'] = line[8:].strip()
+
+            elif line.startswith('#EXTVLCOPT:'):
+                opt_line = line[11:].strip()
+                if '=' in opt_line:
+                    key, value = opt_line.split('=', 1)
+                    key = key.lower().strip()
+                    if key == 'http-user-agent':
+                        current_params['user-agent'] = value.strip()
+
+            elif line.startswith('#'):
+                continue  # Skip other comments
+
+            else:
+                # URL line
+                if current_params and line and not line.startswith('#'):
+                    current_params['uri'] = line.strip()
+                    if current_params.get('title') and current_params.get('uri'):
+                        entries.append(current_params)
+                    current_params = {}
+
+        return entries
+
+    def _parse_m3u_incremental(self, filename, chunk_size=8192):
+        """Parse M3U file incrementally to avoid memory issues"""
+        entries = []
+        current_params = {}
+        buffer = ""
+
+        try:
+            with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+
+                    buffer += chunk
+                    lines = buffer.split('\n')
+
+                    # Keep last incomplete line in buffer
+                    if buffer and not buffer.endswith('\n'):
+                        buffer = lines.pop()
+                    else:
+                        buffer = ""
+
+                    # Process complete lines
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+
+                        # Yield control periodically
+                        if len(entries) % 50 == 0:
+                            from enigma import eTimer
+                            eTimer().start(5, True)
+
+                        if line.startswith('#EXTINF:'):
+                            current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
+                            parts = line[8:].split(',', 1)
+                            if len(parts) > 1:
+                                current_params['title'] = parts[1].strip()
+
+                        elif line.startswith('#EXTGRP:'):
+                            current_params['group-title'] = line[8:].strip()
+
+                        elif line.startswith('#'):
+                            continue
+
+                        else:
+                            if current_params and line:
+                                current_params['uri'] = line.strip()
+                                if current_params.get('title'):
+                                    entries.append(current_params)
+                                current_params = {}
+
+        except Exception as e:
+            logger.error(f"Incremental parsing error: {str(e)}")
+
+        return entries
+
+    def _parse_m3u_content2222(self, data):
         """Advanced parser for M3U content with support for VLCOPT, KODIPROP, EXTHTTP"""
 
         def is_textual_data(text):
@@ -2581,21 +3141,28 @@ class UniversalConverter(Screen):
                 group = channel.get('group', 'Default')
                 groups.setdefault(group, []).append(channel)
 
-            # Phase 2: Write bouquet(s)
-            bouquet_name = self.get_safe_filename(basename(m3u_path).split('.')[0])
-
+            # Phase 2: Writing bouquets
             if config.plugins.m3uconverter.bouquet_mode.value == "single":
-                # Create one bouquet with all channels
+                # Create a single bouquet with all channels
                 all_channels = []
                 for group_channels in groups.values():
                     all_channels.extend(group_channels)
 
+                bouquet_name = self.get_safe_filename(basename(self.selected_file).split('.')[0])
                 self.write_group_bouquet(bouquet_name, all_channels)
+                self.update_progress(
+                    total_channels + 1,
+                    _("Creating single bouquet: %s") % bouquet_name
+                )
             else:
-                # Create separate bouquets by group
+                # Create separate bouquets for each group
                 for group_idx, (group, channels) in enumerate(groups.items()):
                     safe_group_name = self.get_safe_filename(group)
                     self.write_group_bouquet(safe_group_name, channels)
+                    self.update_progress(
+                        total_channels + group_idx,
+                        _("Creating bouquet: %s") % safe_group_name
+                    )
 
             # Phase 3: Update main bouquet
             if config.plugins.m3uconverter.bouquet_mode.value == "single":
@@ -2606,7 +3173,7 @@ class UniversalConverter(Screen):
             # Phase 4: Generate EPG files if data is available
             if epg_data and config.plugins.m3uconverter.epg_enabled.value:
                 epg_mapper.generate_epg_channels_file(epg_data, bouquet_name)
-                epg_mapper.generate_epg_sources_file(bouquet_name, epg_url)
+                epg_mapper.generate_epg_sources_file2(bouquet_name, epg_url)
 
             return (True, total_channels, len(epg_data))
 
@@ -2809,7 +3376,16 @@ class UniversalConverter(Screen):
                     logger.debug("Processing channel: %s (tvg_id: %s)", channel['name'], tvg_id)
 
                     # Get the best service reference for EPG
-                    sref, match_type = epg_mapper.find_best_service_match(clean_name, tvg_id)
+                    # sref, match_type = epg_mapper.find_best_service_match(clean_name, tvg_id)
+                    sref, match_type = epg_mapper.find_best_service_match(
+                        clean_name,
+                        tvg_id,
+                        channel['name']
+                    )
+
+                    # Inizializza le variabili per evitare UnboundLocalError
+                    hybrid_sref = None
+                    epg_sref = None
 
                     if sref:
                         logger.debug("Found service reference for %s: %s (match type: %s)", channel['name'], sref, match_type)
@@ -2832,9 +3408,12 @@ class UniversalConverter(Screen):
                         # Fallback to standard IPTV reference
                         channel['url'] = epg_mapper.generate_service_reference(channel['url'])
 
+                    # Logging sicuro - solo se le variabili sono definite
                     logger.debug("Original URL: %s", channel['url'])
-                    logger.debug("Generated service reference for bouquet: %s", hybrid_sref)
-                    logger.debug("Generated service reference for EPG: %s", epg_sref)
+                    if hybrid_sref:
+                        logger.debug("Generated service reference for bouquet: %s", hybrid_sref)
+                    if epg_sref:
+                        logger.debug("Generated service reference for EPG: %s", epg_sref)
 
                     group = channel.get('group', 'Default')
                     groups.setdefault(group, []).append(channel)
@@ -2886,14 +3465,13 @@ class UniversalConverter(Screen):
                         logger.error("Failed to generate EPG channels file")
 
                     # Generate sources.xml
-                    sources_success = epg_mapper.generate_epg_sources_file(bouquet_name_for_epg, epg_url)
-                    if not sources_success:
-                        logger.error("Failed to generate EPG sources file")
+                    sources_success = epg_mapper.generate_epg_sources_file2(bouquet_name_for_epg, epg_url)
 
                     if channels_success and sources_success:
-                        logger.info("Generated EPG files for %d channels", len(epg_data))
+                        logger.info("EPG files generated successfully for %d channels", len(epg_data))
                     else:
                         logger.warning("Failed to generate some EPG files")
+
                 else:
                     logger.warning("No EPG data to generate files or EPG disabled")
 

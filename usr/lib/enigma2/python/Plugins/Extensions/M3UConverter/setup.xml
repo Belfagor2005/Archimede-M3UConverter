@@ -1,5 +1,6 @@
 <setupxml>
     <setup key="M3UConverterSettings" title="M3UConverter Settings">
+        <item level="0" text="Epg Language:" description="Use language select for Epg sources.">config.plugins.m3uconverter.language</item>    
         <item level="0" text="Default folder" description="Folder used by default to open or save M3U files.">config.plugins.m3uconverter.lastdir</item>
         <item level="0" text="EPG on Bouqet Enabled" description="Epg on Bouquet TV if Enabled.">config.plugins.m3uconverter.epg_enabled</item>
         <if conditional="config.plugins.m3uconverter.epg_enabled.value">
