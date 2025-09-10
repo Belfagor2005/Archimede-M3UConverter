@@ -20,10 +20,45 @@ from __future__ import absolute_import, print_function
 #########################################################
 """
 
-from os import makedirs, remove
-from os.path import join, exists
+import sys
 from threading import Lock
+from os import makedirs, remove, rename
+from os.path import join, exists, getsize
 from time import strftime
+from io import StringIO
+
+logfile = StringIO()
+mutex = Lock()
+
+_logger_instance = None
+
+
+def write(data):
+    """Funzione write mantenuta per compatibilità"""
+    mutex.acquire()
+    try:
+        if logfile.tell() > 8000:
+            logfile.seek(0)
+        logfile.write(data)
+    finally:
+        mutex.release()
+    
+    if data.strip():
+        logger = _get_logger()
+        logger.info(data.rstrip())
+
+
+def getvalue():
+    """Funzione getvalue mantenuta per compatibilità"""
+    mutex.acquire()
+    try:
+        pos = logfile.tell()
+        head = logfile.read()
+        logfile.seek(0)
+        tail = logfile.read(pos)
+    finally:
+        mutex.release()
+    return head + tail
 
 
 class ColoredLogger:
@@ -37,6 +72,8 @@ class ColoredLogger:
     END = "\033[0m"
     _instances = {}
     _lock = Lock()
+
+    SUPPORTS_COLOR = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
 
     def __new__(cls, log_path=None, plugin_name="generic", clear_on_start=True, max_size_mb=1):
         """Singleton for log_path + plugin_name combination"""
@@ -68,7 +105,6 @@ class ColoredLogger:
 
         if log_path:
             self.log_file = join(log_path, f"{plugin_name}.log")
-
             if clear_on_start and exists(self.log_file):
                 try:
                     remove(self.log_file)
@@ -88,10 +124,11 @@ class ColoredLogger:
         timestamp = strftime("%Y-%m-%d %H:%M:%S")
         formatted_message = f"{timestamp} {self.plugin_name} {label} {message}"
 
-        # Output colored console
-        print(f"{timestamp} {self.plugin_name} {label} {color}{message}{self.END}")
+        if self.SUPPORTS_COLOR:
+            print(f"{timestamp} {self.plugin_name} {label} {color}{message}{self.END}")
+        else:
+            print(f"{timestamp} {self.plugin_name} {label} {message}")
 
-        # Scrittura su file
         if self.log_file:
             self._write_to_file(formatted_message)
             self._check_rotation()
@@ -120,7 +157,6 @@ class ColoredLogger:
     def _get_file_size_mb(self):
         """Returns the file size in MB"""
         try:
-            from os.path import getsize
             return getsize(self.log_file) / (1024 * 1024)
         except:
             return 0
@@ -129,8 +165,6 @@ class ColoredLogger:
         """Perform log rotation"""
         try:
             import glob
-            import os
-
             base_name = self.log_file
             pattern = f"{base_name}.*"
 
@@ -140,7 +174,7 @@ class ColoredLogger:
             # Delete the oldest backups (keep only the last 5)
             for old_backup in backups[4:]:
                 try:
-                    os.remove(old_backup)
+                    remove(old_backup)
                 except:
                     pass
 
@@ -151,7 +185,7 @@ class ColoredLogger:
 
                 if exists(old_name):
                     try:
-                        os.rename(old_name, new_name)
+                        rename(old_name, new_name)
                     except:
                         pass
 
@@ -159,19 +193,39 @@ class ColoredLogger:
             print(f"[LOG ERROR] Log rotation failed: {e}")
 
     def debug(self, message, *args):
-        self.log("DEBUG", message % args if args else message)
+        try:
+            msg = message % args if args else message
+        except TypeError:
+            msg = message  # fallback se è già una f-string
+        self.log("DEBUG", msg)
 
     def info(self, message, *args):
-        self.log("INFO", message % args if args else message)
+        try:
+            msg = message % args if args else message
+        except TypeError:
+            msg = message
+        self.log("INFO", msg)
 
     def warning(self, message, *args):
-        self.log("WARNING", message % args if args else message)
+        try:
+            msg = message % args if args else message
+        except TypeError:
+            msg = message
+        self.log("WARNING", msg)
 
     def error(self, message, *args):
-        self.log("ERROR", message % args if args else message)
+        try:
+            msg = message % args if args else message
+        except TypeError:
+            msg = message
+        self.log("ERROR", msg)
 
     def critical(self, message, *args):
-        self.log("CRITICAL", message % args if args else message)
+        try:
+            msg = message % args if args else message
+        except TypeError:
+            msg = message
+        self.log("CRITICAL", msg)
 
     def exception(self, message, *args):
         """Log an exception with traceback"""
@@ -179,7 +233,11 @@ class ColoredLogger:
         import traceback
         exc_info = sys.exc_info()
         traceback_text = ''.join(traceback.format_exception(*exc_info))
-        full_message = f"{message % args if args else message}\n{traceback_text}"
+        try:
+            msg = message % args if args else message
+        except TypeError:
+            msg = message  # fallback se è già una f-string
+        full_message = f"{msg}\n{traceback_text}"
         self.log("ERROR", full_message)
 
     def show_message(self, session, text, timeout=5):

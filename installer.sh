@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='2.0'
-changelog='\nAdded options M3U TO JSON - EPG ON CONVERSION TV'
+version='2.1'
+changelog='\nFixed EPG ON CONVERSION TV'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##
