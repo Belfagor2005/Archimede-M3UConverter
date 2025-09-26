@@ -88,7 +88,7 @@ ICON_CURRENT = 2
 
 ARCHIMEDE_CONVERTER_PATH = "archimede_converter"
 LOG_DIR = join("/tmp", ARCHIMEDE_CONVERTER_PATH)
-main_log = join(LOG_DIR, "unified_converter.log")
+MAIN_LOG = join(LOG_DIR, "unified_converter.log")
 
 
 # Create directory if it does not exist
@@ -343,27 +343,49 @@ class AspectManager:
     """Manage aspect ratio settings for video playback"""
     def __init__(self):
         self.init_aspect = self.get_current_aspect()
-        print("[INFO] Initial aspect ratio:", self.init_aspect)
+        if config.plugins.m3uconverter.enable_debug.value:
+            logger.info(f"Initial aspect ratio: {self.init_aspect}")
+
+    def getAspectRatioSetting(self):
+        """
+        Map Enigma2 config.av.aspectratio string values to integer codes.
+        If no mapping exists, fall back to the raw config value.
+        """
+        aspect_map = {
+            "4_3_letterbox": 0,
+            "4_3_panscan": 1,
+            "16_9": 2,
+            "16_9_always": 3,
+            "16_10_letterbox": 4,
+            "16_10_panscan": 5,
+            "16_9_letterbox": 6,
+        }
+
+        val = config.av.aspectratio.value
+        return aspect_map.get(val, val)
 
     def get_current_aspect(self):
-        """Returns the current aspect ratio of the device."""
+        """Get the current aspect ratio setting.
+
+        Returns:
+            int: Current aspect ratio setting
+        """
         try:
-            return int(AVSwitch().getAspectRatioSetting())
+            return self.getAspectRatioSetting()
         except Exception as e:
-            print("[ERROR] Failed to get aspect ratio:", str(e))
+            logger.error(f"Failed to get aspect ratio: {str(e)}")
             return 0
 
     def restore_aspect(self):
         """Restores the original aspect ratio when the plugin exits."""
         try:
-            print("[INFO] Restoring aspect ratio to:", self.init_aspect)
-            AVSwitch().setAspectRatio(self.init_aspect)
+            logger.info(f"Restoring aspect ratio to: {self.init_aspect}")
+            AVSwitch.getInstance().setAspectRatio(self.init_aspect)
         except Exception as e:
-            print("[ERROR] Failed to restore aspect ratio:", str(e))
+            logger.error(f"Failed to restore aspect ratio: {str(e)}")
 
 
 # ==================== GLOBAL INSTANCES ====================
-
 aspect_manager = AspectManager()
 screen_dimensions = getDesktop(0).size()
 SCREEN_WIDTH = screen_dimensions.width()
@@ -399,6 +421,11 @@ class UnifiedChannelMapping:
 class EPGServiceMapper:
     """Service mapper for EPG data matching and conversion"""
     def __init__(self, prefer_satellite=True):
+        """Initialize EPG service mapper.
+
+        Args:
+            prefer_satellite (bool): Whether to prefer satellite services
+        """
         self.prefer_satellite = prefer_satellite
         self.mapping = UnifiedChannelMapping()
         self._match_cache = {}
@@ -2945,21 +2972,6 @@ class ConversionSelector(Screen):
             logger.error(f"Error in file processing: {str(e)}")
             self.session.open(MessageBox, _("File processing error"), MessageBox.TYPE_ERROR, timeout=6)
 
-    # def _select_current_item(self):
-        # selection = self["list"].getCurrent()
-        # if not selection:
-            # return
-
-        # if selection[1] == "_purge_m3u_bouquets":
-            # self._purge_m3u_bouquets()
-            # return
-
-        # self.session.open(
-            # UniversalConverter,
-            # conversion_type=selection[1],
-            # auto_open_browser=False
-        # )
-
 
 class UniversalConverter(Screen):
     if SCREEN_WIDTH > 1280:
@@ -3143,7 +3155,7 @@ class UniversalConverter(Screen):
                 self.start_timer = eTimer()
                 self.start_timer.callback.append(self._delayed_conversion_start)
                 self.start_timer.start(2000)  # 2 second delay
-        except:
+        except Exception:
             pass
 
     def _delayed_conversion_start(self):
@@ -3163,9 +3175,11 @@ class UniversalConverter(Screen):
             self.session.open(MessageBox, _(f"Backup failed: {str(e)}"), MessageBox.TYPE_ERROR, timeout=6)
 
     def _initialize_tv_converter(self):
+        """Initialize TV converter specific settings."""
         self._update_tv_path_settings()
 
     def _update_tv_path_settings(self):
+        """Update TV path settings and check permissions."""
         try:
             if not exists("/etc/enigma2"):
                 raise OSError("Bouquets path not found")
@@ -3414,7 +3428,6 @@ class UniversalConverter(Screen):
             self["status"].setText(_("Invalid selection"))
             return
         try:
-            # DEBUG START
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug("=== FILE SELECTION STARTED ===")
 
@@ -3452,6 +3465,7 @@ class UniversalConverter(Screen):
             # Process file based on conversion type
             path = selected_file[0] if isinstance(selected_file, (list, tuple)) else selected_file
             self.selected_file = normpath(str(path))
+
             try:
                 if self.conversion_type == "m3u_to_tv":
                     self._parse_m3u_file(selected_path)
@@ -3463,6 +3477,7 @@ class UniversalConverter(Screen):
                     self._parse_json_file(selected_path)
                 elif self.conversion_type == "json_to_tv":
                     self._parse_json_file(selected_path)
+
                 # Update state
                 self.file_loaded = True
                 if config.plugins.m3uconverter.enable_debug.value:
@@ -3576,7 +3591,6 @@ class UniversalConverter(Screen):
             filename = join(bouquet_dir, "userbouquet." + safe_name + ".tv")
             temp_file = filename + ".tmp"
 
-            # Assicurati che la directory esista
             if not exists(bouquet_dir):
                 makedirs(bouquet_dir, exist_ok=True)
 
@@ -3591,23 +3605,23 @@ class UniversalConverter(Screen):
                     if not ch.get('url') or len(ch['url']) < 10:
                         continue
 
-                    # Usa il service reference corretto
+                    # Use correct service reference
                     service_ref = ch.get('sref') or ch.get('url', '')
                     f.write(f"#SERVICE {service_ref}\n")
 
-                    # Pulisci il nome per la descrizione
+                    # Clean name for description
                     desc = ch.get('name', 'Unknown Channel')
                     desc = ''.join(c for c in desc if c.isprintable() or c.isspace())
                     desc = transliterate_text(desc)
                     f.write(f"#DESCRIPTION {desc}\n")
 
-            # Sostituisci il file temporaneo con quello definitivo
+            # Replace temporary file with final file
             if exists(filename):
                 remove(filename)
 
             replace(temp_file, filename)
 
-            # Imposta i permessi corretti
+            # Set correct permissions
             chmod(filename, 0o644)
 
             if config.plugins.m3uconverter.enable_debug.value:
@@ -3616,7 +3630,6 @@ class UniversalConverter(Screen):
             return True
 
         except Exception as e:
-            # Pulizia in caso di errore
             if exists(temp_file):
                 try:
                     remove(temp_file)
@@ -3664,14 +3677,13 @@ class UniversalConverter(Screen):
             return False
 
         if len(text) > 100:
-            # Probabilmente è un URL, accettalo comunque
             return True
 
         text_str = str(text)
 
         # Printable characters check - more permissive
         printable_count = sum(1 for c in text_str if c.isprintable() or c.isspace())
-        if printable_count / len(text_str) < 0.5:  # Solo 50% printable
+        if printable_count / len(text_str) < 0.5:  # Only 50% printable
             return False
 
         return True
@@ -3886,7 +3898,7 @@ class UniversalConverter(Screen):
                         entries.append(current_params.copy())
                     current_params = {}
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Parsing completato: {len(entries)} canali trovati")
+            logger.info(f"Parsing completed: {len(entries)} channels found")
         return entries
 
     def _parse_m3u_incremental(self, filename, chunk_size=32768):
@@ -4210,7 +4222,7 @@ class UniversalConverter(Screen):
                 tvg_id = channel.get('tvg-id', '')
                 sref, match_type = self.epg_mapper.find_best_service_match(clean_name, tvg_id)
 
-                # Aggiorna progresso ogni 50 canali
+                # Update progress every 50 channels
                 if idx % 50 == 0:
                     progress = (idx + 1) / total_channels * 100
                     name = str(channel.get("name") or "--")
@@ -4241,8 +4253,8 @@ class UniversalConverter(Screen):
                     # Fallback to standard IPTV reference
                     channel['url'] = self.epg_mapper.generate_service_reference(channel['url'])
                     epg_data.append({
-                        'tvg_id': channel['name'],  # Usa il nome come tvg_id
-                        'sref': channel['url'],     # Usa l'URL come service reference
+                        'tvg_id': channel['name'],
+                        'sref': channel['url'],
                         'name': channel['name']
                     })
 
@@ -4284,7 +4296,7 @@ class UniversalConverter(Screen):
                 if config.plugins.m3uconverter.bouquet_mode.value == "single":
                     bouquet_name_for_epg = bouquet_name
                 else:
-                    bouquet_name_for_epg = "all_groups"  # Usa un nome unico per EPG multi-bouquet
+                    bouquet_name_for_epg = "all_groups"  # Use a unique name for multi-bouquet EPG
 
                 # Generate channels.xml
                 channels_success = self.epg_mapper.generate_epg_channels_file(epg_data, bouquet_name_for_epg)
@@ -4323,7 +4335,7 @@ class UniversalConverter(Screen):
         Unified conversion task that handles both direct conversion and file-based conversion
         """
         try:
-            # DEFINISCI file_to_parse correttamente
+            # DEFINE file_to_parse correctly
             file_to_parse = m3u_path or self.selected_file
             if not file_to_parse:
                 logger.error("No file specified for conversion")
@@ -4331,7 +4343,7 @@ class UniversalConverter(Screen):
 
             logger.info(f"Starting conversion for: {file_to_parse}")
 
-            # Estrai l'URL EPG dal file M3U (CON TRY/EXCEPT)
+            # Extract EPG URL from M3U file (WITH TRY/EXCEPT)
             epg_url = None
             try:
                 epg_url = self.epg_mapper.extract_epg_url_from_m3u(file_to_parse)
@@ -4340,7 +4352,7 @@ class UniversalConverter(Screen):
                 logger.warning(f"Error extracting EPG URL: {str(e)}")
                 epg_url = None
 
-            # Se viene passato un file path, parsalo prima
+            # If a file path is passed, parse it first
             if file_to_parse and not self.m3u_channels_list:
                 logger.info(f"Parsing file: {file_to_parse}")
                 with open(file_to_parse, 'r', encoding='utf-8', errors='ignore') as f:
@@ -4380,7 +4392,7 @@ class UniversalConverter(Screen):
             for i, ch in enumerate(self.m3u_channels_list[:5]):  # First 5 channels
                 logger.debug("Channel %d: %s -> %s", i + 1, ch.get('name'), ch.get('url'))
 
-            # Phase 1: Process each channel - VERSIONE COMPLETA E CORRETTA
+            # Phase 1: Process each channel
             for idx, channel in enumerate(self.m3u_channels_list):
                 if self.cancel_conversion:
                     return (False, "Conversion cancelled")
@@ -4392,26 +4404,24 @@ class UniversalConverter(Screen):
                 name = channel.get('name', 'Unknown')
                 url = channel.get('url', '')
                 tvg_id = channel.get('tvg_id', '')
-                original_name = name  # Conserva il nome originale
+                original_name = name  # Preserve original name
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.debug(f"Processing channel {idx}: {name}")
 
-                # Clean name for matching (senza varianti per better matching)
+                # Clean name for matching (without variants for better matching)
                 clean_name = self.epg_mapper.clean_channel_name(name, preserve_variants=False)
 
                 # Find best service reference with DEBUG
-                sref, match_type = self.epg_mapper.find_best_service_match(clean_name, tvg_id, original_name)
+                service_ref, match_type = self.epg_mapper.find_best_service_match(clean_name, tvg_id, original_name)
                 epg_sref = None
-                if sref:
+                if service_ref:
                     # Create hybrid service reference
-                    hybrid_sref = self.epg_mapper.generate_hybrid_sref(sref, url)
-                    # Per EPG, usa il reference DVB ORIGINALE (senza URL)
-                    epg_sref = sref
-                    # epg_sref = self.epg_mapper.generate_hybrid_sref(sref, for_epg=True)
-                    channel['sref'] = hybrid_sref
+                    # hybrid_sref = self.epg_mapper.generate_hybrid_sref(service_ref, url)
+                    # For EPG, use ORIGINAL DVB reference (without URL)
+                    epg_sref = service_ref
                     stats['epg_channels'] += 1
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"EPG MATCH SUCCESS: {name} -> {sref} ({match_type})")
+                        logger.debug(f"EPG MATCH SUCCESS: {name} -> {service_ref} ({match_type})")
                 else:
                     # Fallback to IPTV reference
                     channel['sref'] = self.epg_mapper.generate_service_reference(url)
@@ -4419,7 +4429,7 @@ class UniversalConverter(Screen):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.debug(f"EPG MATCH FAILED: {name} -> IPTV fallback")
 
-                # CREA ENTRY EPG PER TUTTI I CANALI - PRESERVA VARIANTI
+                # CREATE EPG ENTRIES FOR ALL CHANNELS - PRESERVE VARIANTS
                 epg_entry = {
                     'tvg_id': tvg_id or name,
                     'sref': epg_sref or channel['sref'],
@@ -4429,7 +4439,7 @@ class UniversalConverter(Screen):
                 }
                 epg_data.append(epg_entry)
 
-                # RISPETTA LA MODALITÀ SELEZIONATA
+                # RESPECT SELECTED MODE
                 if config.plugins.m3uconverter.bouquet_mode.value == "single":
                     group = "All Channels"
                 else:
@@ -4443,7 +4453,7 @@ class UniversalConverter(Screen):
                     progress = (idx + 1) / total_channels * 100
                     self.update_progress(idx + 1, _("Processing: %s (%d%%)") % (name, progress))
 
-            # DEBUG: Log dei gruppi creati
+            # DEBUG: Log created groups
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug("Groups created: %s", list(groups.keys()))
                 logger.debug("Bouquet mode: %s", config.plugins.m3uconverter.bouquet_mode.value)
@@ -4498,7 +4508,7 @@ class UniversalConverter(Screen):
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"EPG enabled, preparing to generate files for {len(epg_data)} channels")
 
-                # DEFINISCI bouquet_name_for_epg in base alla modalità
+                # DEFINE bouquet_name_for_epg based on mode
                 if config.plugins.m3uconverter.bouquet_mode.value == "single":
                     bouquet_name_for_epg = bouquet_names[0] if bouquet_names else "default_bouquet"
                     if config.plugins.m3uconverter.enable_debug.value:
@@ -4508,7 +4518,7 @@ class UniversalConverter(Screen):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(f"Multi bouquet mode, using: {bouquet_name_for_epg}")
 
-                # GENERA I FILE EPG
+                # GENERATE EPG FILES
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"Calling generate_epg_files for {bouquet_name_for_epg}")
                 epg_success = self.epg_mapper.generate_epg_files(bouquet_name_for_epg, epg_data, epg_url)
@@ -4517,25 +4527,23 @@ class UniversalConverter(Screen):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(f"EPG files generated successfully for {bouquet_name_for_epg}")
 
-                    # VERIFICA i risultati
                     self.epg_mapper.verify_epg_generation(bouquet_name_for_epg, len(epg_data))
 
-                    # VERIFICA che i file siano stati creati
                     self.epg_mapper.verify_epg_files(bouquet_name_for_epg)
                 else:
                     logger.warning(f"Failed to generate EPG files for {bouquet_name_for_epg}")
 
-                    # Debug aggiuntivo
+                    # Additional debug
                     self._debug_epg_failure(bouquet_name_for_epg, epg_data)
 
-            # Log delle statistiche finali
+            # Log final statistics
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("=== CONVERSION STATISTICS ===")
                 logger.info(f"Total channels processed: {total_channels}")
                 logger.info(f"Channels with EPG match: {len(epg_data)}")
                 logger.info(f"EPG match rate: {(len(epg_data) / total_channels * 100):.1f}%")
 
-            # RETURN FINALE con statistiche
+            # FINAL RETURN with statistics
             cache_stats = self.epg_mapper.get_cache_statistics()
             return (True, total_channels, len(epg_data), cache_stats)
 
@@ -4546,6 +4554,7 @@ class UniversalConverter(Screen):
             return (False, str(e))
 
     def _convert_m3u_to_tv(self):
+        """Convert M3U to TV bouquet format."""
         def conversion_task():
             try:
                 return self.converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
@@ -4562,7 +4571,7 @@ class UniversalConverter(Screen):
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
     def convert_tv_to_m3u(self):
-
+        """Convert TV bouquet to M3U format."""
         def _real_tv_to_m3u_conversion():
             try:
                 output_file = self._get_output_filename()
@@ -4867,7 +4876,6 @@ class UniversalConverter(Screen):
             except Exception as e:
                 return (False, str(e))
 
-        # Avvia conversione
         self.is_converting = True
         self.cancel_conversion = False
         self["key_green"].setText(_("Converting"))
@@ -4894,16 +4902,12 @@ class UniversalConverter(Screen):
             data = result[1:] if len(result) > 1 else []
 
             if success:
-                # Preparare i dati per le statistiche
                 stats_data = self._prepare_stats_data(data, self.conversion_type)
 
-                # MOSTRA LE STATISTICHE SOLO UNA VOLTA
                 self.show_conversion_stats(self.conversion_type, stats_data)
 
-                # Ricarica i servizi dopo la conversione
                 self._reload_services_after_delay()
             else:
-                # Messaggio di errore
                 error_msg = data[0] if data and len(data) > 0 else _("Unknown error")
                 self.session.open(
                     MessageBox,
@@ -4920,7 +4924,7 @@ class UniversalConverter(Screen):
             self.session.open(MessageBox, _("Error processing conversion result"), MessageBox.TYPE_ERROR)
 
     def _reload_services_after_delay(self, delay=2000):
-        """Ricarica i servizi dopo un delay"""
+        """Reload services after a delay"""
         try:
             self.reload_timer = eTimer()
             self.reload_timer.callback.append(self._perform_service_reload)
@@ -4929,7 +4933,7 @@ class UniversalConverter(Screen):
             logger.error(f"Error scheduling service reload: {str(e)}")
 
     def _perform_service_reload(self):
-        """Esegue effettivamente la ricarica dei servizi"""
+        """It actually performs the recharging of services"""
         try:
             if hasattr(self, 'reload_timer'):
                 self.reload_timer.stop()
@@ -4940,7 +4944,6 @@ class UniversalConverter(Screen):
             if success:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info("Services reloaded successfully")
-                # Verifica che i bouquet siano effettivamente caricati
                 self._verify_bouquets_loaded()
             else:
                 logger.warning("Service reload may have failed")
@@ -4949,7 +4952,7 @@ class UniversalConverter(Screen):
             logger.error(f"Error in service reload: {str(e)}")
 
     def _verify_bouquets_loaded(self):
-        """Verifica che i bouquet siano stati caricati correttamente"""
+        """Verify that the bouquets have been uploaded correctly"""
         try:
             bouquets_file = "/etc/enigma2/bouquets.tv"
             if fileExists(bouquets_file):
@@ -5154,7 +5157,7 @@ class UniversalConverter(Screen):
             self.session.open(MessageBox, _("Error processing conversion result"), MessageBox.TYPE_ERROR)
 
     def _prepare_stats_data(self, data, conversion_type):
-        """Prepara i dati per le statistiche in base al tipo di conversione"""
+        """Prepare data for statistics based on conversion type."""
         stats_data = {
             'conversion_type': conversion_type,
             'status': 'completed'
@@ -5195,7 +5198,6 @@ class UniversalConverter(Screen):
                         'json_structure': 'playlist'  # Can customize this based on parsing
                     })
 
-            # Aggiungi informazioni generiche
             stats_data['timestamp'] = strftime("%Y-%m-%d %H:%M:%S")
 
         except Exception as e:
@@ -5205,8 +5207,12 @@ class UniversalConverter(Screen):
         return stats_data
 
     def show_conversion_stats(self, conversion_type, stats_data):
-        """Show conversion statistics in a popup for all conversion types"""
+        """Show conversion statistics in a popup for all conversion types.
 
+        Args:
+            conversion_type (str): Type of conversion
+            stats_data (dict): Statistics data
+        """
         stats_message = [_("🎯 CONVERSION COMPLETE"), ""]
 
         if conversion_type in ["m3u_to_tv", "json_to_tv"]:
@@ -5343,6 +5349,8 @@ class UniversalConverter(Screen):
 
 
 class M3UConverterSettings(Setup):
+    """Settings screen for M3U Converter plugin."""
+
     def __init__(self, session, parent=None):
         Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
         self.parent = parent
