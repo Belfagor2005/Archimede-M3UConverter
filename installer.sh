@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='2.2'
-changelog='\nFixed EPG ON CONVERSION TV'
+version='2.3'
+changelog='\nFixed EPG ON 70%'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##

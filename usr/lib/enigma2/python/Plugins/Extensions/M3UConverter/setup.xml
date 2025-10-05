@@ -4,14 +4,12 @@
         <item level="0" text="EPG on Bouqet Enabled" description="Epg on Bouquet TV if Enabled.">config.plugins.m3uconverter.epg_enabled</item>
         <if conditional="config.plugins.m3uconverter.epg_enabled.value">
                 <item level="0" text="- Epg Language:" description="Use language select for Epg sources.">config.plugins.m3uconverter.language</item>    
-                <item level="0" text="- Epg Priority" description="Select the Platform Priority.">config.plugins.m3uconverter.platform_priority</item>
                 <item level="0" text="- Epg Mode" description="Select the Mode of hits.">config.plugins.m3uconverter.epg_generation_mode</item>
 		</if>
         <item level="0" text="Bouquet Mode" description="Bouquet List Mode.">config.plugins.m3uconverter.bouquet_mode</item>
         <item level="0" text="Position of M3U bouquets in main list" description="Place generated bouquets at the top or bottom of the bouquet list.">config.plugins.m3uconverter.bouquet_position</item>
-
         <item level="0" text="Convert HLS streams" description="Convert HLS (.m3u8) streams into Enigma2-compatible format.">config.plugins.m3uconverter.hls_convert</item>
-        <item level="0" text="Filter dead channels" description="Automatically remove non-working or unreachable channels.">config.plugins.m3uconverter.filter_dead_channels</item>
+        <!-- <item level="0" text="Filter dead channels" description="Automatically remove non-working or unreachable channels.">config.plugins.m3uconverter.filter_dead_channels</item> -->
         <item level="0" text="Enable Debug Mode" description="Enable debug mode for detailed logs.">config.plugins.m3uconverter.enable_debug</item>
         <item level="0" text="Auto-reload services" description="Reload the channel list automatically after conversion.">config.plugins.m3uconverter.auto_reload</item>
         <item level="0" text="Create backup" description="Create a backup of the original M3U file before converting.">config.plugins.m3uconverter.backup_enable</item>
