@@ -77,7 +77,7 @@ except ImportError:
 
 # ==================== CONSTANTS ====================
 CURRENT_VERSION = '2.4'
-LAST_MODIFIED_DATE = "20251006"
+LAST_MODIFIED_DATE = "20251007"
 PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 ICON_STORAGE = 0
 ICON_PARENT = 1
@@ -85,6 +85,7 @@ ICON_CURRENT = 2
 
 ARCHIMEDE_CONVERTER_PATH = "/tmp/archimede_converter"
 LOG_DIR = ARCHIMEDE_CONVERTER_PATH
+DEBUG_DIR = join(ARCHIMEDE_CONVERTER_PATH, "archimede_debug")
 MAIN_LOG = join(ARCHIMEDE_CONVERTER_PATH, "unified_converter.log")
 
 
@@ -299,8 +300,18 @@ def clean_group_name(name):
 config.plugins.m3uconverter = ConfigSubsection()
 default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else default_movie_path()
 config.plugins.m3uconverter.lastdir = ConfigSelection(default=default_dir, choices=[])
-
 config.plugins.m3uconverter.epg_enabled = ConfigYesNo(default=True)
+config.plugins.m3uconverter.epg_database_mode = ConfigSelection(
+    default="dvb",
+    choices=[
+        ("full", _("DVB + Rytec + DTT (Full)")),
+        ("both", _("DVB + Rytec")),
+        ("dvb", _("Only DVB")),
+        ("rytec", _("Only Rytec")),
+        ("dtt", _("Only DTT"))
+    ]
+)
+
 config.plugins.m3uconverter.bouquet_mode = ConfigSelection(
     default="single",
     choices=[("single", _("Single Bouquet")), ("multi", _("Multiple Bouquets"))]
@@ -466,6 +477,8 @@ class EPGServiceMapper:
         self.enigma_config = self._load_enigma2_configuration()
         self.country_code = self._get_system_country_code()
 
+        self.database_mode = config.plugins.m3uconverter.epg_database_mode.value
+
         self.prefer_satellite = prefer_satellite
         self.mapping = UnifiedChannelMapping()
 
@@ -478,6 +491,7 @@ class EPGServiceMapper:
         self._stats_counters = {
             'rytec_matches': 0,
             'dvb_matches': 0,
+            'dvbt_matches': 0,
             'fallback_matches': 0
         }
         # memory optimization timer
@@ -485,6 +499,11 @@ class EPGServiceMapper:
         # self.optimize_memory_timer.callback.append(self.optimize_memory_usage)
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info("EPGServiceMapper initialized with unified mapping")
+
+    def refresh_config(self):
+        """Refresh configuration values"""
+        self.database_mode = config.plugins.m3uconverter.epg_database_mode.value
+        logger.info(f"🔄 Config refreshed - Database mode: {self.database_mode}")
 
     def get_cache_statistics(self):
         """Return detailed cache statistics"""
@@ -501,7 +520,7 @@ class EPGServiceMapper:
         }
 
         for value in self._match_cache.values():
-            # protezione extra
+            # extra protection
             if not isinstance(value, (tuple, list)) or len(value) < 1:
                 cache_analysis['empty'] += 1
                 continue
@@ -515,14 +534,37 @@ class EPGServiceMapper:
                 cache_analysis['incompatible'] += 1
 
         # ✅ MATCH COUNTERS
-        stats_counters = getattr(self, '_stats_counters', {
-            'rytec_matches': 0,
-            'dvb_matches': 0,
-            'fallback_matches': 0
-        })
+        # stats_counters = getattr(self, '_stats_counters', {
+            # 'rytec_matches': 0,
+            # 'dvb_matches': 0,
+            # 'dvbt_matches': 0,
+            # 'fallback_matches': 0
+        # })
 
+        stats_counters = getattr(self, '_stats_counters', {})
         total_matches = stats_counters['rytec_matches'] + stats_counters['dvb_matches'] + stats_counters['fallback_matches']
         match_coverage = (stats_counters['rytec_matches'] + stats_counters['dvb_matches']) / total_matches * 100 if total_matches > 0 else 0
+
+        # ✅ CALCULATE ACTUAL COVERAGE BASED ON THE MODE
+        rytec = stats_counters.get('rytec_matches', 0)
+        dvb = stats_counters.get('dvb_matches', 0)
+        dvbt = stats_counters.get('dvbt_matches', 0)
+
+        if self.database_mode == "full":
+            effective_epg_matches = rytec + dvb + dvbt
+        elif self.database_mode == "both":
+            effective_epg_matches = rytec + dvb
+        elif self.database_mode == "dvb":
+            effective_epg_matches = dvb
+        elif self.database_mode == "rytec":
+            effective_epg_matches = rytec
+        elif self.database_mode == "dtt":
+            effective_epg_matches = dvbt
+        else:
+            effective_epg_matches = 0
+
+        effective_coverage = (effective_epg_matches / total_matches * 100) if total_matches > 0 else 0
+
         return {
             # Match Cache Statistics
             'match_hits': self._match_cache_hits,
@@ -556,18 +598,28 @@ class EPGServiceMapper:
             'channel_cache_size': len(getattr(self, '_clean_name_cache', {})),
 
             # ✅ NEW: Match Performance Statistics
+            'dvbt_matches': stats_counters.get('dvbt_matches', 0),
             'rytec_matches': stats_counters['rytec_matches'],
             'dvb_matches': stats_counters['dvb_matches'],
             'fallback_matches': stats_counters['fallback_matches'],
             'total_matches': total_matches,
             'match_coverage': f"{match_coverage:.1f}%",
-            'real_epg_matches': stats_counters['rytec_matches'] + stats_counters['dvb_matches']
+            'real_epg_matches': stats_counters['rytec_matches'] + stats_counters['dvb_matches'],
+
+            # ✅ NEW: Database Mode Statistics
+            'database_mode': self.database_mode,
+            'effective_epg_matches': effective_epg_matches,
+            'effective_coverage': f"{effective_coverage:.1f}%",
+            'rytec_enabled': self.database_mode in ["both", "rytec"],
+            'dvb_enabled': self.database_mode in ["both", "dvb"]
         }
 
     def reset_caches(self):
-        """Reset all caches before a new conversion"""
-        # Match Cache
-        self._match_cache.clear()
+        """Reset all caches before a new conversion - OPTIMIZED VERSION"""
+
+        # self._match_cache.clear()
+
+        # ✅ RESET only statistics, not the cache
         self._match_cache_hits = 0
         self._match_cache_misses = 0
 
@@ -575,10 +627,11 @@ class EPGServiceMapper:
         self._stats_counters = {
             'rytec_matches': 0,
             'dvb_matches': 0,
+            'dvbt_matches': 0,
             'fallback_matches': 0
         }
 
-        # EPG Cache
+        # EPG Cache - this one can be cleared
         self.epg_cache.clear()
         self.epg_cache_hits = 0
         self.epg_cache_misses = 0
@@ -586,13 +639,13 @@ class EPGServiceMapper:
         # Other statistics
         self._incompatible_matches = 0
 
-        # Channel Cache (if present)
-        if hasattr(self, 'channel_cache'):
-            self.channel_cache._cache.clear()
-            self.channel_cache._hits = 0
-            self.channel_cache._misses = 0
+        # Channel Cache - keep this one
+        # if hasattr(self, 'channel_cache'):
+        #     self.channel_cache._cache.clear()
+        #     self.channel_cache._hits = 0
+        #     self.channel_cache._misses = 0
 
-        logger.debug("All caches reset for new conversion")
+        logger.debug("Caches optimized - match cache preserved")
 
     def _load_enigma2_configuration(self, settings_path="/etc/enigma2/settings"):
         """Load Enigma2 configuration to determine configured satellites.
@@ -977,14 +1030,14 @@ class EPGServiceMapper:
         return False
 
     def _parse_lamedb5_format(self, content):
-        """Parse lamedb5 file format.
-
-        Args:
-            content (str): File content to parse
-        """
+        """Parse lamedb5 file format."""
         lines = content.split("\n")
+        dvbt_count = 0
+        total_count = 0
+
         for line in lines:
             if line.startswith("s:"):
+                total_count += 1
                 parts = line.split(",", 2)
                 if len(parts) >= 2:
                     sref_parts = parts[0][2:].split(":")
@@ -992,8 +1045,9 @@ class EPGServiceMapper:
                         service_id = sref_parts[0]
                         namespace = sref_parts[1]
 
-                        if namespace.startswith("eeee"):
-                            continue
+                        # if namespace.startswith("eeee"):
+                        #    dvbt_count += 1
+                        #    # continue
 
                         ts_id = sref_parts[2]
                         on_id = sref_parts[3]
@@ -1006,6 +1060,7 @@ class EPGServiceMapper:
                         elif namespace.startswith("eeee"):
                             namespace = "EEEE"
                             service_type = "16"
+                            dvbt_count += 1  # ✅ CONTA I DVB-T
                         elif namespace.startswith("ffff"):
                             namespace = "FFFF"
                             service_type = "10"
@@ -1027,6 +1082,8 @@ class EPGServiceMapper:
                             "on_id": on_id,
                             "namespace": namespace
                         })
+
+        logger.info(f"🔍 PARSED: {total_count} services, {dvbt_count} DVB-T services")
 
     def _parse_legacy_lamedb_format(self, content):
         """Parse traditional lamedb file format.
@@ -1073,7 +1130,6 @@ class EPGServiceMapper:
             "/usr/lib/enigma2/python/Plugins/Extensions/EPGImport/rytec.channels.xml"
         ]
 
-        # Se è specificato un path, usalo, altrimenti cerca nei path predefiniti
         if rytec_path and fileExists(rytec_path):
             final_path = rytec_path
         else:
@@ -1140,20 +1196,20 @@ class EPGServiceMapper:
             logger.error("Error parsing rytec.channels.xml: %s", str(e))
 
     def find_best_service_match(self, clean_name, tvg_id=None, original_name="", channel_url=None):
-        """Universal matching - works with both modes"""
+        """Universal matching that respects the selected database mode"""
 
-        logger.info(f"🔍 MATCH: '{original_name}' -> tvg_id: '{tvg_id}'")
+        logger.info(f"🔍 MATCH: '{original_name}' -> tvg_id: '{tvg_id}' (Mode: {self.database_mode})")
 
-        # Initialize counters if not exists
         if not hasattr(self, '_stats_counters'):
             self._stats_counters = {
                 'rytec_matches': 0,
                 'dvb_matches': 0,
+                'dvbt_matches': 0,
                 'fallback_matches': 0
             }
 
-        # 🎯 PHASE 1: SEARCH BY TVG-ID
-        if tvg_id:
+        # PHASE 1: RYTEC SEARCH (only if enabled)
+        if self.database_mode in ["full", "both", "rytec"] and tvg_id:
             rytec_format = self._convert_to_rytec_format(tvg_id)
             possible_matches = [rytec_format, rytec_format.lower(), tvg_id, tvg_id.lower()]
 
@@ -1166,51 +1222,48 @@ class EPGServiceMapper:
                         self._stats_counters['rytec_matches'] += 1
                         return service_ref, 'rytec_exact_tvg_id'
                     else:
-                        logger.warning(f"❌ RYTEC INCOMPATIBLE: {service_ref} - continuing to DVB search")
-                        # ✅ CONTINUE searching in DVB instead of stopping!
-                        break  # Exit Rytec loop but continue with DVB
+                        logger.warning(f"❌ RYTEC INCOMPATIBLE: {service_ref}")
+                        break
 
-        # 🎯 PHASE 1.5: SEARCH BY NAME (only in EPGSHARE mode)
-        if (config.plugins.m3uconverter.epg_generation_mode.value == "epgshare" and
-                hasattr(self, 'name_to_rytec_id') and original_name):
-
-            clean_search_name = self.clean_channel_name(original_name).lower()
-            rytec_id = self.name_to_rytec_id.get(clean_search_name)
-            if rytec_id:
-                service_ref = self.mapping.rytec['basic'].get(rytec_id)
-                if service_ref and self.is_service_compatible(service_ref):
-                    logger.info(f"✅ RYTEC NAME MATCH: '{original_name}'")
-                    return service_ref, 'rytec_name_match'
-
-        # 🎯 PHASE 2: IMPROVED DVB MATCHING
-        if clean_name in self.mapping.optimized:
-            dvb_service = self.mapping.optimized[clean_name]
-            logger.info(f"🔍 DVB MATCH: '{clean_name}'")
-            self._stats_counters['dvb_matches'] += 1
-            return dvb_service['sref'], 'dvb_match'
-
-        """
-        # 🆕 SEMPLICE: CERCA SOLO L'ULTIMA PAROLA (es. "Discovery Nove" -> "nove")
-        if original_name and ' ' in original_name:
-            last_word = original_name.lower().split()[-1]  # Prendi solo l'ultima parola
-            last_word_clean = self.clean_channel_name(last_word)
-
-            if last_word_clean in self.mapping.optimized:
-                dvb_service = self.mapping.optimized[last_word_clean]
-                logger.info(f"🔍 DVB LAST WORD MATCH: '{last_word}' -> '{last_word_clean}'")
+        # PHASE 2: DVB SEARCH (only if enabled)
+        if self.database_mode in ["full", "both", "dvb"]:
+            if clean_name in self.mapping.optimized:
+                dvb_service = self.mapping.optimized[clean_name]
+                logger.info(f"🔍 DVB MATCH: '{clean_name}'")
                 self._stats_counters['dvb_matches'] += 1
-                return dvb_service['sref'], 'dvb_last_word'
-        """
+                return dvb_service['sref'], 'dvb_match'
 
-        # ⭐ IPTV FALLBACK
+        # PHASE 3: DVB-T (only if mode is "full" OR "dtt") - FIXED
+        if self.database_mode in ["full", "dtt"]:  # ADDED "dtt" here
+            dvbt_match = self._find_dvbt_match(clean_name, original_name)
+            if dvbt_match:
+                logger.info(f"📡 DVB-T MATCH: '{clean_name}'")
+                self._stats_counters['dvbt_matches'] += 1
+                return dvbt_match, 'dvbt_match'
+
+        # IPTV FALLBACK
         if channel_url:
             fallback_sref = self.generate_service_reference(channel_url)
             logger.info(f"🔄 IPTV FALLBACK: '{original_name}'")
             self._stats_counters['fallback_matches'] += 1
             return fallback_sref, 'iptv_fallback'
 
-        self._stats_counters['fallback_matches'] += 1
         return None, 'no_match'
+
+    def _find_dvbt_match(self, clean_name, original_name):
+        """Search for specific matches in DVB-T services"""
+        try:
+            for service_name, services in self.mapping.dvb.items():
+                for service in services:
+                    if service.get('sref', '').split(':')[6] == 'EEEE':
+                        service_clean = self.clean_channel_name(service_name)
+                        if (service_clean == clean_name or
+                                self._calculate_similarity(clean_name, service_clean) > 0.8):
+                            return service['sref']
+            return None
+        except Exception as e:
+            logger.error(f"Error in DVB-T matching: {str(e)}")
+            return None
 
     def parse_existing_bouquets(self, bouquet_dir="/etc/enigma2"):
         """Parse all existing bouquets for current service references.
@@ -1269,35 +1322,26 @@ class EPGServiceMapper:
 
     def remove_dvbt_services(self):
         """
-        Remove all DVB-T services (namespace EEEE) from ALL mappings.
+        Remove DVB-T services based on database mode - FIXED
         """
+        # KEEP DVB-T for full and dtt modes
+        if self.database_mode in ["full", "dtt"]:
+            logger.info("🔧 Keeping DVB-T services (mode: full/dtt)")
+            return 0
+
         removed_count = 0
-        # Iterate over a copy of the dictionary keys to avoid modification errors during iteration
         for channel_name in list(self.mapping.dvb.keys()):
-            # Filter services, keeping only those that are NOT DVB-T (namespace 'EEEE')
             filtered_services = [
                 service for service in self.mapping.dvb[channel_name]
                 if not service.get('sref', '').split(':')[6] == 'EEEE'
             ]
-
             removed_count += (len(self.mapping.dvb[channel_name]) - len(filtered_services))
             if filtered_services:
                 self.mapping.dvb[channel_name] = filtered_services
             else:
-                # If no services remain, remove the entire channel entry
                 del self.mapping.dvb[channel_name]
 
-        # 2. Remove from Rytec mapping
-        rytec_to_remove = []
-        for channel_id, service_ref in self.mapping.rytec['basic'].items():
-            if service_ref and 'EEEE' in service_ref:
-                rytec_to_remove.append(channel_id)
-                removed_count += 1
-
-        for channel_id in rytec_to_remove:
-            del self.mapping.rytec['basic'][channel_id]
-
-        logger.info(f"🔧 Removed {removed_count} DVB-T (EEEE) services from database")
+        logger.info(f"🔧 Removed {removed_count} DVB-T (EEEE) services (mode: {self.database_mode})")
         return removed_count
 
     def _extract_real_channel_name(self, comment):
@@ -1372,35 +1416,29 @@ class EPGServiceMapper:
         return 'unknown'
 
     def filter_compatible_services(self, services):
-        """Filter services compatible with configuration.
-
-        Args:
-            services (list): List of service dictionaries
-
-        Returns:
-            list: Filtered list of compatible services
-        """
+        """Filter services"""
         compatible_services = []
 
         for service in services:
             service_ref = service['sref']
             service_type = service.get('type', 'unknown')
-            comment = service.get('comment', '')
 
-            if service_type == 'iptv' or service_ref.startswith('4097:'):
-                compatible_services.append(service)
-                continue
-
+            # ✅ ALWAYS KEEP DVB-T AND DVB-C
             if service_type in ['terrestrial', 'cable']:
                 compatible_services.append(service)
                 continue
 
+            # ✅ KEEP IPTV
+            if service_type == 'iptv' or service_ref.startswith('4097:'):
+                compatible_services.append(service)
+                continue
+
+            # ✅ FILTER ONLY SATELLITE (if incompatible)
             if service_type == 'satellite':
-                if self.is_satellite_compatible(comment):
+                if self.is_satellite_compatible(service.get('comment', '')):
                     compatible_services.append(service)
-                else:
-                    logger.debug(f"Filtered out incompatible satellite service: {comment}")
             else:
+                # ✅ KEEP EVERYTHING ELSE
                 compatible_services.append(service)
 
         return compatible_services
@@ -1496,10 +1534,15 @@ class EPGServiceMapper:
         return list(set(variants))
 
     def _add_to_cache(self, cache_key, result, match_type):
-        """Optimized cache management with statistics tracking"""
-        if result and self.is_service_compatible(result):
+        """Optimized cache management - save only quality matches"""
+
+        # ✅ SAVE ONLY HIGH-QUALITY MATCHES
+        if (result and
+            self.is_service_compatible(result) and
+                match_type in ['rytec_exact_tvg_id', 'rytec_name_match', 'dvb_match']):  # Only good matches
+
             if len(self._match_cache) >= self._cache_max_size:
-                # Remove 20% instead of 10% for better performance
+                # Remove 20% for better performance
                 items_to_remove = int(self._cache_max_size * 0.2)
                 for key in list(self._match_cache.keys())[:items_to_remove]:
                     del self._match_cache[key]
@@ -1821,13 +1864,17 @@ class EPGServiceMapper:
             return False
 
     def _get_correct_epg_id(self, channel_name, tvg_id=None, service_ref=None):
-        """EPG ID matching - Convert TO RYTEC FORMAT (single dot)."""
-
+        """EPG ID matching - USE ORIGINAL RYTEC CASE"""
         if tvg_id:
-            converted_id = self._convert_to_rytec_format(tvg_id)  # <-- ADD HERE
-            return converted_id.lower()
+            # Search for the original ID in the Rytec database (case-sensitive)
+            rytec_id = self._convert_to_rytec_format(tvg_id)
 
-        # 2. If no tvg_id, generate from name + country
+            # If found in Rytec, use the original ID (with correct case)
+            if rytec_id in self.mapping.rytec['basic']:
+                return rytec_id  # ✅ "Canale5.it" (uppercase)
+            else:
+                return rytec_id.lower()  # Fallback: "canale5.it"
+
         return self._generate_clean_rytec_id(channel_name, service_ref)
 
     def _generate_clean_rytec_id(self, channel_name, service_ref):
@@ -2477,104 +2524,72 @@ class EPGServiceMapper:
         logger.info(f"Created fallback mapping with {count} DVB channels")
 
     def initialize(self):
-        """Initialize EPGServiceMapper with all databases - CORRECTED VERSION"""
+        """Initialize EPGServiceMapper with database mode control"""
         try:
-            logger.info("=== INITIALIZATION WITH DUAL MODE ===")
-            logger.info(f"EPG Mode: {config.plugins.m3uconverter.epg_generation_mode.value}")
+            logger.info(f"=== INITIALIZATION - DATABASE MODE: {self.database_mode} ===")
 
-            # 1. Load local databases first
-            logger.info("📥 Loading local databases...")
-            self.parse_lamedb()
-            logger.info(f"✅ Lamedb loaded: {len(self.mapping.dvb)} channels")
+            # 1. Load DVB if required (including DVB-T for full/dtt modes)
+            if self.database_mode in ["both", "dvb", "full", "dtt"]:  # ADDED "full" and "dtt"
+                logger.info("📥 Loading DVB databases...")
+                self.parse_lamedb()
+                logger.info(f"✅ Lamedb loaded: {len(self.mapping.dvb)} channels")
 
-            self.parse_existing_bouquets()
-            logger.info("✅ Existing bouquets loaded")
+                self.parse_existing_bouquets()
+                logger.info("✅ Existing bouquets loaded")
+            else:
+                logger.info("⏭️ Skipping DVB databases (mode: rytec only)")
 
-            # 2. FORCE Rytec loading with PROPER PATH CHECKING
-            logger.info("🔍 LOADING RYTEC DATABASE...")
-            rytec_paths = [
-                "/etc/epgimport/rytec.channels.xml",
-                "/usr/lib/enigma2/python/Plugins/Extensions/EPGImport/rytec.channels.xml",
-                "/usr/share/enigma2/rytec.channels.xml",
-            ]
+            # 2. Load Rytec if required
+            if self.database_mode in ["both", "rytec"]:
+                logger.info("🔍 LOADING RYTEC DATABASE...")
+                rytec_loaded = False
+                rytec_paths = [
+                    "/etc/epgimport/rytec.channels.xml",
+                    "/usr/lib/enigma2/python/Plugins/Extensions/EPGImport/rytec.channels.xml",
+                ]
 
-            rytec_loaded = False
-            for rytec_path in rytec_paths:
-                if fileExists(rytec_path):
-                    logger.info(f"📁 Rytec file found: {rytec_path}")
-                    file_size = getsize(rytec_path)
-                    logger.info(f"📊 Rytec file size: {file_size} bytes")
+                for rytec_path in rytec_paths:
+                    if fileExists(rytec_path):
+                        logger.info(f"📁 Rytec file found: {rytec_path}")
+                        self._parse_rytec_channels(rytec_path)
+                        rytec_count = len(self.mapping.rytec['basic'])
+                        if rytec_count > 0:
+                            logger.info(f"✅ Rytec database loaded: {rytec_count} channels")
+                            rytec_loaded = True
+                            break
 
-                    # Use the CORRECT method to parse Rytec
-                    self._parse_rytec_channels(rytec_path)
+                if not rytec_loaded:
+                    logger.warning("⚠️ Rytec database not found or empty")
+            else:
+                logger.info("⏭️ Skipping Rytec database (mode: dvb only)")
 
-                    # ✅ PROPERLY CHECK the loaded database
-                    rytec_count = len(self.mapping.rytec['basic'])
-                    logger.info(f"🔢 Rytec channels loaded: {rytec_count}")
-
-                    if rytec_count > 0:
-                        rytec_loaded = True
-                        logger.info(f"✅ Rytec database SUCCESSFULLY loaded: {rytec_count} channels")
-
-                        # DEBUG: show the first 5 Rytec channels
-                        logger.info("🔍 FIRST 5 RYTEC CHANNELS:")
-                        for i, (channel_id, service_ref) in enumerate(list(self.mapping.rytec['basic'].items())[:5]):
-                            logger.info(f"   {i + 1}. {channel_id} -> {service_ref}")
-                        break
-                    else:
-                        logger.error(f"❌ Rytec file exists but 0 channels loaded from: {rytec_path}")
-                        # Try the next path
-                else:
-                    logger.warning(f"📁 Rytec file not found: {rytec_path}")
-
-            # 3. If Rytec is not loaded, try downloading EPGShare
-            if not rytec_loaded:
-                logger.warning("⚠️ Rytec database NOT loaded, trying EPGShare...")
+            # 3. Load EPGShare only if in Rytec or Both mode
+            if not rytec_loaded and self.database_mode in ["both", "rytec"]:
                 if config.plugins.m3uconverter.epg_generation_mode.value == "epgshare":
                     language = config.plugins.m3uconverter.language.value
                     logger.info(f"🌐 Downloading EPGShare data for language: {language}")
-                    if self.download_and_parse_epgshare(language):
-                        epgshare_count = len(self.mapping.rytec['extended'])
-                        logger.info(f"✅ EPGShare loaded as fallback: {epgshare_count} channels")
-                    else:
-                        logger.error("❌ EPGShare download also failed")
-                else:
-                    logger.info("🔄 EPGShare mode not enabled, skipping download")
+                    self.download_and_parse_epgshare(language)
 
-            # 4. Fallback se nessun database EPG è caricato
-            if not rytec_loaded and not hasattr(self, 'epg_share_loaded'):
-                logger.warning("⚠️ No EPG database loaded! Creating fallback from DVB...")
+            # 4. Fallback only if needed
+            if (self.database_mode == "both" and
+                    len(self.mapping.rytec['basic']) == 0 and
+                    len(self.mapping.dvb) == 0):
+                logger.warning("⚠️ No databases loaded! Creating fallback...")
                 self._create_fallback_mapping_from_dvb()
-                fallback_count = len(self.mapping.rytec['basic'])
-                logger.info(f"🔄 Created fallback mapping: {fallback_count} channels")
 
-            # 5. Load channel mapping and optimize
+            # 5. Optimizations
             self.load_channel_mapping()
-            removed_dvbt = self.remove_dvbt_services()
-            logger.info(f"🔧 Removed {removed_dvbt} DVB-T services")
+            self.remove_dvbt_services()
             self.optimize_matching()
 
             # 6. Final statistics
-            final_rytec = len(self.mapping.rytec.get('basic', {}))
-            final_dvb = len(self.mapping.dvb)
-            final_optimized = len(self.mapping.optimized)
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("📊 FINAL DATABASE STATISTICS:")
-                logger.info(f"   Rytec channels: {final_rytec}")
-                logger.info(f"   DVB channels: {final_dvb}")
-                logger.info(f"   Optimized mapping: {final_optimized} entries")
-
-            if final_rytec == 0:
-                logger.error("❌ CRITICAL: Rytec database is EMPTY - EPG matching will fail!")
-                logger.info("💡 SOLUTION: Check that rytec.channels.xml exists in /etc/epgimport/")
-                logger.info("💡 SOLUTION: Or enable EPGShare mode in plugin settings")
+            final_stats = self._get_database_stats()
+            logger.info(f"🎯 FINAL DATABASE STATUS: {final_stats}")
 
             return True
 
         except Exception as e:
             logger.error(f"❌ Initialization failed: {str(e)}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
             return False
 
     def optimize_memory_usage(self):
@@ -2697,7 +2712,7 @@ class EPGServiceMapper:
         return channels_exists and sources_exists and channel_count > 0
 
     def _debug_rai_channels(self):
-        """Debug specifico per canali Rai."""
+        """Specific debug for Rai channels."""
         logger.info("=== RAI CHANNELS DEBUG ===")
 
         rai_channels = ['Rai1.it', 'Rai2.it', 'Rai3.it', 'Italia1.it']
@@ -2713,7 +2728,7 @@ class EPGServiceMapper:
             if not found:
                 logger.warning(f"❌ RAI NOT FOUND: {channel}")
 
-                # Cerca varianti
+                # Search for variants
                 for rytec_id, service_ref in self.mapping.rytec['basic'].items():
                     if channel.lower() in rytec_id.lower():
                         logger.info(f"🔍 RAI VARIANT: {rytec_id} -> {service_ref}")
@@ -2853,6 +2868,131 @@ class EPGServiceMapper:
         for i, (channel_id, service_ref) in enumerate(list(self.mapping.rytec['basic'].items())[:10]):
             logger.info(f"   {i + 1}. {channel_id} -> {service_ref}")
 
+    def save_quick_debug(self, conversion_data, bouquet_name):
+        """Save lightweight debug only when debug mode is enabled"""
+        if not config.plugins.m3uconverter.enable_debug.value:
+            return
+
+        try:
+            makedirs(DEBUG_DIR, exist_ok=True)
+            timestamp = strftime("%Y%m%d_%H%M%S")
+
+            # 1. Create CSV file in Excel-readable format
+            debug_file = join(DEBUG_DIR, f"{timestamp}_{bouquet_name}_quick.csv")
+
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                # Header with VISIBLE SEPARATOR
+                f.write("Channel|Original_Name|TVG_ID|Clean_Name|Match_Type|Has_EPG|Service_Ref|URL_Start\n")
+
+                # Data with pipe separator (very visible)
+                for channel in conversion_data:
+                    name = channel.get('name', 'Unknown').replace('|', '_')[:50]
+                    original_name = channel.get('original_name', name).replace('|', '_')
+                    tvg_id = channel.get('tvg_id', '').replace('|', '_')
+                    clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                    clean_name = clean_name.replace('|', '_')
+                    match_type = channel.get('match_type', '').replace('|', '_')
+                    has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
+                    service_ref = channel.get('sref', '').replace('|', '_')[:50]
+                    url = channel.get('url', '').replace('|', '_')[:30]
+
+                    separator = ';'
+                    f.write(f"Channel{separator}Original_Name{separator}TVG_ID{separator}Clean_Name{separator}Match_Type{separator}Has_EPG{separator}Service_Ref{separator}URL_Start\n")
+                    for channel in conversion_data:
+                        f.write(f"{name}{separator}{original_name}{separator}{tvg_id}{separator}{clean_name}{separator}{match_type}{separator}{has_epg}{separator}{service_ref}{separator}{url}\n")
+
+            logger.info(f"📁 Debug saved: {debug_file}")
+
+            # 2. Also create a TAB-friendly version
+            debug_file_tab = join(DEBUG_DIR, f"{timestamp}_{bouquet_name}_quick_tab.csv")
+            with open(debug_file_tab, 'w', encoding='utf-8') as f:
+                separator = ';'  # Excel-friendly delimiter
+                f.write(f"Channel{separator}Original_Name{separator}TVG_ID{separator}Clean_Name{separator}Match_Type{separator}Has_EPG{separator}Service_Ref{separator}URL_Start\n")
+
+                for channel in conversion_data:
+                    name = channel.get('name', 'Unknown')[:50]
+                    original_name = channel.get('original_name', name)
+                    tvg_id = channel.get('tvg_id', '')
+                    clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                    match_type = channel.get('match_type', '')
+                    has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
+                    service_ref = channel.get('sref', '')[:50]
+                    url = channel.get('url', '')[:30]
+
+                    f.write(f"{name}{separator}{original_name}{separator}{tvg_id}{separator}{clean_name}{separator}{match_type}{separator}{has_epg}{separator}{service_ref}{separator}{url}\n")
+
+            logger.info(f"📁 Debug CSV saved: {debug_file_tab}")
+
+        except Exception as e:
+            logger.error(f"❌ Quick debug saving error: {str(e)}")
+
+    def save_quick_debug2(self, conversion_data, bouquet_name):
+        """Lightweight debug saving only when debug mode is enabled"""
+        if not config.plugins.m3uconverter.enable_debug.value:
+            return
+
+        try:
+            makedirs(DEBUG_DIR, exist_ok=True)
+            timestamp = strftime("%Y%m%d_%H%M%S")
+
+            # 1. CSV file with proper formatting for Excel
+            debug_file = join(DEBUG_DIR, f"{timestamp}_{bouquet_name}_quick.csv")
+
+            # Check write permissions
+            if not access(dirname(debug_file), W_OK):
+                logger.error(f"❌ No write permission for: {DEBUG_DIR}")
+                return
+
+            with open(debug_file, 'w', encoding='utf-8', newline='') as f:
+                import csv
+                writer = csv.writer(f)
+
+                # Write header row
+                writer.writerow(['Channel', 'TVG_ID', 'Match_Type', 'Has_EPG', 'Service_Ref'])
+
+                # Write data rows with proper CSV formatting
+                for channel in conversion_data:
+                    name = channel.get('name', 'Unknown')[:50]  # Limit length
+                    tvg_id = channel.get('tvg_id', '')
+                    match_type = channel.get('match_type', '')
+                    has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
+                    service_ref = channel.get('sref', '')[:50]  # Limit length
+
+                    # Write as proper CSV row with comma separation
+                    writer.writerow([name, tvg_id, match_type, has_epg, service_ref])
+
+            # 2. Quick statistics in log
+            total = len(conversion_data)
+            with_epg = sum(1 for ch in conversion_data if any(x in ch.get('match_type', '') for x in ['rytec', 'dvb', 'dvbt']))
+
+            logger.info(f"📊 QUICK DEBUG: {with_epg}/{total} channels with EPG ({with_epg / total * 100:.1f}%)")
+            logger.info(f"📁 Debug saved: {debug_file}")
+
+            # 3. Also create a more detailed debug file with match analysis
+            detailed_file = join(DEBUG_DIR, f"{timestamp}_{bouquet_name}_detailed.csv")
+            with open(detailed_file, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['Channel', 'Original_Name', 'TVG_ID', 'Clean_Name', 'Match_Type', 'Has_EPG', 'Service_Ref', 'URL_Start'])
+
+                for channel in conversion_data:
+                    name = channel.get('name', 'Unknown')
+                    original_name = channel.get('original_name', name)
+                    tvg_id = channel.get('tvg_id', '')
+                    clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                    match_type = channel.get('match_type', '')
+                    has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
+                    service_ref = channel.get('sref', '')
+                    url = channel.get('url', '')[:30]  # Show first 30 chars of URL
+
+                    writer.writerow([name, original_name, tvg_id, clean_name, match_type, has_epg, service_ref, url])
+
+            logger.info(f"📁 Detailed debug saved: {detailed_file}")
+
+        except Exception as e:
+            logger.error(f"❌ Quick debug error: {str(e)}")
+            # Fallback: save in main log
+            logger.info(f"DEBUG FALLBACK - Channels: {len(conversion_data)}")
+
     def save_complete_cache_analysis(self, output_dir=join(LOG_DIR, "epg_analysis")):
         """Save complete cache and database analysis"""
         try:
@@ -2933,7 +3073,7 @@ class CoreConverter:
         """Initialize core converter with directories and logging."""
         if not self.__initialized:
             self.backup_dir = join(ARCHIMEDE_CONVERTER_PATH, "archimede_backup")
-            self.log_file = join(ARCHIMEDE_CONVERTER_PATH, "archimede_converter.log")
+            self.log_file = join(ARCHIMEDE_CONVERTER_PATH, "core_converter_archimede_converter.log")
             self._create_necessary_directories()
             self.__initialized = True
 
@@ -3253,11 +3393,11 @@ class ConversionSelector(Screen):
         self.setTitle(PLUGIN_TITLE)
         self.menu_options = [
             (_("M3U ➔ Enigma2 Bouquets"), "m3u_to_tv", "m3u"),
+            (_("M3U ➔ JSON"), "m3u_to_json", "m3u"),
             (_("Enigma2 Bouquets ➔ M3U"), "tv_to_m3u", "tv"),
             (_("JSON ➔ Enigma2 Bouquets"), "json_to_tv", "json"),
             (_("JSON ➔ M3U"), "json_to_m3u", "json"),
             (_("XSPF ➔ M3U Playlist"), "xspf_to_m3u", "xspf"),
-            (_("M3U ➔ JSON"), "m3u_to_json", "m3u"),
             (_("Remove M3U Bouquets"), "purge_m3u_bouquets", None)
         ]
 
@@ -3604,7 +3744,6 @@ class UniversalConverter(Screen):
         self["status"] = Label(_("Ready"))
         self["key_red"] = StaticText(_("Open File"))
         self["key_green"] = StaticText("")
-        # self["key_yellow"] = StaticText(_("Filter"))
         self["key_yellow"] = StaticText("")
         self["key_blue"] = StaticText(_("Tools"))
         self.progress_source = Progress()
@@ -3792,7 +3931,6 @@ class UniversalConverter(Screen):
 
         menu_items = [
             (_("🛠️ Channel Tools - Channel Management"), "header"),
-            # (_("🔍 Manage Unknown Channels"), "unknown_channels"),
             (_("📊 EPG Cache Statistics"), "cache_stats"),
             (_("🔄 Reload EPG Database"), "reload_epg"),
             ("", "separator"),
@@ -4249,6 +4387,16 @@ class UniversalConverter(Screen):
         base_name = safe_name[:50 - len(suffix)] if len(safe_name) > 50 - len(suffix) else safe_name
 
         return base_name + suffix if base_name else "m3uconverter_bouquet"
+
+    def _get_database_stats(self):
+        """Restituisce statistiche sui database caricati"""
+        stats = {
+            'mode': self.database_mode,
+            'rytec_channels': len(self.mapping.rytec['basic']),
+            'dvb_channels': len(self.mapping.dvb),
+            'optimized': len(self.mapping.optimized)
+        }
+        return stats
 
     def _get_output_filename(self):
         """Generate a unique file name for export.
@@ -5089,6 +5237,7 @@ class UniversalConverter(Screen):
         def conversion_task():
             try:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
                 return self.converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
             except Exception as e:
@@ -5143,6 +5292,7 @@ class UniversalConverter(Screen):
         def conversion_task():
             try:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    # self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
                 return self.converter.safe_conversion(_real_tv_to_m3u_conversion)
             except Exception as e:
@@ -5230,6 +5380,7 @@ class UniversalConverter(Screen):
         def conversion_task():
             try:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    # self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
                 return self.converter.safe_conversion(_json_to_m3u_conversion)
             except Exception as e:
@@ -5294,6 +5445,7 @@ class UniversalConverter(Screen):
         def conversion_task():
             try:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    # self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
                 return self.converter.safe_conversion(_m3u_to_json_conversion)
             except Exception as e:
@@ -5313,6 +5465,7 @@ class UniversalConverter(Screen):
         def _json_tv_conversion():
             try:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    # self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
                 result = self.converter.safe_conversion(self._real_conversion_task)
                 if result[0]:  # Success
@@ -5387,6 +5540,7 @@ class UniversalConverter(Screen):
         def conversion_task():
             try:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    # self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
                 return self.converter.safe_conversion(_xspf_conversion)
             except Exception as e:
@@ -5431,41 +5585,56 @@ class UniversalConverter(Screen):
 
             success = result[0]
 
-            # DEBUG: Log the actual result structure
-            logger.info(f"🔍 CONVERSION RESULT DEBUG: success={success}, len={len(result)}, result={result}")
-
             if success:
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper.optimize_memory_timer.stop()
 
-                # FIX: Handle different conversion types properly
+                # FIXED: Calculate effective EPG coverage based on database mode
                 if self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
-                    # For TV conversions: (success, total_channels, real_epg_matches, perf_stats, detailed_stats)
                     if len(result) >= 5:
                         total_channels = result[1]
-                        real_epg_matches = result[2]  # Solo Rytec + DVB matches
+                        real_epg_matches = result[2]
                         perf_stats = result[3]
-                        detailed_stats = result[4]  # Statistiche dettagliate
+                        detailed_stats = result[4]
+
+                        # Calculate effective EPG coverage based on database mode
+                        db_mode = self.epg_mapper.database_mode if hasattr(self, 'epg_mapper') and self.epg_mapper else "both"
+
+                        if db_mode == "full":
+                            effective_epg_matches = (detailed_stats.get('rytec_matches', 0) +
+                                                     detailed_stats.get('dvb_matches', 0) +
+                                                     detailed_stats.get('dvbt_matches', 0))
+                        elif db_mode == "both":
+                            effective_epg_matches = detailed_stats.get('rytec_matches', 0) + detailed_stats.get('dvb_matches', 0)
+                        elif db_mode == "dvb":
+                            effective_epg_matches = detailed_stats.get('dvb_matches', 0)
+                        elif db_mode == "rytec":
+                            effective_epg_matches = detailed_stats.get('rytec_matches', 0)
+                        elif db_mode == "dtt":
+                            effective_epg_matches = detailed_stats.get('dvbt_matches', 0)
+                        else:
+                            effective_epg_matches = real_epg_matches
+
+                        effective_coverage = (effective_epg_matches / total_channels * 100) if total_channels > 0 else 0
 
                         stats_data = {
                             'total_channels': total_channels,
-                            'real_epg_matches': real_epg_matches,  # EPG reali
+                            'real_epg_matches': real_epg_matches,
                             'rytec_matches': detailed_stats.get('rytec_matches', 0),
                             'dvb_matches': detailed_stats.get('dvb_matches', 0),
+                            'dvbt_matches': detailed_stats.get('dvbt_matches', 0),
                             'fallback_matches': detailed_stats.get('fallback_matches', 0),
+                            'effective_epg_matches': effective_epg_matches,
+                            'effective_coverage': f"{effective_coverage:.1f}%",
                             'cache_stats': perf_stats,
                             'conversion_type': self.conversion_type,
                             'timestamp': strftime("%Y-%m-%d %H:%M:%S"),
                             'status': 'completed',
-                            'real_epg_coverage': (real_epg_matches / total_channels * 100) if total_channels > 0 else 0
+                            'database_mode': db_mode
                         }
-
                     else:
-                        # Fallback per strutture risultato diverse
                         stats_data = self._prepare_stats_data(result[1:], self.conversion_type)
-
                 else:
-                    # Per altri tipi di conversione
                     stats_data = self._prepare_stats_data(result[1:], self.conversion_type)
 
                 self.show_conversion_stats(self.conversion_type, stats_data)
@@ -5482,10 +5651,15 @@ class UniversalConverter(Screen):
                 )
 
             if config.plugins.m3uconverter.enable_debug.value:
-                self.print_performance_stats()
+                self.print_simple_stats()
 
             self["status"].setText(_("Conversion completed"))
             self["progress_text"].setText("")
+
+            if success and config.plugins.m3uconverter.enable_debug.value:
+                if hasattr(self, 'epg_mapper'):
+                    bouquet_name = "test"
+                    self.epg_mapper.save_quick_debug(self.m3u_channels_list, bouquet_name)
 
         except Exception as e:
             logger.error(f"Error in conversion_finished: {str(e)}")
@@ -5502,30 +5676,48 @@ class UniversalConverter(Screen):
         }
 
         try:
-            logger.info(f"🔍 PREPARE_STATS_DEBUG: conversion_type={conversion_type}, data_len={len(data) if data else 0}")
-
             if conversion_type in ["m3u_to_tv", "json_to_tv"]:
-                # For TV conversions: (total_channels, real_epg_matches, perf_stats, detailed_stats)
                 if data and len(data) >= 4:
                     total_channels = data[0] if isinstance(data[0], int) else 0
-                    real_epg_matches = data[1] if isinstance(data[1], int) else 0  # Real EPG (Rytec + DVB)
+                    real_epg_matches = data[1] if isinstance(data[1], int) else 0
                     perf_stats = data[2] if isinstance(data[2], dict) else {}
                     detailed_stats = data[3] if isinstance(data[3], dict) else {}
+
+                    # Get database mode for accurate calculation
+                    db_mode = self.epg_mapper.database_mode if hasattr(self, 'epg_mapper') and self.epg_mapper else "both"
+
+                    # Calculate effective EPG matches based on database mode
+                    if db_mode == "full":
+                        effective_epg_matches = (detailed_stats.get('rytec_matches', 0) +
+                                                 detailed_stats.get('dvb_matches', 0) +
+                                                 detailed_stats.get('dvbt_matches', 0))
+                    elif db_mode == "both":
+                        effective_epg_matches = detailed_stats.get('rytec_matches', 0) + detailed_stats.get('dvb_matches', 0)
+                    elif db_mode == "dvb":
+                        effective_epg_matches = detailed_stats.get('dvb_matches', 0)
+                    elif db_mode == "rytec":
+                        effective_epg_matches = detailed_stats.get('rytec_matches', 0)
+                    elif db_mode == "dtt":
+                        effective_epg_matches = detailed_stats.get('dvbt_matches', 0)
+                    else:
+                        effective_epg_matches = real_epg_matches
+
+                    effective_coverage = (effective_epg_matches / total_channels * 100) if total_channels > 0 else 0
 
                     stats_data.update({
                         'total_channels': total_channels,
                         'real_epg_matches': real_epg_matches,
                         'rytec_matches': detailed_stats.get('rytec_matches', 0),
                         'dvb_matches': detailed_stats.get('dvb_matches', 0),
+                        'dvbt_matches': detailed_stats.get('dvbt_matches', 0),
                         'fallback_matches': detailed_stats.get('fallback_matches', 0),
+                        'effective_epg_matches': effective_epg_matches,
+                        'effective_coverage': f"{effective_coverage:.1f}%",
                         'cache_stats': perf_stats,
-                        'real_epg_coverage': (real_epg_matches / total_channels * 100) if total_channels > 0 else 0
+                        'database_mode': db_mode
                     })
 
-                    logger.info(f"📊 ACCURATE STATS: channels={total_channels}, real_epg={real_epg_matches}, coverage={stats_data['real_epg_coverage']:.1f}%")
-
             elif conversion_type in ["tv_to_m3u", "json_to_m3u", "xspf_to_m3u", "m3u_to_json"]:
-                # For export conversions
                 if data and len(data) >= 2:
                     output_file = data[0] if isinstance(data[0], str) else ""
                     total_channels = data[1] if isinstance(data[1], int) else 0
@@ -5551,21 +5743,62 @@ class UniversalConverter(Screen):
             total_channels = stats_data.get('total_channels', 0)
             stats_message.append(_("📊 Total channels processed: {}").format(total_channels))
 
+            # Add database mode info
+            db_mode = stats_data.get('database_mode', 'both')
+            mode_display = {
+                "both": _("DVB + Rytec"),
+                "dvb": _("Only DVB"),
+                "rytec": _("Only Rytec"),
+                "full": _("DVB + Rytec + DTT (Full)"),
+                "dtt": _("Only DTT")
+            }
+            stats_message.append(_("🗄️ Database mode: {}").format(mode_display.get(db_mode, db_mode)))
+            stats_message.append("")
+
             # Conversion-type specific statistics
             if conversion_type in ["m3u_to_tv", "json_to_tv"]:
-                # STATISTICS
-                # real_epg_matches = stats_data.get('real_epg_matches', 0)
+                effective_coverage = stats_data.get('effective_coverage', '0%')
+                effective_epg_matches = stats_data.get('effective_epg_matches', 0)
+
                 rytec_matches = stats_data.get('rytec_matches', 0)
                 dvb_matches = stats_data.get('dvb_matches', 0)
+                dvbt_matches = stats_data.get('dvbt_matches', 0)
                 fallback_matches = stats_data.get('fallback_matches', 0)
-                real_epg_coverage = stats_data.get('real_epg_coverage', 0)
+
+                # Show matches based on database mode
+                if db_mode == "full":
+                    stats_message.extend([
+                        _("🛰️ Rytec EPG matches: {}").format(rytec_matches),
+                        _("📺 DVB EPG matches: {}").format(dvb_matches),
+                        _("📡 DVB-T EPG matches: {}").format(dvbt_matches),
+                        _("🔌 Fallback (no EPG): {}").format(fallback_matches)
+                    ])
+                elif db_mode == "both":
+                    stats_message.extend([
+                        _("🛰️ Rytec EPG matches: {}").format(rytec_matches),
+                        _("📺 DVB EPG matches: {}").format(dvb_matches),
+                        _("🔌 Fallback (no EPG): {}").format(fallback_matches)
+                    ])
+                elif db_mode == "dvb":
+                    stats_message.extend([
+                        _("📺 DVB EPG matches: {}").format(dvb_matches),
+                        _("🔌 Fallback (no EPG): {}").format(fallback_matches)
+                    ])
+                elif db_mode == "rytec":
+                    stats_message.extend([
+                        _("🛰️ Rytec EPG matches: {}").format(rytec_matches),
+                        _("🔌 Fallback (no EPG): {}").format(fallback_matches)
+                    ])
+                elif db_mode == "dtt":
+                    stats_message.extend([
+                        _("📡 DVB-T EPG matches: {}").format(dvbt_matches),
+                        _("🔌 Fallback (no EPG): {}").format(fallback_matches)
+                    ])
 
                 stats_message.extend([
-                    _("🛰️ Rytec EPG matches: {}").format(rytec_matches),
-                    _("📺 DVB EPG matches: {}").format(dvb_matches),
-                    _("🔌 Fallback (no EPG): {}").format(fallback_matches),
-                    _("📡 REAL EPG coverage: {:.1f}%").format(real_epg_coverage),
-                    _("   (Rytec + DVB matches / Total channels)")
+                    _("🎯 Effective EPG matches: {}").format(effective_epg_matches),
+                    _("📈 EFFECTIVE EPG coverage: {}").format(effective_coverage),
+                    _("   (Based on selected database mode: {})").format(mode_display.get(db_mode, db_mode))
                 ])
 
                 # Cache statistics if available
@@ -5808,19 +6041,29 @@ class UniversalConverter(Screen):
             logger.error(f"Error during close: {str(e)}")
             self.close()
 
-    def print_performance_stats(self):
-        """Print detailed performance statistics."""
+    def print_simple_stats(self):
+        """Print simple conversion statistics without cache details."""
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             try:
                 stats = self.epg_mapper.get_cache_statistics()
-                logger.info("=== DETAILED PERFORMANCE STATISTICS ===")
-                logger.info(f"Match Cache - Hits: {stats.get('match_hits', 0)}, Misses: {stats.get('match_misses', 0)}, Hit Rate: {stats.get('match_hit_rate', 'N/A')}")
-                logger.info(f"EPG Cache - Hits: {stats.get('epg_hits', 0)}, Misses: {stats.get('epg_misses', 0)}, Hit Rate: {stats.get('epg_hit_rate', 'N/A')}")
-                logger.info(f"Overall - Total Requests: {stats.get('total_requests', 0)}, Hit Rate: {stats.get('overall_hit_rate', 'N/A')}")
-                logger.info(f"Database - Rytec: {stats.get('rytec_channels', 0)}, DVB: {stats.get('loaded_dvb_channels', 0)}")
-                logger.info(f"Cache Analysis - Compatible: {stats.get('cache_analysis', {}).get('compatible', 0)}, Incompatible: {stats.get('cache_analysis', {}).get('incompatible', 0)}")
+
+                # Show only the meaningful match results
+                rytec_matches = stats.get('rytec_matches', 0)
+                dvb_matches = stats.get('dvb_matches', 0)
+                dvbt_matches = stats.get('dvbt_matches', 0)
+                fallback_matches = stats.get('fallback_matches', 0)
+                total_matches = rytec_matches + dvb_matches + dvbt_matches + fallback_matches
+
+                if total_matches > 0:
+                    logger.info("=== CONVERSION RESULTS ===")
+                    logger.info(f"Rytec matches: {rytec_matches}")
+                    logger.info(f"DVB matches: {dvb_matches}")
+                    logger.info(f"DVB-T matches: {dvbt_matches}")
+                    logger.info(f"Fallback matches: {fallback_matches}")
+                    logger.info(f"Total channels: {total_matches}")
+
             except Exception as e:
-                logger.error(f"Error printing performance stats: {str(e)}")
+                logger.error(f"Error printing simple stats: {str(e)}")
 
     def _show_plugin_information(self):
         """Show plugin information and credits."""

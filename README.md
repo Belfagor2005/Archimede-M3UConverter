@@ -1,95 +1,251 @@
-# 📺 Archimede M3U Converter
+Ecco il file `README.md` aggiornato con tutte le nuove caratteristiche e funzionalità del plugin:
 
-A simple and powerful playlist converter for **Enigma2 (Python 3 only)**.
-Easily turn `.m3u`, `.json`, and `.xspf` files into clean IPTV lists with group, logo, and stream info — and export Enigma2 bouquets back to `.m3u`!
+```markdown
+# 📺 Archimede Universal Converter v2.4
+
+**Universal playlist converter for Enigma2 (Python 3 only)**  
+Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG mapping and intelligent channel matching.
 
 ```
-## 🚀 Features
+## 🚀 What's New in v2.4
 
-- ✅ Choose playlist files from USB, HDD, or network shares (`.m3u`, `.tv`, `.json`, `.xspf`)
-- 🔍 Parses EXTINF data: title, logo, group-title, tvg-name
-- 🧹 Cleans and exports a minimal Enigma2-compatible bouquet
-- 🔁 Convert streams to **HLS** (optional)
-- 📤 Export Enigma2 bouquets (`.tv`) back to `.m3u` format
-- 💾 Automatic backup of original files
-- 🧠 Auto-reload playlist at boot
-- 📚 Add new bouquets at top or bottom of main list
-- 📂 File browser with smart filter: shows only `.tv` files containing HTTP streams
-- 🔄 Convert JSON IPTV playlist to Enigma2 bouquets
-- 🔄 Convert XSPF playlists to M3U format
-- 🔄 **Convert M3U playlists to JSON** (structured channels metadata)
-- 🗓️ **When converting to `.tv`, auto-attach EPG info if available** (based on `tvg-id`/`tvg-name`)
+### 🎯 Enhanced EPG System
+- **Intelligent Channel Matching**: Automatic mapping between IPTV channels and DVB/Satellite services
+- **Multi-Database Support**: Rytec, DVB-S/C/T, and local bouquet databases
+- **EPGShare Integration**: Download and parse EPG data from online sources
+- **Manual Match Editor**: Fine-tune channel mappings with visual interface
 
+### 🔧 Advanced Features
+- **Unified Channel Mapping**: Single structure for all service references
+- **Cache Optimization**: Improved performance with smart caching
+- **Database Mode Selection**: Choose between Full, DVB-only, Rytec-only, or DTT-only modes
+- **Real-time Statistics**: Detailed conversion analytics and coverage reports
 
+### 🎨 User Experience
+- **Manual Match Editor**: Visual interface for correcting channel mappings
+- **Auto-EPG Generation**: Automatic creation of EPGImport compatible files
+- **Progress Tracking**: Real-time conversion progress with detailed status
+- **Enhanced Debug**: Comprehensive logging and analysis tools
+
+## 📋 Core Features
+
+### 🔄 Conversion Capabilities
+- **M3U ➔ Enigma2 Bouquets** with EPG mapping
+- **Enigma2 Bouquets ➔ M3U** format
+- **JSON ➔ Enigma2 Bouquets** with metadata preservation
+- **JSON ➔ M3U** playlist conversion
+- **XSPF ➔ M3U** playlist conversion
+- **M3U ➔ JSON** structured metadata export
+
+### 🛰️ EPG & Service Mapping
+- **Automatic Service Matching**: Intelligent mapping using multiple algorithms
+- **Rytec Database Integration**: Leverage existing Rytec channel mappings
+- **DVB Service Detection**: Match with local DVB-S/C/T services
+- **Multi-Language EPG**: Support for international EPG sources
+- **EPGShare Compatibility**: Download and use EPGShare data sources
+
+### ⚙️ Smart Processing
+- **Group Management**: Automatic channel grouping with clean names
+- **Quality Filtering**: Remove quality indicators for better matching
+- **Binary Data Protection**: Filter out corrupted or binary data
+- **Large File Handling**: Efficient processing of massive playlists
+- **Backup System**: Automatic backup and restore functionality
 
 ## 🎮 How to Use
 
-| Button       | Action                                      |
-|--------------|---------------------------------------------|
-| 🔴 RED       | Open file (M3U, TV, JSON, XSPF)             |
-| 🟢 GREEN     | Start conversion                            |
-| 🟡 YELLOW    | Toggle stream filter (HTTP-only .tv files)  |
-| 🔵 BLUE      | Tools menu (export, preview, etc.)          |
-| 📂 MENU      | Plugin settings (HLS, autoload, position)   |
-| ▶️  OK        | Play selected channel                       |
-| ⏹️ STOP      | Stop playback                               |
-| ❌ CANCEL    | Close the plugin                            |
+### Main Interface Controls
 
+| Button | Action |
+|--------|--------|
+| 🔴 **RED** | Close current screen |
+| 🟢 **GREEN** | Select/Start conversion |
+| 🟡 **YELLOW** | Remove M3U Bouquets |
+| 🔵 **BLUE** | EPGImporter Settings |
+| 📋 **MENU** | Plugin configuration |
 
+### Conversion Screen Controls
 
-## 🗂️ Output
+| Button | Action |
+|--------|--------|
+| 🔴 **RED** | Open file browser |
+| 🟢 **GREEN** | Start conversion process |
+| 🟡 **YELLOW** | Open Manual Match Editor |
+| 🔵 **BLUE** | Tools menu (context-aware) |
+| ▶️ **OK** | Play selected channel stream |
+| ⏹️ **STOP** | Stop media playback |
+| ❌ **CANCEL** | Close plugin |
 
-- Converted `.m3u` ➜ saved to:
-  - `/etc/enigma2/userbouquet.*.tv` (with EPG mapping when available)
-- Converted `.tv` ➜ exported to:
-  - `/tmp/exported_*.m3u`
-- Converted `.json` ➜ saved as:
-  - `/etc/enigma2/userbouquet.*.tv`
-- Converted `.xspf` ➜ exported as:
-  - `/tmp/converted_*.m3u`
-- **Converted `.m3u` ➜ exported as structured `.json`:**
-  - `/tmp/converted_*.json`
-- UTF-8 M3U support ✅
+### Manual Match Editor Controls
 
+| Button | Action |
+|--------|--------|
+| 🔴 **RED** | Close editor |
+| 🟢 **GREEN** | Assign selected match |
+| 🟡 **YELLOW** | Reset channel match |
+| 🔵 **BLUE** | Save all changes |
+| ▶️ **OK** | Select channel/match |
+| 🔄 **ARROWS** | Navigate between lists |
 
-## 🔄 Reverse Conversion
+## ⚙️ Configuration Options
 
-You can now export Enigma2 bouquets (`userbouquet.*.tv`) back into `.m3u` format:
+### EPG Settings
+- **EPG Generation**: Enable/disable EPG data attachment
+- **Database Mode**: 
+  - `Full`: DVB + Rytec + DTT (Complete)
+  - `Both`: DVB + Rytec 
+  - `DVB`: Only DVB services
+  - `Rytec`: Only Rytec database
+  - `DTT`: Only DVB-T services
+- **EPG Source**: EPGShare or Standard mode
+- **Language**: Country-specific EPG data
 
-- Output saved in: `/tmp/exported_*.m3u`
-- Each channel is saved with its original name and URL
-- Only valid IPTV entries are included (e.g., `#SERVICE 4097`, `5001`, etc.)
-- Non-stream services (DVB, radio, etc.) are ignored
+### Bouquet Settings
+- **Bouquet Mode**: Single bouquet or Multiple bouquets by group
+- **Position**: Top or Bottom of bouquet list
+- **Auto-reload**: Automatic service reload after conversion
+- **Backup**: Enable automatic backups
 
-New supported formats:
+### Processing Options
+- **HLS Conversion**: Auto-convert to HLS format
+- **Auto-open Editor**: Open manual editor after conversion
+- **Debug Mode**: Enhanced logging and analysis
+- **Max Backups**: Number of backups to retain
 
-- `.json` ➜ Enigma2 bouquet conversion
-- `.xspf` ➜ converted to `.m3u` playlist
-- `.m3u` ➜ **converted to `.json`**
+## 📊 EPG Matching System
 
-Perfect for creating backup playlists or re-editing outside Enigma2.
+### Matching Priority
+1. **Exact TVG-ID Match**: Perfect match with Rytec database
+2. **Clean Name Match**: Normalized channel name matching
+3. **Similarity Match**: Fuzzy matching for similar names
+4. **DVB Service Match**: Local DVB service matching
+5. **Fallback**: IPTV service reference generation
 
+### Database Integration
+- **Rytec Channels**: `/etc/epgimport/rytec.channels.xml`
+- **DVB Services**: `/etc/enigma2/lamedb` and `lamedb5`
+- **Existing Bouquets**: Current Enigma2 bouquet analysis
+- **EPGShare**: Online EPG data download and parsing
 
+## 📁 File Structure
 
-## 💡 Notes
+### Input Formats
+- **M3U/M3U8**: Standard M3U playlists with EXTINF attributes
+- **JSON**: Structured channel data with metadata
+- **XSPF**: XML Shareable Playlist Format
+- **TV Bouquets**: Enigma2 bouquet files
 
-- Works only on **Python 3** images
-- Designed for modern Enigma2 boxes
-- No internet required for conversion
-- Clean, local processing — no logs or tracking
-- EPG attachment uses available tags (`tvg-id`, `tvg-name`) to map channels when present
+### Output Locations
+- **Bouquets**: `/etc/enigma2/userbouquet.*.tv`
+- **EPG Files**: `/etc/epgimport/*.channels.xml`
+- **EPG Sources**: `/etc/epgimport/ArchimedeConverter.sources.xml`
+- **Exports**: `/tmp/archimede_converter/exported_*`
+- **Backups**: `/tmp/archimede_converter/archimede_backup/`
+- **Logs**: `/tmp/archimede_converter/archimede_debug/`
 
+## 🔧 Advanced Tools
 
+### Manual Match Editor
+- **Visual Interface**: Side-by-side channel and match lists
+- **Smart Suggestions**: AI-powered match recommendations
+- **Similarity Scoring**: Percentage-based match quality
+- **Priority Sorting**: Best matches shown first
+- **Custom Mapping**: Save manual corrections for future use
+
+### Analysis Tools
+- **Cache Statistics**: Hit rates, performance metrics
+- **Coverage Reports**: EPG matching success rates
+- **Database Status**: Loaded channels and services count
+- **Conversion Analytics**: Detailed conversion statistics
+
+### Maintenance Tools
+- **Bouquet Cleanup**: Remove all M3U-generated bouquets
+- **EPG Cache Clear**: Reset EPG matching cache
+- **Service Reload**: Force Enigma2 service reload
+- **Backup Management**: Manual backup creation
+
+## 💡 Pro Tips
+
+### Optimal Configuration
+1. **For Satellite Users**: Use `Full` or `Both` database mode
+2. **For IPTV-Only**: Use `Rytec` mode with EPGShare
+3. **For Large Lists**: Enable debug mode for performance analysis
+4. **For Accuracy**: Use Manual Match Editor for fine-tuning
+
+### Performance Optimization
+- **Cache Size**: Automatic management for optimal performance
+- **Batch Processing**: Efficient processing of large playlists
+- **Memory Management**: Smart cleanup and optimization
+- **Incremental Parsing**: Handle very large files efficiently
+
+### Troubleshooting
+- **Check Logs**: Enable debug mode for detailed logging
+- **Verify EPG**: Use analysis tools to check EPG coverage
+- **Manual Correction**: Use editor for problematic channels
+- **Service Reload**: Force reload if bouquets don't appear
+
+## 🗂️ Supported Attributes
+
+### M3U EXTINF Attributes
+- `tvg-id`: Channel identifier for EPG matching
+- `tvg-name`: Channel name for display
+- `tvg-logo`: Channel logo URL
+- `group-title`: Channel group/category
+- `tvg-language`: Channel language
+- `user-agent`: Custom user agent for streams
+
+### JSON Structure
+```json
+{
+  "name": "Channel Name",
+  "url": "stream_url",
+  "group": "Group Name", 
+  "tvg_id": "channel.id",
+  "logo": "logo_url",
+  "tvg_name": "Display Name"
+}
+```
+
+## 📊 Conversion Statistics
+
+The plugin provides detailed analytics:
+- **Total Channels Processed**
+- **EPG Match Success Rate**
+- **Database-specific Match Counts**
+- **Cache Performance Metrics**
+- **Effective EPG Coverage** (based on selected mode)
+
+## 🔒 Backup & Safety
+
+### Automatic Protection
+- **Pre-conversion Backup**: Automatic bouquet backup
+- **Rollback Capability**: Restore from backup on failure
+- **Multiple Backups**: Configurable backup retention
+- **Safe File Operations**: Transactional file writing
+
+### Error Handling
+- **Graceful Failure**: Continue processing on individual errors
+- **Detailed Error Reporting**: Specific error messages and solutions
+- **Recovery Options**: Multiple fallback strategies
+- **Validation Checks**: Pre-conversion validation
 
 ## 📄 Credits & License
 
-Created by **Belfagor2005** (Archimede).  
-All rights reserved. Redistribution only with explicit credit.
+**Archimede Universal Converter v2.4**  
+Created by **Lululla** (@Belfagor2005)
 
-This plugin is made with ❤️ for the Enigma2 community.  
-You are free to use and modify it for personal use.
+### 📜 License
+- **CC BY-NC-SA 4.0**: Creative Commons Attribution-NonCommercial-ShareAlike
+- **Redistribution**: Only with proper attribution
+- **Modifications**: Must maintain credit header
+- **Commercial Use**: Not permitted without authorization
 
-🚫 **Do not redistribute modified versions without proper attribution.**
+### 🙏 Acknowledgments
+- Enigma2 Community for testing and feedback
+- EPGShare for EPG data sources
+- Rytec for channel mapping database
+
+---
+
+**Made with ❤️ for the Enigma2 Community**  
+*Keep your playlists organized and your EPG accurate!*
 ```
-
-
