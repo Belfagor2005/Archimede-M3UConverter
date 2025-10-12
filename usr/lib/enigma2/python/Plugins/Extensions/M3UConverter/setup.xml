@@ -1,20 +1,21 @@
 <setupxml>
     <setup key="M3UConverterSettings" title="Archimede Converter Settings">
         <item level="0" text="Default Folder" description="Default folder for opening and saving M3U files">config.plugins.m3uconverter.lastdir</item>
+        <item level="0" text="Bouquet Mode" description="Create single or multiple bouquets">config.plugins.m3uconverter.bouquet_mode</item>
+        <item level="0" text="Bouquet Position" description="Position in channel list">config.plugins.m3uconverter.bouquet_position</item>
+        <item level="0" text="Convert HLS Streams" description="Convert HLS to Enigma2 format">config.plugins.m3uconverter.hls_convert</item>
+        <item level="0" text="Auto Reload Services" description="Reload channel list automatically">config.plugins.m3uconverter.auto_reload</item>
+        <item level="0" text="Create Backup" description="Create backup before conversion">config.plugins.m3uconverter.backup_enable</item>
+        <item level="0" text="Max Backups" description="Maximum backup copies">config.plugins.m3uconverter.max_backups</item>        
+        <item level="0" text="Debug Mode" description="Enable detailed logging">config.plugins.m3uconverter.enable_debug</item>   
         <item level="0" text="Enable EPG" description="Generate EPG data for bouquets">config.plugins.m3uconverter.epg_enabled</item>
         <if conditional="config.plugins.m3uconverter.epg_enabled.value">
-            <item level="1" text="EPG Language" description="Language for EPG sources">config.plugins.m3uconverter.language</item>    
-            <item level="1" text="EPG Generation Mode" description="EPG matching algorithm">config.plugins.m3uconverter.epg_generation_mode</item>
-       
-            <item level="1" text="EPG Database Mode" description="Select databases for channel matching: DVB (local), Rytec (EPG), or both">config.plugins.m3uconverter.epg_database_mode</item>
-            <!-- <item level="1" text="Auto-open manual editor after conversion" description="Automatically open manual match editor after conversion completes">config.plugins.m3uconverter.auto_open_editor</item> -->
+            <item level="0" text="- EPG Language" description="Language for EPG sources">config.plugins.m3uconverter.language</item>    
+            <item level="0" text="- EPG Generation Mode" description="EPG matching algorithm">config.plugins.m3uconverter.epg_generation_mode</item>
+            <item level="0" text="- Database Mode" description="Select databases for channel matching">config.plugins.m3uconverter.epg_database_mode</item>
+            <item level="0" text="- Use Manual Database" description="Use saved manual corrections">config.plugins.m3uconverter.use_manual_database</item>            
+            <item level="0" text="- Manual DB Max Size" description="Maximum manual corrections to save">config.plugins.m3uconverter.manual_db_max_size</item>
+            <item level="0" text="- Auto-open Editor" description="Open manual editor after conversion">config.plugins.m3uconverter.auto_open_editor</item>
         </if>
-        <item level="0" text="Bouquet Mode" description="Create single bouquet or multiple bouquets by group">config.plugins.m3uconverter.bouquet_mode</item>
-        <item level="0" text="Bouquet Position" description="Position of generated bouquets in main list">config.plugins.m3uconverter.bouquet_position</item>
-        <item level="0" text="Convert HLS Streams" description="Convert HLS (.m3u8) to Enigma2 compatible format">config.plugins.m3uconverter.hls_convert</item>
-        <item level="0" text="Debug Mode" description="Enable detailed logging for troubleshooting">config.plugins.m3uconverter.enable_debug</item>
-        <item level="0" text="Auto Reload Services" description="Reload channel list after conversion">config.plugins.m3uconverter.auto_reload</item>
-        <item level="0" text="Create Backup" description="Create backup before conversion">config.plugins.m3uconverter.backup_enable</item>
-        <item level="0" text="Max Backups" description="Maximum backup copies to keep">config.plugins.m3uconverter.max_backups</item>
     </setup>
 </setupxml>
