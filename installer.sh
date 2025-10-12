@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='2.4'
-changelog='\nFixed EPG ON 70%'
+version='2.5'
+changelog='\nRecoded all source for new functions'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##
