@@ -5079,6 +5079,10 @@ class UniversalConverter(Screen):
         # DEBUG: Check the status of the epg_mapper
         logger.info(f"🔍 EPG_MAPPER STATUS: exists={hasattr(self, 'epg_mapper')}, value={self.epg_mapper if hasattr(self, 'epg_mapper') else 'NO ATTR'}")
 
+        if self.cancel_conversion:
+            logger.info("🛑 Conversion cancelled before starting")
+            return (False, "Conversion cancelled before start")
+
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             logger.info(f"🔍 EPG_MAPPER METHODS: clean_channel_name={hasattr(self.epg_mapper, 'clean_channel_name')}, find_best_service_match={hasattr(self.epg_mapper, 'find_best_service_match')}")
 
@@ -5090,9 +5094,6 @@ class UniversalConverter(Screen):
         if not m3u_path and not self.selected_file:
             logger.error("No file specified for conversion")
             return (False, "No file specified")
-
-        if self.cancel_conversion:
-            return (False, "Conversion cancelled")
 
         # EPG MAPPER INITIALIZATION (only if needed)
         if not hasattr(self, 'epg_mapper') or not self.epg_mapper:
@@ -5189,13 +5190,18 @@ class UniversalConverter(Screen):
             for batch_start in range(0, total_valid, batch_size):
                 logger.debug(f"=== STARTING BATCH {batch_start // batch_size + 1} ===")
                 if self.cancel_conversion:
-                    return (False, "Conversion cancelled")
+                    logger.info("🛑 Conversion cancelled during batch processing")
+                    return (False, "Conversion cancelled during processing")
 
                 batch_end = min(batch_start + batch_size, total_valid)
                 batch_channels = valid_channels[batch_start:batch_end]
 
                 # Process the batch
                 for idx, channel in enumerate(batch_channels):
+                    if self.cancel_conversion:
+                        logger.info("🛑 Conversion cancelled during channel processing")
+                        return (False, "Conversion cancelled during channel processing")
+
                     processed_count += 1
 
                     # Get channel info
@@ -5372,10 +5378,19 @@ class UniversalConverter(Screen):
             return (False, str(e))
 
     def _convert_m3u_to_tv(self):
-        """Convert M3U to TV bouquet format."""
+        """Convert M3U to TV bouquet format - WITH BETTER CANCELLATION"""
+
+        # Double-check we're not already converting
+        if self.is_converting:
+            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            return
 
         def conversion_task():
             try:
+                # Check cancellation immediately
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
+
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper.refresh_config()
                     self.epg_mapper.reset_caches()
@@ -5385,6 +5400,7 @@ class UniversalConverter(Screen):
                     logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
+        # Set state AT THE END to avoid race conditions
         self.is_converting = True
         self.cancel_conversion = False
         self["key_green"].setText(_("Converting"))
@@ -5716,10 +5732,12 @@ class UniversalConverter(Screen):
         try:
             self.is_converting = False
             self.cancel_conversion = False
+            self._reset_conversion_ui()
             self["key_green"].setText(_("Convert"))
             self["key_blue"].setText(_("Tools"))
 
             if not isinstance(result, tuple):
+                self._reset_conversion_ui()
                 return
 
             success = result[0]
@@ -5789,6 +5807,7 @@ class UniversalConverter(Screen):
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             self.session.open(MessageBox, _("Error processing conversion result"), MessageBox.TYPE_ERROR)
+            self._reset_conversion_ui()
 
     def show_normal_conversion_success(self):
         """Show success message for normal conversion"""
@@ -6075,16 +6094,44 @@ class UniversalConverter(Screen):
             self._conversion_cancelled()
 
     def _cancel_conversion_process(self):
-        """Cancel the ongoing conversion."""
+        """Cancel the ongoing conversion - FIXED VERSION"""
         if self.is_converting:
             self.cancel_conversion = True
+            self.is_converting = False  # IMMEDIATELY stop conversion state
             self["key_blue"].setText(_("Cancelling..."))
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Conversion cancellation requested")
+            self["key_green"].setText(_("Stopped"))
+            self["status"].setText(_("Cancelling conversion..."))
 
-            self.cancel_timer = eTimer()
-            self.cancel_timer.callback.append(self._check_conversion_status)
-            self.cancel_timer.start(1000)
+            logger.info("🛑 Conversion cancellation requested - forcing immediate stop")
+
+            # Force UI update
+            self["progress_source"].setValue(0)
+            self["progress_text"].setText("")
+
+            # Show immediate feedback
+            self.session.open(MessageBox, _("Conversion cancelled"), MessageBox.TYPE_INFO, timeout=3)
+
+            # Reset UI state
+            self._reset_conversion_ui()
+
+        else:
+            # If not converting, show tools menu
+            self._show_enhanced_tools_menu()
+
+    def _reset_conversion_ui(self):
+        """Completely reset conversion UI state"""
+        self.is_converting = False
+        self.cancel_conversion = False
+        self["key_green"].setText(_("Convert"))
+        self["key_blue"].setText(_("Tools"))
+        self["progress_source"].setValue(0)
+        self["progress_text"].setText("")
+
+        # Reset progress indicators
+        if hasattr(self, 'progress_source'):
+            self["progress_source"].setValue(0)
+        if hasattr(self, 'progress_text'):
+            self["progress_text"].setText("")
 
     def _conversion_cancelled(self):
         """Handle conversion cancellation."""
