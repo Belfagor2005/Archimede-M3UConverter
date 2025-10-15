@@ -117,7 +117,6 @@ def get_best_storage_path():
             if '/media/' in mount:
                 parts = mount.split()
                 mount_point = parts[1]
-                # Verifica se è scrivibile
                 try:
                     test_file = join(mount_point, "test.tmp")
                     with open(test_file, 'w') as f:
@@ -591,12 +590,12 @@ class EPGServiceMapper:
             else:
                 cache_analysis['incompatible'] += 1
 
-        # Channel cache statistics reali
+        # Channel cache statistics
         channel_cache_hits = getattr(self, '_channel_cache_hits', 0)
         channel_cache_misses = getattr(self, '_channel_cache_misses', 0)
         channel_cache_size = len(getattr(self, '_clean_name_cache', {}))
 
-        # Rytec channels count corretto
+        # Rytec channels count
         rytec_channels_count = len(self.mapping.rytec.get('basic', {}))
 
         # MANUAL DB STATS
@@ -607,14 +606,14 @@ class EPGServiceMapper:
         stats_counters = getattr(self, '_stats_counters', {})
         manual_db_matches = stats_counters.get('manual_db_matches', 0)
 
-        # Calcolo totale matches corretto
+        # Calculate total matches correctly
         total_matches = (stats_counters.get('rytec_matches', 0) +
                          stats_counters.get('dvb_matches', 0) +
                          stats_counters.get('dvbt_matches', 0) +
                          stats_counters.get('fallback_matches', 0) +
                          manual_db_matches)
 
-        # Match coverage calcolato correttamente
+        # Match coverage calculated correctly
         total_epg_matches = (stats_counters.get('rytec_matches', 0) +
                              stats_counters.get('dvb_matches', 0) +
                              stats_counters.get('dvbt_matches', 0) +
@@ -676,20 +675,22 @@ class EPGServiceMapper:
             'loaded_dvb_channels': len(self.mapping.dvb),
             'rytec_channels': rytec_channels_count,
 
-            # Channel Cache Statistics (if present)
+            # Channel Cache Statistics
             'channel_cache_hits': channel_cache_hits,
             'channel_cache_misses': channel_cache_misses,
             'channel_cache_size': channel_cache_size,
 
+            # Manual Database Statistics
             'manual_db_matches': manual_db_count,
             'manual_db_size': manual_db_size,
             'manual_db_enabled': manual_db_enabled,
 
+            # Match Type Statistics - ADD THESE FOR THE TOOLS DISPLAY
             'dvbt_matches': dvbt,
             'rytec_matches': rytec,
             'dvb_matches': dvb,
             'fallback_matches': fallback,
-            'total_matches': total_matches,
+            'total_matches': total_matches,  # This is the key field we need
             'match_coverage': f"{match_coverage:.1f}%",
             'real_epg_matches': total_epg_matches,
 
@@ -698,45 +699,57 @@ class EPGServiceMapper:
             'effective_epg_matches': effective_epg_matches,
             'effective_coverage': f"{effective_coverage:.1f}%",
 
-            # Flag calcolati correttamente
+            # Enabled flags
             'rytec_enabled': rytec_enabled,
             'dvb_enabled': dvb_enabled,
-            'dvbt_enabled': dvbt_enabled
+            'dvbt_enabled': dvbt_enabled,
+
+            # ADD THESE EXTRA FIELDS FOR BETTER STATISTICS DISPLAY
+            'rytec_percent': (rytec / total_matches * 100) if total_matches > 0 else 0,
+            'dvb_percent': (dvb / total_matches * 100) if total_matches > 0 else 0,
+            'dvbt_percent': (dvbt / total_matches * 100) if total_matches > 0 else 0,
+            'fallback_percent': (fallback / total_matches * 100) if total_matches > 0 else 0,
+            'manual_percent': (manual_db_count / total_matches * 100) if total_matches > 0 else 0,
+            'epg_coverage': 100 - ((fallback / total_matches * 100) if total_matches > 0 else 0)
         }
 
-    def reset_caches(self, clear_match_cache=False):
+    def reset_caches(self, clear_match_cache=False, reset_stats=False):
         """Reset statistics but preserve the cache between conversions
 
         Args:
             clear_match_cache (bool): If True, also clear the match cache
+            reset_stats (bool): If True, reset statistics counters (default: False)
         """
-        # RESET only statistics, NOT the cache by default
-        self._match_cache_hits = 0
-        self._match_cache_misses = 0
+        # RESET only statistics if explicitly requested
+        if reset_stats:
+            self._match_cache_hits = 0
+            self._match_cache_misses = 0
 
-        # RESET match counters
-        self._stats_counters = {
-            'rytec_matches': 0,
-            'dvb_matches': 0,
-            'dvbt_matches': 0,
-            'fallback_matches': 0
-        }
+            # RESET match counters
+            self._stats_counters = {
+                'rytec_matches': 0,
+                'dvb_matches': 0,
+                'dvbt_matches': 0,
+                'fallback_matches': 0,
+                'manual_db_matches': 0
+            }
 
-        # EPG Cache - this one can be cleared
-        self.epg_cache.clear()
-        self.epg_cache_hits = 0
-        self.epg_cache_misses = 0
+            # EPG Cache - this one can be cleared
+            self.epg_cache.clear()
+            self.epg_cache_hits = 0
+            self.epg_cache_misses = 0
 
-        # Other statistics
+            # Other statistics
+            self._incompatible_matches = 0
+            logger.info("🔄 Statistics counters reset")
+        else:
+            logger.debug("🔄 Caches optimized - statistics preserved")
+
         # Clear match cache only if explicitly requested
         if clear_match_cache:
             match_cache_size = len(self._match_cache)
             self._match_cache.clear()
             logger.debug(f"Match cache cleared: {match_cache_size} entries removed")
-        else:
-            logger.debug("Caches optimized - match cache preserved")
-
-        self._incompatible_matches = 0
 
     def _load_enigma2_configuration(self, settings_path="/etc/enigma2/settings"):
         """Load Enigma2 configuration to determine configured satellites.
@@ -4019,6 +4032,8 @@ class UniversalConverter(Screen):
         self.is_converting = False
         self.cancel_conversion = False
         self.epg_mapper = None
+        self.last_conversion_stats = None
+        self.last_cache_stats = None
         base_path = config.plugins.m3uconverter.lastdir.value
         self.full_path = base_path
         self["list"] = MenuList([])
@@ -4026,7 +4041,7 @@ class UniversalConverter(Screen):
         self["status"] = Label(_("Ready"))
         self["key_red"] = StaticText(_("Open File"))
         self["key_green"] = StaticText("")
-        self["key_yellow"] = StaticText(_("Manual Match"))
+        self["key_yellow"] = StaticText(_("Match"))
         self["key_blue"] = StaticText(_("Tools"))
         self.progress_source = Progress()
         self["progress_source"] = self.progress_source
@@ -4259,29 +4274,97 @@ class UniversalConverter(Screen):
         )
 
     def _show_cache_statistics(self):
-        """Display EPG cache statistics."""
-        if hasattr(self, 'epg_mapper') and self.epg_mapper:
-            try:
+        """Display EPG cache statistics - SHOW PRESERVED STATISTICS"""
+        try:
+            # FIRST look for preserved statistics from last conversion
+            if hasattr(self, 'last_cache_stats') and self.last_cache_stats:
+                stats = self.last_cache_stats
+                source = "Last conversion"
+                logger.info(f"📊 Showing preserved statistics: {stats.get('total_matches', 0)} matches")
+            elif hasattr(self, 'epg_mapper') and self.epg_mapper:
                 stats = self.epg_mapper.get_cache_statistics()
+                source = "Current cache"
+                logger.info(f"📊 Showing current cache: {stats.get('total_matches', 0)} matches")
+            else:
+                self.session.open(MessageBox, _("No statistics available"), MessageBox.TYPE_INFO)
+                return
 
+            # Check if we have meaningful statistics
+            total_matches = stats.get('total_matches', 0)
+            if total_matches == 0:
                 message_lines = [
-                    _("📊 EPG CACHE STATISTICS"),
+                    _("📊 EPG STATISTICS - {}").format(source),
                     "",
-                    _("• Cache Size: {} entries").format(stats.get('cache_size', 0)),
-                    _("• Cache Hits: {}").format(stats.get('hits', 0)),
-                    _("• Cache Misses: {}").format(stats.get('misses', 0)),
-                    _("• Hit Rate: {}").format(stats.get('hit_rate', '0.0%')),
-                    _("• Rytec Channels: {}").format(stats.get('rytec_channels', 0)),
-                    _("• DVB Channels: {}").format(stats.get('loaded_dvb_channels', 0)),
-                    _("• Incompatible Matches: {}").format(stats.get('incompatible_matches', 0))
+                    _("No conversion statistics available."),
+                    _("Run a conversion first to see statistics.")
                 ]
+                self.session.open(MessageBox, "\n".join(message_lines), MessageBox.TYPE_INFO)
+                return
 
-                self.session.open(MessageBox, "\n".join(message_lines), MessageBox.TYPE_INFO, timeout=10)
-            except Exception as e:
-                logger.error(f"Error getting cache statistics: {e}")
-                self.session.open(MessageBox, _("Error getting cache statistics"), MessageBox.TYPE_ERROR)
-        else:
-            self.session.open(MessageBox, _("EPG mapper not initialized"), MessageBox.TYPE_WARNING)
+            # Calculate meaningful statistics
+            rytec_matches = stats.get('rytec_matches', 0)
+            dvb_matches = stats.get('dvb_matches', 0)
+            dvbt_matches = stats.get('dvbt_matches', 0)
+            fallback_matches = stats.get('fallback_matches', 0)
+            manual_db_matches = stats.get('manual_db_matches', 0)
+            
+            # Calculate percentages
+            rytec_percent = (rytec_matches / total_matches) * 100 if total_matches > 0 else 0
+            dvb_percent = (dvb_matches / total_matches) * 100 if total_matches > 0 else 0
+            dvbt_percent = (dvbt_matches / total_matches) * 100 if total_matches > 0 else 0
+            fallback_percent = (fallback_matches / total_matches) * 100 if total_matches > 0 else 0
+            manual_percent = (manual_db_matches / total_matches) * 100 if total_matches > 0 else 0
+            epg_coverage = 100 - fallback_percent
+
+            message_lines = [
+                _("📊 EPG STATISTICS - {}").format(source),
+                "",
+                _("🎯 TOTAL CHANNELS: {}").format(total_matches),
+                _("📈 EPG COVERAGE: {:.1f}%").format(epg_coverage),
+                "",
+                _("🔧 MATCH BREAKDOWN:"),
+                _("• 🛰️  Rytec: {} ({:.1f}%)").format(rytec_matches, rytec_percent),
+                _("• 📡 DVB-S: {} ({:.1f}%)").format(dvb_matches, dvb_percent),
+                _("• 📺 DVB-T: {} ({:.1f}%)").format(dvbt_matches, dvbt_percent),
+                _("• 💾 Manual: {} ({:.1f}%)").format(manual_db_matches, manual_percent),
+                _("• 🔌 Fallback: {} ({:.1f}%)").format(fallback_matches, fallback_percent),
+            ]
+
+            # Add cache statistics if available - CORREZIONE: usa i nomi corretti
+            cache_hits = stats.get('match_hits', 0)
+            cache_misses = stats.get('match_misses', 0)
+            total_requests = cache_hits + cache_misses
+            
+            if total_requests > 0:
+                cache_hit_rate = stats.get('match_hit_rate', '0%')
+                if isinstance(cache_hit_rate, str) and '%' in cache_hit_rate:
+                    cache_hit_rate_value = cache_hit_rate.replace('%', '')
+                else:
+                    cache_hit_rate_value = (cache_hits / total_requests) * 100 if total_requests > 0 else 0
+                
+                message_lines.extend([
+                    "",
+                    _("💾 CACHE PERFORMANCE:"),
+                    _("• Hit: {} ({:.1f}%)").format(cache_hits, float(cache_hit_rate_value)),
+                    _("• Miss: {}").format(cache_misses),
+                    _("• Size: {} entries").format(stats.get('match_cache_size', 0))
+                ])
+
+            # Database info
+            message_lines.extend([
+                "",
+                _("🗄️ DATABASE INFO:"),
+                _("• Rytec: {} channels").format(stats.get('rytec_channels', 0)),
+                _("• DVB: {} channels").format(stats.get('loaded_dvb_channels', 0)),
+                _("• Mode: {}").format(stats.get('database_mode', 'N/A'))
+            ])
+
+            self.session.open(MessageBox, "\n".join(message_lines), MessageBox.TYPE_INFO, timeout=15)
+
+        except Exception as e:
+            logger.error(f"Error showing cache statistics: {e}")
+            error_msg = _("Error loading statistics: {}").format(str(e))
+            self.session.open(MessageBox, error_msg, MessageBox.TYPE_ERROR)
 
     def _reload_epg_database(self):
         """Reload EPG database."""
@@ -5083,7 +5166,14 @@ class UniversalConverter(Screen):
             logger.info("🛑 Conversion cancelled before starting")
             return (False, "Conversion cancelled before start")
 
+        # RESET STATISTICS ONLY FOR NEW CONVERSION - don't reset cache
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            # Reset only statistics, not cache
+            self.epg_mapper.reset_caches(clear_match_cache=False, reset_stats=True)
+            logger.info("🔄 Statistics reset for new conversion")
+
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper.reset_caches(clear_match_cache=False)
             logger.info(f"🔍 EPG_MAPPER METHODS: clean_channel_name={hasattr(self.epg_mapper, 'clean_channel_name')}, find_best_service_match={hasattr(self.epg_mapper, 'find_best_service_match')}")
 
         # DIAGNOSE RYTEC ISSUE
@@ -5355,7 +5445,7 @@ class UniversalConverter(Screen):
                 perf_stats = self.epg_mapper.get_cache_statistics()
             except Exception as e:
                 logger.warning(f"Error getting cache stats: {str(e)}")
-                perf_stats = {'hit_rate': 'N/A', 'cache_size': 0}
+                perf_stats = {'match_hit_rate': 'N/A', 'match_cache_size': 0}
 
             logger.info("=== OPTIMIZED CONVERSION STATISTICS ===")
             logger.info(f"Total channels in file: {total_original}")
@@ -5630,8 +5720,8 @@ class UniversalConverter(Screen):
                     stats_data = {
                         'total_channels': result[1],
                         'rytec_matches': result[2],
-                        'hit_rate': cache_stats['hit_rate'],
-                        'cache_size': cache_stats['cache_size'],
+                        'match_hit_rate': cache_stats['match_hit_rate'],
+                        'match_cache_size': cache_stats['match_cache_size'],
                         'compatible_cache': cache_stats['cache_analysis'].get('compatible', 0),
                         'incompatible_matches': cache_stats['incompatible_matches'],
                         'rytec_channels': cache_stats['rytec_channels']
@@ -5747,28 +5837,35 @@ class UniversalConverter(Screen):
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper.optimize_memory_timer.stop()
 
+                # PRESERVE STATISTICS BEFORE ANY RESET
+                self.preserve_conversion_stats()
+
                 # Collect conversion statistics
                 if self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
                     if len(result) >= 5:
                         total_channels = result[1]
                         effective_epg_matches = result[2]
-                        # perf_stats = result[3]
-                        detailed_stats = result[4]
+                        # perf_stats = result[3] if len(result) > 3 else {}
+                        detailed_stats = result[4] if len(result) > 4 else {}
+
+                        # Use preserved statistics
+                        cache_stats = self.last_cache_stats if hasattr(self, 'last_cache_stats') and self.last_cache_stats else {}
 
                         # CALCULATE COVERAGE
                         effective_coverage = f"{(effective_epg_matches / total_channels * 100):.1f}%" if total_channels > 0 else "0%"
 
                         stats_data = {
                             'total_channels': total_channels,
-                            'effective_epg_matches': effective_epg_matches,  # e.g., 249
-                            'effective_coverage': effective_coverage,        # e.g., "78.1%"
+                            'effective_epg_matches': effective_epg_matches,
+                            'effective_coverage': effective_coverage,
                             'rytec_matches': detailed_stats.get('rytec_matches', 0),
                             'dvb_matches': detailed_stats.get('dvb_matches', 0),
                             'dvbt_matches': detailed_stats.get('dvbt_matches', 0),
                             'fallback_matches': detailed_stats.get('fallback_matches', 0),
                             'manual_db_matches': detailed_stats.get('manual_db_matches', 0),
                             'conversion_type': self.conversion_type,
-                            'database_mode': self.epg_mapper.database_mode
+                            'database_mode': self.epg_mapper.database_mode if hasattr(self, 'epg_mapper') and self.epg_mapper else 'both',
+                            'cache_stats': cache_stats
                         }
 
                         self.last_conversion_stats = stats_data
@@ -5878,6 +5975,12 @@ class UniversalConverter(Screen):
         except Exception as e:
             logger.error(f"Error verifying bouquets: {str(e)}")
 
+    def preserve_conversion_stats(self):
+        """Preserve the current conversion statistics for later viewing"""
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.last_cache_stats = self.epg_mapper.get_cache_statistics()
+            logger.info(f"💾 Statistics preserved: {self.last_cache_stats.get('total_matches', 0)} total matches")
+
     def _prepare_stats_data(self, data, conversion_type):
         """Prepare statistics data."""
         timestamp = strftime("%Y-%m-%d %H:%M:%S")
@@ -5916,7 +6019,8 @@ class UniversalConverter(Screen):
 
                     effective_coverage = (effective_epg_matches / total_channels * 100) if total_channels > 0 else 0
 
-                    cache_stats = self.epg_mapper.get_cache_statistics()
+                    # CORREZIONE: usa get() per evitare KeyError
+                    cache_stats = self.epg_mapper.get_cache_statistics() if hasattr(self, 'epg_mapper') and self.epg_mapper else {}
                     stats_data.update({
                         'total_channels': data[0],
                         'real_epg_matches': data[1],
@@ -5924,10 +6028,11 @@ class UniversalConverter(Screen):
                         'dvb_matches': data[3].get('dvb_matches', 0),
                         'dvbt_matches': data[3].get('dvbt_matches', 0),
                         'manual_db_matches': data[3].get('manual_db_matches', 0),
-                        'effective_epg_matches': cache_stats.get('effective_epg_matches', 0),
-                        'effective_coverage': cache_stats.get('effective_coverage', '0%'),
-                        'database_mode': cache_stats.get('database_mode', 'both'),
-                        'effective_coverage_value': effective_coverage
+                        'effective_epg_matches': effective_epg_matches,
+                        'effective_coverage': f"{effective_coverage:.1f}%",
+                        'database_mode': db_mode,
+                        'effective_coverage_value': effective_coverage,
+                        'cache_stats': cache_stats  # Aggiungi cache_stats qui
                     })
 
             elif conversion_type in ["tv_to_m3u", "json_to_m3u", "xspf_to_m3u", "m3u_to_json"]:
@@ -6035,15 +6140,15 @@ class UniversalConverter(Screen):
                 # Cache statistics if available
                 cache_stats = stats_data.get('cache_stats', {})
                 if cache_stats:
-                    hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('hit_rate', 'N/A'))
-                    cache_size = cache_stats.get('match_cache_size', cache_stats.get('cache_size', 0))
+                    match_hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('match_hit_rate', 'N/A'))
+                    match_cache_size = cache_stats.get('match_cache_size', cache_stats.get('match_cache_size', 0))
                     rytec_channels = cache_stats.get('rytec_channels', 0)
                     dvb_channels = cache_stats.get('loaded_dvb_channels', 0)
 
                     stats_message.extend([
                         "",
-                        _("💾 Cache efficiency: {}").format(hit_rate),
-                        _("🔍 Cache size: {} entries").format(cache_size),
+                        _("💾 Cache efficiency: {}").format(match_hit_rate),
+                        _("🔍 Cache size: {} entries").format(match_cache_size),
                         _("🗄️ Rytec channels in DB: {}").format(rytec_channels),
                         _("📡 DVB channels in DB: {}").format(dvb_channels)
                     ])
@@ -6685,14 +6790,14 @@ class UniversalConverter(Screen):
             # Cache statistics if available
             cache_stats = stats_data.get('cache_stats', {})
             if cache_stats:
-                hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('hit_rate', 'N/A'))
-                cache_size = cache_stats.get('match_cache_size', cache_stats.get('cache_size', 0))
+                match_hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('match_hit_rate', 'N/A'))
+                match_cache_size = cache_stats.get('match_cache_size', cache_stats.get('match_cache_size', 0))
 
                 message.extend([
                     "",
                     "💾 PERFORMANCE:",
-                    f"  Cache efficiency: {hit_rate}",
-                    f"  Cache size: {cache_size} entries",
+                    f"  Cache efficiency: {match_hit_rate}",
+                    f"  Cache size: {match_cache_size} entries",
                 ])
 
             # Editor information if available
