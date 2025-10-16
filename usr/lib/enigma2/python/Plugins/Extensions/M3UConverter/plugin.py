@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 2.5                                         #
+#  Version: 2.6                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
@@ -135,8 +135,8 @@ def get_best_storage_path():
 # ==================== CONSTANTS & PATHS ====================
 
 
-CURRENT_VERSION = '2.5'
-LAST_MODIFIED_DATE = "20251008"
+CURRENT_VERSION = '2.6'
+LAST_MODIFIED_DATE = "20251015"
 PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 ICON_STORAGE = 0
 ICON_PARENT = 1
