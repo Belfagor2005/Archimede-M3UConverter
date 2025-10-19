@@ -136,7 +136,7 @@ def get_best_storage_path():
 
 
 CURRENT_VERSION = '2.7'
-LAST_MODIFIED_DATE = "20251015"
+LAST_MODIFIED_DATE = "20251019"
 PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 ICON_STORAGE = 0
 ICON_PARENT = 1
