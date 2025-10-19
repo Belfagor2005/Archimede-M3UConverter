@@ -154,6 +154,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Backups**: `/tmp/archimede_converter/archimede_backup/`
 - **Logs**: `/tmp/archimede_converter/archimede_debug/`
 - **Manual Database**: `/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/archimede_manual_mappings.json`
+
 ## 🔧 Advanced Tools
 
 ### Manual Match Editor
@@ -168,6 +169,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Export/Import**: Backup and restore manual mappings
 - **Usage Statistics**: Track how often corrections are used
 - **Automatic Cleanup**: Remove old or unused entries
+
 ### Analysis Tools
 - **Cache Statistics**: Hit rates, performance metrics
 - **Coverage Reports**: EPG matching success rates
