@@ -1,5 +1,3 @@
-Ecco il file `README.md` aggiornato con tutte le nuove caratteristiche e funzionalità del plugin:
-
 ```markdown
 # 📺 Archimede Universal Converter v2.4
 
