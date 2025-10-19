@@ -1,33 +1,37 @@
-Ecco il file `README.md` aggiornato con tutte le nuove caratteristiche e funzionalità del plugin:
-
 ```markdown
-# 📺 Archimede Universal Converter v2.4
+# 📺 Archimede Universal Converter
 
 **Universal playlist converter for Enigma2 (Python 3 only)**  
 Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG mapping and intelligent channel matching.
 
-```
-## 🚀 What's New in v2.4
+## 🚀 Key Features
 
-### 🎯 Enhanced EPG System
+   
+### 🎯 Enhanced Matching System
+- **Configurable Similarity Thresholds**: Global, Rytec-specific, and DVB-specific matching (20-100%)
+- **Advanced Manual Database**: Persistent storage for manual corrections with usage tracking
+- **Smart Database Management**: Automatic cleanup and optimization of manual mappings
+- **Real-time Analytics**: Enhanced statistics with detailed coverage breakdowns
+
+### 🔧 Advanced Tools & Interface
+- **Manual Database Editor**: Visual management interface for all manual corrections
+- **Enhanced Tools Menu**: Comprehensive utilities including export/import functionality
+- **Batch Processing Optimization**: Improved 50-channel batch processing for better performance
+- **Memory Management**: Automatic cleanup when storage space is low
+
+### 🛰️ EPG System
 - **Intelligent Channel Matching**: Automatic mapping between IPTV channels and DVB/Satellite services
 - **Multi-Database Support**: Rytec, DVB-S/C/T, and local bouquet databases
 - **EPGShare Integration**: Download and parse EPG data from online sources
 - **Manual Match Editor**: Fine-tune channel mappings with visual interface
 
-### 🔧 Advanced Features
+### ⚙️ Core Features
 - **Unified Channel Mapping**: Single structure for all service references
 - **Cache Optimization**: Improved performance with smart caching
 - **Database Mode Selection**: Choose between Full, DVB-only, Rytec-only, or DTT-only modes
 - **Real-time Statistics**: Detailed conversion analytics and coverage reports
 
-### 🎨 User Experience
-- **Manual Match Editor**: Visual interface for correcting channel mappings
-- **Auto-EPG Generation**: Automatic creation of EPGImport compatible files
-- **Progress Tracking**: Real-time conversion progress with detailed status
-- **Enhanced Debug**: Comprehensive logging and analysis tools
-
-## 📋 Core Features
+## 📋 Core Capabilities
 
 ### 🔄 Conversion Capabilities
 - **M3U ➔ Enigma2 Bouquets** with EPG mapping
@@ -99,6 +103,12 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **EPG Source**: EPGShare or Standard mode
 - **Language**: Country-specific EPG data
 
+### Matching Settings
+- **Similarity Threshold**: Global matching sensitivity (20-100%)
+- **Rytec Similarity**: Specific threshold for Rytec database matching
+- **DVB Similarity**: Specific threshold for DVB service matching
+- **Manual Database**: Enable/disable use of manual corrections
+
 ### Bouquet Settings
 - **Bouquet Mode**: Single bouquet or Multiple bouquets by group
 - **Position**: Top or Bottom of bouquet list
@@ -114,17 +124,19 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 ## 📊 EPG Matching System
 
 ### Matching Priority
-1. **Exact TVG-ID Match**: Perfect match with Rytec database
-2. **Clean Name Match**: Normalized channel name matching
-3. **Similarity Match**: Fuzzy matching for similar names
-4. **DVB Service Match**: Local DVB service matching
-5. **Fallback**: IPTV service reference generation
+1. **Manual Database**: Previously saved manual corrections
+2. **Exact TVG-ID Match**: Perfect match with Rytec database
+3. **Clean Name Match**: Normalized channel name matching
+4. **Similarity Match**: Fuzzy matching for similar names
+5. **DVB Service Match**: Local DVB service matching
+6. **Fallback**: IPTV service reference generation
 
 ### Database Integration
 - **Rytec Channels**: `/etc/epgimport/rytec.channels.xml`
 - **DVB Services**: `/etc/enigma2/lamedb` and `lamedb5`
 - **Existing Bouquets**: Current Enigma2 bouquet analysis
 - **EPGShare**: Online EPG data download and parsing
+- **Manual Database**: Persistent storage of user corrections
 
 ## 📁 File Structure
 
@@ -141,7 +153,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Exports**: `/tmp/archimede_converter/exported_*`
 - **Backups**: `/tmp/archimede_converter/archimede_backup/`
 - **Logs**: `/tmp/archimede_converter/archimede_debug/`
-
+- **Manual Database**: `/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/archimede_manual_mappings.json`
 ## 🔧 Advanced Tools
 
 ### Manual Match Editor
@@ -151,6 +163,11 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Priority Sorting**: Best matches shown first
 - **Custom Mapping**: Save manual corrections for future use
 
+### Database Management
+- **Manual Database Editor**: Visual interface for managing all corrections
+- **Export/Import**: Backup and restore manual mappings
+- **Usage Statistics**: Track how often corrections are used
+- **Automatic Cleanup**: Remove old or unused entries
 ### Analysis Tools
 - **Cache Statistics**: Hit rates, performance metrics
 - **Coverage Reports**: EPG matching success rates
@@ -166,21 +183,21 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 ## 💡 Pro Tips
 
 ### Optimal Configuration
-1. **For Satellite Users**: Use `Full` or `Both` database mode
-2. **For IPTV-Only**: Use `Rytec` mode with EPGShare
+1. **For Satellite Users**: Use `Full` or `Both` database mode with 80% similarity
+2. **For IPTV-Only**: Use `Rytec` mode with EPGShare and 70% similarity
 3. **For Large Lists**: Enable debug mode for performance analysis
-4. **For Accuracy**: Use Manual Match Editor for fine-tuning
+4. **For Accuracy**: Use Manual Match Editor and save corrections to database
 
 ### Performance Optimization
 - **Cache Size**: Automatic management for optimal performance
-- **Batch Processing**: Efficient processing of large playlists
-- **Memory Management**: Smart cleanup and optimization
+- **Batch Processing**: Efficient 50-channel batch processing
+- **Memory Management**: Smart cleanup when storage is low
 - **Incremental Parsing**: Handle very large files efficiently
 
 ### Troubleshooting
 - **Check Logs**: Enable debug mode for detailed logging
 - **Verify EPG**: Use analysis tools to check EPG coverage
-- **Manual Correction**: Use editor for problematic channels
+- **Manual Correction**: Use editor for problematic channels and save to database
 - **Service Reload**: Force reload if bouquets don't appear
 
 ## 🗂️ Supported Attributes
