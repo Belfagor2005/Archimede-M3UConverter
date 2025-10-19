@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='2.5'
-changelog='\nRecoded all source for new functions'
+version='2.7'
+changelog='\nRecoded all source for new functions added'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##

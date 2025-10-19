@@ -6,14 +6,17 @@
         <item level="0" text="Convert HLS Streams" description="Convert HLS to Enigma2 format">config.plugins.m3uconverter.hls_convert</item>
         <item level="0" text="Auto Reload Services" description="Reload channel list automatically">config.plugins.m3uconverter.auto_reload</item>
         <item level="0" text="Create Backup" description="Create backup before conversion">config.plugins.m3uconverter.backup_enable</item>
-        <item level="0" text="Max Backups" description="Maximum backup copies">config.plugins.m3uconverter.max_backups</item>        
-        <item level="0" text="Debug Mode" description="Enable detailed logging">config.plugins.m3uconverter.enable_debug</item>   
+        <item level="0" text="Max Backups" description="Maximum backup copies">config.plugins.m3uconverter.max_backups</item>
+        <item level="0" text="Debug Mode" description="Enable detailed logging">config.plugins.m3uconverter.enable_debug</item>
         <item level="0" text="Enable EPG" description="Generate EPG data for bouquets">config.plugins.m3uconverter.epg_enabled</item>
         <if conditional="config.plugins.m3uconverter.epg_enabled.value">
-            <item level="0" text="- EPG Language" description="Language for EPG sources">config.plugins.m3uconverter.language</item>    
+            <item level="0" text="- EPG Language" description="Language for EPG sources">config.plugins.m3uconverter.language</item>
             <item level="0" text="- EPG Generation Mode" description="EPG matching algorithm">config.plugins.m3uconverter.epg_generation_mode</item>
             <item level="0" text="- Database Mode" description="Select databases for channel matching">config.plugins.m3uconverter.epg_database_mode</item>
-            <item level="0" text="- Use Manual Database" description="Use saved manual corrections">config.plugins.m3uconverter.use_manual_database</item>            
+            <item level="0" text="- Use Manual Database" description="Use saved manual corrections">config.plugins.m3uconverter.use_manual_database</item>
+            <item level="0" text="- Similarity Threshold Global (%)" description="Global similarity threshold for all matches (20-100%)">config.plugins.m3uconverter.similarity_threshold</item>
+            <item level="0" text="- Similarity Threshold Rytec (%)" description="Similarity threshold for Rytec matches (20-100%)">config.plugins.m3uconverter.similarity_threshold_rytec</item>
+            <item level="0" text="- Similarity Threshold DVB (%)" description="Similarity threshold for DVB matches (20-100%)">config.plugins.m3uconverter.similarity_threshold_dvb</item>
             <item level="0" text="- Manual DB Max Size" description="Maximum manual corrections to save">config.plugins.m3uconverter.manual_db_max_size</item>
             <item level="0" text="- Auto-open Editor" description="Open manual editor after conversion">config.plugins.m3uconverter.auto_open_editor</item>
         </if>

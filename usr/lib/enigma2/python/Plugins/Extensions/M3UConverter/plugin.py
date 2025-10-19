@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 2.6                                         #
+#  Version: 2.7                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
@@ -53,7 +53,7 @@ from Components.MenuList import MenuList
 from Components.ScrollLabel import ScrollLabel
 from Components.Sources.Progress import Progress
 from Components.Sources.StaticText import StaticText
-from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo, ConfigNumber
+from Components.config import config, ConfigSelection, ConfigSubsection, ConfigYesNo, ConfigNumber, ConfigSelectionNumber
 from Screens.MessageBox import MessageBox
 from Screens.ChoiceBox import ChoiceBox
 from Screens.Screen import Screen
@@ -135,20 +135,20 @@ def get_best_storage_path():
 # ==================== CONSTANTS & PATHS ====================
 
 
-CURRENT_VERSION = '2.6'
+CURRENT_VERSION = '2.7'
 LAST_MODIFIED_DATE = "20251015"
 PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 ICON_STORAGE = 0
 ICON_PARENT = 1
 ICON_CURRENT = 2
 
-# CONFIGURAZIONE PATH DIRETTA (senza initialize_plugin_paths)
+PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
 ARCHIMEDE_CONVERTER_PATH = join(BASE_STORAGE_PATH, "archimede_converter")
 LOG_DIR = ARCHIMEDE_CONVERTER_PATH  # Logs nella stessa directory
 DEBUG_DIR = join(ARCHIMEDE_CONVERTER_PATH, "debug")
 MAIN_LOG = join(LOG_DIR, "converter.log")
-DB_PATCH = "/etc/enigma2/archimede_manual_mappings.json"
+DB_PATCH = join(PLUGIN_PATH, "archimede_manual_mappings.json")
 
 # Make directory
 try:
@@ -356,6 +356,11 @@ config.plugins.m3uconverter.epg_database_mode = ConfigSelection(
         ("dtt", _("Only DTT"))
     ]
 )
+
+# config.pluginsconfig.plugins.m3uconverter.similarity_threshold = ConfigNumber(default=80, limits=(20, 100))
+config.plugins.m3uconverter.similarity_threshold = ConfigSelectionNumber(default=80, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold_rytec = ConfigSelectionNumber(default=80, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold_dvb = ConfigSelectionNumber(default=80, stepwidth=10, min=20, max=100)
 config.plugins.m3uconverter.language = ConfigSelection({
     "it": "Italiano",
     "en": "English",
@@ -525,6 +530,10 @@ class EPGServiceMapper:
         self.enigma_config = self._load_enigma2_configuration()
         self.country_code = self._get_system_country_code()
 
+        self.similarity_threshold = config.plugins.m3uconverter.similarity_threshold.value / 100.0
+        self.similarity_threshold_rytec = config.plugins.m3uconverter.similarity_threshold_rytec.value / 100.0
+        self.similarity_threshold_dvb = config.plugins.m3uconverter.similarity_threshold_dvb.value / 100.0
+
         self.manual_db = ManualDatabaseManager()
         logger.info("✅ Manual database integrated into EPG mapper")
 
@@ -555,6 +564,14 @@ class EPGServiceMapper:
         """Refresh configuration values"""
         old_mode = getattr(self, 'database_mode', 'both')
         self.database_mode = config.plugins.m3uconverter.epg_database_mode.value
+
+        old_similarity = getattr(self, 'similarity_threshold', 0.8)
+        self.similarity_threshold = config.plugins.m3uconverter.similarity_threshold.value / 100.0
+        self.similarity_threshold_rytec = config.plugins.m3uconverter.similarity_threshold_rytec.value / 100.0
+        self.similarity_threshold_dvb = config.plugins.m3uconverter.similarity_threshold_dvb.value / 100.0
+
+        if old_similarity != self.similarity_threshold:
+            logger.info(f"🔄 Similarity thresholds updated - Global: {self.similarity_threshold}, Rytec: {self.similarity_threshold_rytec}, DVB: {self.similarity_threshold_dvb}")
 
         if old_mode != self.database_mode:
             logger.info(f"🔄 Database mode changed from {old_mode} to {self.database_mode} - resetting caches")
@@ -972,7 +989,7 @@ class EPGServiceMapper:
         return ""
 
     def clean_channel_name(self, name, preserve_variants=False):
-        """Clean channel name - REMOVE SPACES for matching."""
+        """Clean channel name - optimized version."""
         if not name:
             return ""
 
@@ -983,7 +1000,12 @@ class EPGServiceMapper:
         try:
             cleaned = name.lower().strip()
 
-            # REMOVE quality indicators
+            # OPTIMIZED: Remove parentheses and numbers in one go
+            cleaned = sub(r'\s*\(\d+\)\s*', '', cleaned)  # Remove (7), (6), etc.
+            cleaned = sub(r'\s*\(backup\)\s*', '', cleaned, flags=IGNORECASE)
+            cleaned = sub(r'\s*\(.*?\)\s*', '', cleaned)  # Remove any parentheses content
+
+            # Remove quality indicators
             quality_indicators = [
                 'h265', 'h264', 'h.265', 'h.264', 'hevc', 'avc', 'mpeg',
                 '4k', 'uhd', 'fhd', 'hd', 'sd', 'hq', 'uhq', 'sdq',
@@ -994,25 +1016,29 @@ class EPGServiceMapper:
             for quality in quality_indicators:
                 cleaned = cleaned.replace(quality, '')
 
-            # REMOVE DOTS
+            # Remove dots
             cleaned = cleaned.replace('.', ' ')
 
-            # REMOVE SPACES - IMPORTANT!
+            # REMOVE SPACES - IMPORTANT for matching
             cleaned = cleaned.replace(' ', '')
 
             # Minimal normalization
             cleaned = sub(r'[\\/_,;:]', '', cleaned).strip()
-
             self.mapping._clean_name_cache[cache_key] = cleaned
             return cleaned
 
         except Exception as e:
             logger.error(f"Error cleaning channel name '{name}': {str(e)}")
-            return name.lower().replace(' ', '') if name else ""
+            return name.lower().replace(' ', '').replace('(', '').replace(')', '') if name else ""
 
     def clean_channel_name_epgshare(self, name, preserve_variants=False):
-
         cleaned = name.lower().strip()
+
+        # REMOVE PARENTHESES AND NUMBERS FIRST - FIX
+        # OPTIMIZED: Remove parentheses and numbers in one go
+        cleaned = sub(r'\s*\(\d+\)\s*', '', cleaned)  # Remove (7), (6), etc.
+        cleaned = sub(r'\s*\(backup\)\s*', '', cleaned, flags=IGNORECASE)
+        cleaned = sub(r'\s*\(.*?\)\s*', '', cleaned)  # Remove any parentheses content
 
         # SELECTIVE REMOVAL - Not everything
         patterns_to_remove = [
@@ -1345,7 +1371,7 @@ class EPGServiceMapper:
         match_type = 'no_match'
 
         # PHASE 1: RYTEC SEARCH (only if enabled)
-        if self.database_mode in ["full", "both", "rytec"] and tvg_id:
+        if self.database_mode in ["full", "both", "rytec"] and tvg_id and tvg_id.lower() != "none":
             rytec_format = self._convert_to_rytec_format(tvg_id)
             possible_matches = [rytec_format, rytec_format.lower(), tvg_id, tvg_id.lower()]
 
@@ -1359,10 +1385,26 @@ class EPGServiceMapper:
                             logger.info(f"✅ RYTEC COMPATIBLE: {service_ref}")
                         self._stats_counters['rytec_matches'] += 1
                         match_type = 'rytec_exact_tvg_id'
+
+                        # ✅ CORREZIONE: NON chiamare generate_hybrid_sref, usa direttamente il DVB reference
+                        # service_ref rimane il reference DVB (1:0:19:D49:1450:13E:820000:0:0:0:)
                         break
                     else:
                         logger.warning(f"❌ RYTEC INCOMPATIBLE: {service_ref}")
                         break
+
+        # RYTEC NAME SEARCH when tvg_id is "None"
+        if not service_ref and self.database_mode in ["full", "both", "rytec"]:
+            name_based_ref = self._search_rytec_by_name(clean_name, original_name)
+            if name_based_ref and self.is_service_compatible(name_based_ref):
+                service_ref = name_based_ref
+                # ADD THESE 3 LINES AND BREAK OUT OF SEARCH
+                self._stats_counters['rytec_matches'] += 1
+                match_type = 'rytec_name_match'
+                # ADD THIS BREAK TO PREVENT FALLBACK
+                if service_ref:
+                    self._add_to_cache(cache_key, service_ref, match_type)
+                    return service_ref, match_type
 
         # PHASE 2: DVB SEARCH (only if enabled)
         if not service_ref and self.database_mode in ["full", "both", "dvb"]:
@@ -1384,7 +1426,7 @@ class EPGServiceMapper:
                 self._stats_counters['dvbt_matches'] += 1
                 match_type = 'dvbt_match'
 
-        # IPTV FALLBACK
+        # IPTV FALLBACK - SOLO se non abbiamo trovato match DVB
         if not service_ref and channel_url:
             service_ref = self.generate_service_reference(channel_url)
             if config.plugins.m3uconverter.enable_debug.value:
@@ -1413,6 +1455,67 @@ class EPGServiceMapper:
             return None
         except Exception as e:
             logger.error(f"Error in DVB-T matching: {str(e)}")
+            return None
+
+    def _search_rytec_by_name(self, clean_name, original_name):
+        """Search Rytec database by channel name when tvg_id is not available"""
+        try:
+            if not hasattr(self, 'mapping') or not self.mapping.rytec['basic']:
+                return None
+
+            logger.info(f"RYTEC NAME SEARCH: '{original_name}' -> '{clean_name}'")
+
+            best_match = None
+            best_similarity = 0
+
+            # Clean the name further by removing common suffixes
+            base_name = clean_name
+            suffixes_to_remove = ['(7)', '(6)', '(backup)', 'backup']
+            for suffix in suffixes_to_remove:
+                base_name = base_name.replace(suffix, '')
+            base_name = base_name.strip()
+
+            # Search in Rytec basic mapping
+            for rytec_id, service_ref in self.mapping.rytec['basic'].items():
+                if not service_ref:
+                    continue
+
+                # Calculate similarity with cleaned Rytec ID
+                rytec_clean = self.clean_channel_name(rytec_id)
+
+                # Try multiple matching strategies
+                similarities = []
+
+                # Strategy 1: Direct similarity
+                similarities.append(self._calculate_similarity(base_name, rytec_clean))
+
+                # Strategy 2: Remove country codes and try
+                rytec_no_country = sub(r'\.[a-z]{2}$', '', rytec_clean)
+                similarities.append(self._calculate_similarity(base_name, rytec_no_country))
+
+                # Strategy 3: Try with original name (less cleaned)
+                original_clean = self.clean_channel_name(original_name)
+                for suffix in suffixes_to_remove:
+                    original_clean = original_clean.replace(suffix, '')
+                original_clean = original_clean.strip()
+                similarities.append(self._calculate_similarity(original_clean, rytec_clean))
+
+                max_similarity = max(similarities)
+
+                if max_similarity > 0.8 and max_similarity > best_similarity:
+                    best_match = service_ref
+                    best_similarity = max_similarity
+                    logger.debug(f"Rytec name match: {rytec_id} (similarity: {max_similarity:.2f})")
+
+            if best_match and best_similarity > 0.8:
+                logger.info(f"RYTEC NAME MATCH FOUND: '{original_name}' -> similarity: {best_similarity:.2f}")
+                return best_match
+
+            logger.debug(f"No Rytec name match found for: {original_name} (best similarity: {best_similarity:.2f})")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error in Rytec name search: {str(e)}")
             return None
 
     def parse_existing_bouquets(self, bouquet_dir="/etc/enigma2"):
@@ -2572,7 +2675,7 @@ class EPGServiceMapper:
 
                         # Similarity match
                         similarity = self._calculate_similarity(clean_name, variant_clean)
-                        if similarity > 0.8 and similarity > best_score:
+                        if similarity > self.similarity_threshold and similarity > best_score:
                             local_sref = self._find_service_in_local_database(clean_name)
                             if local_sref and self.is_service_compatible(local_sref):
                                 best_match = local_sref
@@ -4230,22 +4333,20 @@ class UniversalConverter(Screen):
             (_("🧹 Clear EPG Cache"), "clear_cache"),
             (_("🔄 Reload EPG Database"), "reload_epg"),
             (_("🔄 Reload Services"), "reload"),
-            ("", "separator"),
-            (_("📝 Manual Match Editing"), "match_edit"),
-            (_("🗃️ Manual Database Management"), "header"),
+            (_("🗃️ === Manual Database Management ==="), "header"),
+            (_("✏️ Open Database Editor"), "open_db_editor"),
             (_("👁️ View Manual Database"), "view_manual_db"),
+            (_("📝 Manual Match Editing"), "match_edit"),
+            (_("📤 Export Manual Database"), "export_manual_db"),
             (_("🧹 Clean Manual Database"), "clean_manual_db"),
-            (_("📤 Export Manual Database"), "export_manual_db")
         ]
 
         def tool_selection_handler(choice):
-            """Handle tool selection from menu.
-            Args:
-                choice: Selected menu item
-            """
             if choice and choice[1] not in ["header", "separator"]:
                 action = choice[1]
-                if action == "cache_stats":
+                if action == "open_db_editor":
+                    self._open_manual_database_editor()
+                elif action == "cache_stats":
                     self._show_cache_statistics()
                 elif action == "reload_epg":
                     self._reload_epg_database()
@@ -4272,6 +4373,13 @@ class UniversalConverter(Screen):
             title=_("Advanced Tools Menu"),
             list=menu_items
         )
+
+    def _open_manual_database_editor(self):
+        """Open the manual database editor"""
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.session.open(ManualDatabaseEditor, self.epg_mapper)
+        else:
+            self.session.open(MessageBox, _("EPG mapper not initialized"), MessageBox.TYPE_WARNING)
 
     def _show_cache_statistics(self):
         """Display EPG cache statistics - SHOW PRESERVED STATISTICS"""
@@ -4307,7 +4415,7 @@ class UniversalConverter(Screen):
             dvbt_matches = stats.get('dvbt_matches', 0)
             fallback_matches = stats.get('fallback_matches', 0)
             manual_db_matches = stats.get('manual_db_matches', 0)
-            
+
             # Calculate percentages
             rytec_percent = (rytec_matches / total_matches) * 100 if total_matches > 0 else 0
             dvb_percent = (dvb_matches / total_matches) * 100 if total_matches > 0 else 0
@@ -4334,14 +4442,14 @@ class UniversalConverter(Screen):
             cache_hits = stats.get('match_hits', 0)
             cache_misses = stats.get('match_misses', 0)
             total_requests = cache_hits + cache_misses
-            
+
             if total_requests > 0:
                 cache_hit_rate = stats.get('match_hit_rate', '0%')
                 if isinstance(cache_hit_rate, str) and '%' in cache_hit_rate:
                     cache_hit_rate_value = cache_hit_rate.replace('%', '')
                 else:
                     cache_hit_rate_value = (cache_hits / total_requests) * 100 if total_requests > 0 else 0
-                
+
                 message_lines.extend([
                     "",
                     _("💾 CACHE PERFORMANCE:"),
@@ -5261,7 +5369,7 @@ class UniversalConverter(Screen):
                 logger.error("No valid channels with URLs found")
                 return (False, "No valid channels with URLs")
 
-            batch_size = 25
+            batch_size = 50
             groups = {}
             epg_data = []
             stats = {
@@ -6653,8 +6761,8 @@ class UniversalConverter(Screen):
                 self.session.open(MessageBox, _("No manual corrections to export"), MessageBox.TYPE_INFO)
                 return
 
-            # Create export file
-            export_path = "/tmp/archimede_manual_db_export.json"
+            export_path = join(ARCHIMEDE_CONVERTER_PATH, "archimede_manual_db_export.json")
+
             with open(export_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -7604,7 +7712,7 @@ class ManualMatchEditor(Screen):
 
         suggested_matches = []
 
-        # 1. SEARCH IN RYTEC (high priority)
+        # 1. SEARCH IN RYTEC (high priority) - USA epg_mapper per le soglie
         rytec_matches = self.search_rytec_matches(channel_name, clean_name, tvg_id)
         suggested_matches.extend(rytec_matches)
 
@@ -7653,10 +7761,10 @@ class ManualMatchEditor(Screen):
                     'sref': self.epg_mapper.mapping.rytec['basic'][rytec_id],
                     'name': f"Rytec: {rytec_id}",
                     'similarity': 1.0,
-                    'priority': 100  # Highest priority
+                    'priority': 100
                 })
 
-        # Search by name in Rytec database
+        # Search by name in Rytec database - USA LA SOGLIA DAL epg_mapper
         for rytec_id, service_ref in self.epg_mapper.mapping.rytec['basic'].items():
             if not service_ref:
                 continue
@@ -7664,7 +7772,8 @@ class ManualMatchEditor(Screen):
             # Calculate similarity
             similarity = self.epg_mapper._calculate_similarity(clean_name, rytec_id.lower())
 
-            if similarity > 0.6:  # Minimum threshold
+            # USA similarity_threshold_rytec DAL epg_mapper
+            if similarity > self.epg_mapper.similarity_threshold_rytec:
                 matches.append({
                     'type': 'rytec',
                     'sref': service_ref,
@@ -7685,22 +7794,24 @@ class ManualMatchEditor(Screen):
                 service_name = service.get('name', 'DVB Service')
                 similarity = self.epg_mapper._calculate_similarity(clean_name, service_name)
 
-                matches.append({
-                    'type': 'dvb',
-                    'sref': service['sref'],
-                    'name': f"DVB: {service_name}",
-                    'similarity': similarity,
-                    'priority': 80
-                })
+                # USA similarity_threshold_dvb DAL epg_mapper
+                if similarity > self.epg_mapper.similarity_threshold_dvb:
+                    matches.append({
+                        'type': 'dvb',
+                        'sref': service['sref'],
+                        'name': f"DVB: {service_name}",
+                        'similarity': similarity,
+                        'priority': 80
+                    })
 
-        # Search by similarity
+        # Search by similarity - USA similarity_threshold_dvb DAL epg_mapper
         for service_name, services in self.epg_mapper.mapping.dvb.items():
             if len(services) == 0:
                 continue
 
             similarity = self.epg_mapper._calculate_similarity(clean_name, service_name)
-            if similarity > 0.7:
-                service = services[0]  # Take first service
+            if similarity > self.epg_mapper.similarity_threshold_dvb:
+                service = services[0]
                 matches.append({
                     'type': 'dvb',
                     'sref': service['sref'],
@@ -7726,10 +7837,10 @@ class ManualMatchEditor(Screen):
         for rytec_id in self.epg_mapper.mapping.rytec['basic'].keys():
             all_names.append(('rytec', rytec_id))
 
-        # Calculate similarity for all
+        # Calculate similarity for all - USA similarity_threshold DAL epg_mapper
         for source_type, name in all_names:
             similarity = self.epg_mapper._calculate_similarity(clean_name, name.lower())
-            if similarity > 0.8:  # High threshold for similarity
+            if similarity > self.epg_mapper.similarity_threshold:
                 if source_type == 'rytec':
                     sref = self.epg_mapper.mapping.rytec['basic'][name]
                     matches.append({
@@ -8190,10 +8301,241 @@ class ManualMatchEditor(Screen):
             self["match_list"].moveToIndex(new_index)
 
 
+class ManualDatabaseEditor(Screen):
+    """Visual editor for manual mappings database"""
+
+    if SCREEN_WIDTH > 1280:
+        skin = """
+        <screen name="ManualDatabaseEditor" position="center,center" size="1600,950" title="Manual Database Editor" flags="wfNoBorder">
+            <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1600,1000" zPosition="-2" />
+            <widget source="Title" render="Label" position="50,20" size="1500,50" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="center" />
+
+            <!-- MAPPINGS LIST -->
+            <eLabel position="50,80" size="1500,40" font="Regular;28" text="MANUAL MAPPINGS DATABASE" transparent="0" halign="center" valign="center" />
+            <widget name="mapping_list" position="50,125" size="1500,700" itemHeight="100" font="Regular;28" scrollbarMode="showOnDemand" />
+
+            <!-- STATUS -->
+            <widget name="status" position="50,835" size="1500,40" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
+
+            <!-- KEYS -->
+            <!--#####red####/-->
+            <eLabel backgroundColor="#00ff0000" position="38,950" size="375,9" zPosition="12" />
+            <widget name="key_red" position="38,880" size="375,68" zPosition="11" font="Regular; 34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="38,880" size="375,68" zPosition="11" font="Regular;34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <!--#####green####/-->
+            <eLabel backgroundColor="#0000ff00" position="420,950" size="375,9" zPosition="12" />
+            <widget name="key_green" position="420,880" size="375,68" zPosition="11" font="Regular;34" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="420,880" size="375,68" zPosition="11" font="Regular;34" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <!--#####yellow####/-->
+            <eLabel backgroundColor="#00ffff00" position="812,950" size="375,9" zPosition="12" />
+            <widget name="key_yellow" position="808,880" size="375,68" zPosition="11" font="Regular;34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
+            <widget source="key_yellow" render="Label" position="808,880" size="375,68" zPosition="11" font="Regular;34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
+            <!--#####blue####/-->
+            <eLabel backgroundColor="#000000ff" position="1197,950" size="375,9" zPosition="12" />
+            <widget name="key_blue" position="1196,880" size="375,68" zPosition="11" font="Regular;34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,Button,Label" transparent="1" />
+            <widget source="key_blue" render="Label" position="1196,880" size="375,68" zPosition="11" font="Regular;34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
+        </screen>"""
+
+    else:
+        skin = """
+        <screen name="ManualDatabaseEditor" position="center,center" size="1200,700" title="Manual Database Editor" flags="wfNoBorder">
+            <eLabel backgroundColor="#002d3d5b" cornerRadius="15" position="0,0" size="1200,700" zPosition="-2" />
+            <widget source="Title" render="Label" position="30,15" size="1140,40" font="Regular;24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="center" />
+
+            <!-- MAPPINGS LIST -->
+            <eLabel position="30,65" size="1140,30" font="Regular;22" text="MANUAL MAPPINGS DATABASE" transparent="0" halign="center" valign="center" />
+            <widget name="mapping_list" position="30,105" size="1140,500" itemHeight="80" font="Regular;24" scrollbarMode="showOnDemand" />
+
+            <!-- STATUS -->
+            <widget name="status" position="30,610" size="1140,30" font="Regular;22" backgroundColor="background" transparent="1" foregroundColor="white" />
+
+            <!-- KEYS -->
+            <!--#####red####/-->
+            <eLabel backgroundColor="#00ff0000" position="25,690" size="250,6" zPosition="12" />
+            <widget name="key_red" position="25,645" size="250,45" zPosition="11" font="Regular; 28" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
+            <widget source="key_red" render="Label" position="25,645" size="250,45" zPosition="11" font="Regular; 28" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
+            <!--#####green####/-->
+            <eLabel backgroundColor="#0000ff00" position="280,690" size="250,6" zPosition="12" />
+            <widget name="key_green" position="280,645" size="250,45" zPosition="11" font="Regular; 28" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
+            <widget source="key_green" render="Label" position="280,645" size="250,45" zPosition="11" font="Regular; 28" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
+            <!--#####yellow####/-->
+            <eLabel backgroundColor="#00ffff00" position="541,690" size="250,6" zPosition="12" />
+            <widget name="key_yellow" position="539,645" size="250,45" zPosition="11" font="Regular; 28" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
+            <widget source="key_yellow" render="Label" position="539,645" size="250,45" zPosition="11" font="Regular; 28" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
+            <!--#####blue####/-->
+            <eLabel backgroundColor="#000000ff" position="798,690" size="250,6" zPosition="12" />
+            <widget name="key_blue" position="797,645" size="250,45" zPosition="11" font="Regular; 28" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,Button,Label" transparent="1" />
+            <widget source="key_blue" render="Label" position="797,645" size="250,45" zPosition="11" font="Regular; 28" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
+        </screen>"""
+
+    def __init__(self, session, epg_mapper=None):
+        Screen.__init__(self, session)
+        self.session = session
+        self.epg_mapper = epg_mapper
+        self.manual_db = ManualDatabaseManager()
+        self.mappings = []
+        self.current_index = 0
+
+        self.setTitle(_("Manual Database Editor"))
+
+        self["mapping_list"] = MenuList([])
+        self["status"] = Label(_("Loading database..."))
+        self["key_red"] = StaticText(_("Close"))
+        self["key_green"] = StaticText(_("Edit"))
+        self["key_yellow"] = StaticText(_("Delete"))
+        self["key_blue"] = StaticText('')
+
+        self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
+            "red": self.close,
+            "green": self.edit_mapping,
+            "yellow": self.delete_mapping,
+            # "blue": self.add_mapping,
+            "ok": self.edit_mapping,
+            "cancel": self.close
+        }, -1)
+
+        self.onLayoutFinish.append(self.load_database)
+
+    def load_database(self):
+        """Load and display the database"""
+        try:
+            logger.info(f"🔍 DB path: {self.manual_db.db_path}")
+            logger.info(f"🔍 ARCHIMEDE_CONVERTER_PATH: {ARCHIMEDE_CONVERTER_PATH}")
+            logger.info(f"🔍 File exists: {exists(self.manual_db.db_path)}")
+
+            data = self.manual_db.load_database()
+            self.mappings = data.get('mappings', [])
+
+            logger.info(f"🔍 Mappings loaded: {len(self.mappings)}")
+
+            if not self.mappings:
+                self["status"].setText(_("Database is empty"))
+                self["mapping_list"].setList([_("Database is empty")])
+                return
+
+            # Create display list
+            display_list = []
+            for i, mapping in enumerate(self.mappings):
+                channel_name = mapping.get('channel_name', 'Unknown')
+                match_type = mapping.get('match_type', 'unknown')
+                sref_short = mapping.get('assigned_sref', '')[:30] + "..." if len(mapping.get('assigned_sref', '')) > 30 else mapping.get('assigned_sref', '')
+
+                display_text = f"{i + 1:03d}. {channel_name} [{match_type}]\n   {sref_short}"
+                display_list.append(display_text)
+
+            self["mapping_list"].setList(display_list)
+            self["status"].setText(_("Loaded {} mappings").format(len(self.mappings)))
+
+        except Exception as e:
+            logger.error(f"Error loading database: {str(e)}")
+            self["status"].setText(_("Error loading database"))
+
+    def mapping_edited(self, result=None):
+        """Callback after mapping editing"""
+        if result and result.get('saved'):
+            # Reload database to reflect changes
+            self.load_database()
+
+    def delete_mapping(self):
+        """Delete selected mapping"""
+        if not self.mappings:
+            return
+
+        index = self["mapping_list"].getSelectedIndex()
+        if index < 0 or index >= len(self.mappings):
+            return
+
+        mapping = self.mappings[index]
+        channel_name = mapping.get('channel_name', 'Unknown')
+
+        message = _("Delete mapping for:\n{}\n\nThis action cannot be undone.").format(channel_name)
+
+        def confirm_callback(result):
+            if result:
+                self.perform_delete_mapping(index)
+
+        self.session.openWithCallback(
+            confirm_callback,
+            MessageBox,
+            message,
+            MessageBox.TYPE_YESNO
+        )
+
+    def perform_delete_mapping(self, index):
+        """Actually delete the mapping"""
+        try:
+            # Remove from local list
+            deleted_mapping = self.mappings.pop(index)
+
+            # Save updated database
+            data = self.manual_db.load_database()
+            data['mappings'] = self.mappings
+            success = self.manual_db.save_database(data)
+
+            if success:
+                self["status"].setText(_("Mapping deleted: {}").format(deleted_mapping.get('channel_name')))
+                self.load_database()  # Refresh list
+            else:
+                self["status"].setText(_("Error deleting mapping"))
+
+        except Exception as e:
+            logger.error(f"Error deleting mapping: {str(e)}")
+            self["status"].setText(_("Error deleting mapping"))
+
+    def add_mapping(self):
+        """Add new manual mapping"""
+        # Usa ManualMatchEditor che già esiste
+        self.session.openWithCallback(
+            self.new_mapping_added,
+            ManualMatchEditor,
+            [],  # Passa lista vuota invece di None
+            self.epg_mapper,
+            "manual_database"  # Nome bouquet speciale
+        )
+
+    def edit_mapping(self):
+        """Edit selected mapping"""
+        if not self.mappings:
+            return
+
+        index = self["mapping_list"].getSelectedIndex()
+        if index < 0 or index >= len(self.mappings):
+            return
+
+        mapping = self.mappings[index]
+
+        # Crea i dati nel formato che si aspetta ManualMatchEditor
+        channel_data = [{
+            'name': mapping.get('channel_name', 'Unknown'),
+            'original_name': mapping.get('channel_name', 'Unknown'),
+            'sref': mapping.get('assigned_sref', ''),
+            'match_type': mapping.get('match_type', 'manual'),
+            'tvg_id': mapping.get('tvg_id', ''),
+            'url': '',  # ManualMatchEditor si aspetta anche l'URL
+            'group': 'Manual Database'
+        }]
+
+        self.session.openWithCallback(
+            self.mapping_edited,
+            ManualMatchEditor,
+            channel_data,
+            self.epg_mapper,
+            "manual_database"  # bouquet name
+        )
+
+    def new_mapping_added(self, result):
+        """Callback after adding new mapping"""
+        if result and result.get('saved'):
+            self.load_database()  # Refresh list
+
+
 class ManualDatabaseManager:
     def __init__(self):
+        self.db_path = DB_PATCH
+        # self._migrate_old_database()
         self._ensure_db_directory()
         self._ensure_db_file()
+        logger.info(f"✅ Manual database path: {self.db_path}")
 
     def _ensure_db_directory(self):
         """Create the database directory if it does not exist"""
@@ -8201,6 +8543,7 @@ class ManualDatabaseManager:
         db_dir = dirname(self.db_path)
         if not exists(db_dir):
             makedirs(db_dir, exist_ok=True)
+            logger.info(f"📁 Created manual database directory: {db_dir}")
 
     def _ensure_db_file(self):
         """Crea il file DB se non esiste"""
@@ -8215,6 +8558,8 @@ class ManualDatabaseManager:
                     json.dump(initial_data, f, indent=2, ensure_ascii=False)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"✅ Created manual database: {self.db_path}")
+
+                chmod(self.db_path, 0o644)
             except Exception as e:
                 logger.error(f"❌ Cannot create manual database: {str(e)}")
                 # Fallback a /tmp
@@ -8429,39 +8774,91 @@ class PluginInfoScreen(Screen):
             "",
             "🔧 ADVANCED FEATURES",
             "───────────────────",
-            "• Smart EPG mapping (Rytec + DVB)",
-            "• Manual EPG Match Editor",
-            "• DB Manager EPG Match Editor",
-            "• Multi-database support",
+            "• Smart EPG mapping (Rytec + DVB + DVB-T)",
+            "• Manual EPG Match Editor (visual interface)",
+            "• Manual Database Manager",
+            "• Similarity-based channel matching",
+            "• Configurable similarity thresholds",
+            "• Multi-database support (5 modes)",
             "• Cache optimization system",
             "• Multi-language EPG sources",
             "• HLS stream conversion",
             "• Group-based bouquet creation",
             "• Automatic service reference generation",
+            "• Manual corrections database",
+            "• Real-time statistics and analytics",
             "",
             "📊 DATABASE MODES",
             "────────────────",
-            "• Full: DVB + Rytec + DVB-T",
-            "• Both: DVB + Rytec",
-            "• DVB Only: Satellite services",
-            "• Rytec Only: IPTV EPG data",
-            "• DTT Only: Terrestrial services",
+            "• Full: DVB + Rytec + DVB-T (complete)",
+            "• Both: DVB + Rytec (recommended)",
+            "• DVB Only: Satellite services only",
+            "• Rytec Only: IPTV EPG data only",
+            "• DTT Only: Terrestrial services only",
+            "",
+            "⚙️ SIMILARITY SETTINGS",
+            "─────────────────────",
+            "• Global similarity threshold (20-100%)",
+            "• Rytec-specific threshold",
+            "• DVB-specific threshold",
+            "• Intelligent fallback system",
+            "• Name-based matching algorithms",
+            "",
+            "🗃️ DATABASE MANAGEMENT",
+            "─────────────────────",
+            "• Manual corrections storage",
+            "• Usage tracking and statistics",
+            "• Automatic cleanup of old entries",
+            "• Import/export functionality",
+            "• Visual database editor",
+            "• Bulk editing capabilities",
+            "",
+            "📈 PERFORMANCE FEATURES",
+            "──────────────────────",
+            "• Optimized cache system",
+            "• Batch processing (50 channels/batch)",
+            "• Memory efficient operations",
+            "• Fast channel matching algorithms",
+            "• Automatic memory cleanup",
+            "• Low-space optimization",
             "",
             "🎮 CONTROLS",
             "───────────",
             "• GREEN: Convert selection",
-            "• RED: Open file browser",
+            "• RED: Open file browser / Close",
             "• YELLOW: Manual match editor",
-            "• BLUE: Advanced tools",
+            "• BLUE: Advanced tools menu",
             "• OK: Play stream / Select",
             "• CH+/CH-: Page navigation",
+            "• MENU: Plugin settings",
             "",
-            "⚡ PERFORMANCE",
+            "🛠️ TOOLS MENU",
+            "────────────",
+            "• Plugin Information (this screen)",
+            "• EPG Cache Statistics",
+            "• Create Backup",
+            "• Clear EPG Cache",
+            "• Reload EPG Database",
+            "• Reload Services",
+            "• Manual Database Editor",
+            "• View Manual Database",
+            "• Export/Import Database",
+            "• Clean Manual Database",
+            "",
+            "🌐 EPG SOURCES",
             "──────────────",
-            "• Optimized cache system",
-            "• Batch processing",
-            "• Memory efficient",
-            "• Fast channel matching",
+            "• Rytec.channels.xml integration",
+            "• EPGShare online sources",
+            "• Multi-country support (IT, UK, DE, FR, ES, etc.)",
+            "• Automatic EPG URL extraction from M3U",
+            "• Custom EPG source configuration",
+            "",
+            "💾 STORAGE OPTIONS",
+            "─────────────────",
+            "• Automatic storage detection",
+            "• Support for HDD, USB, network drives",
+            "• Backup system with rotation",
+            "• Debug logging with size limits",
             "",
             "💝 SUPPORT",
             "",
@@ -8475,35 +8872,6 @@ class PluginInfoScreen(Screen):
         return "\n".join(info)
 
 
-"""
-# class M3UConverterSettings(Setup):
-
-    # def __init__(self, session, parent=None):
-        # Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
-        # self.parent = parent
-
-    # def changedEntry(self):
-        # Setup.changedEntry(self)
-
-        # if hasattr(self, "createSummary"):
-            # self.createSummary()
-
-    # def keySave(self):
-        # Setup.keySave(self)
-
-    # def keyCancel(self):
-        # Setup.keyCancel(self)
-
-    # def keySelect(self):
-        # Setup.keySelect(self)
-
-    # def handleInputHelpers(self):
-        # Setup.handleInputHelpers(self)
-        # if "key_menu" in self:
-            # self["key_menu"].setText(_("MENU"))
-"""
-
-
 class M3UConverterSettings(Setup):
     """Settings screen for M3U Converter plugin."""
 
@@ -8515,25 +8883,6 @@ class M3UConverterSettings(Setup):
     def keySave(self):
         """Handle save action for settings."""
         Setup.keySave(self)
-
-
-"""
-# class M3UConverterSettings(Setup):
-    # def __init__(self, session, parent=None):
-        # Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
-        # self.parent = parent
-
-    # def keySave(self):
-        # Setup.keySave(self)
-
-    # def keySelect(self):
-        # Setup.keySelect(self)
-
-    # def handleInputHelpers(self):
-        # Setup.handleInputHelpers(self)
-        # if "key_menu" in self:
-            # self["key_menu"].setText(_("MENU"))
-"""
 
 
 def main(session, **kwargs):
