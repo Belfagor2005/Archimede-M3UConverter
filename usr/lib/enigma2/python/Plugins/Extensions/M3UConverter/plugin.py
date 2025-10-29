@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "23:30 - 20251028"                    #
+#  Last Modified: "23:30 - 20251029"                    #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -233,7 +233,7 @@ def clean_group_name(name):
 
 # ==================== CONSTANTS & PATHS ====================
 CURRENT_VERSION = '2.8'
-LAST_MODIFIED_DATE = "20251028"
+LAST_MODIFIED_DATE = "20251029"
 PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
@@ -4667,7 +4667,7 @@ class UniversalConverter(Screen):
                     self._reload_services()
                 elif action == "info":
                     self.session.openWithCallback(
-                        lambda result=None: None,
+                        lambda result=None: self._show_enhanced_tools_menu(),  # TORNA AL MENU TOOLS
                         PluginInfoScreen
                     )
                 elif action == "match_edit":
@@ -4697,15 +4697,15 @@ class UniversalConverter(Screen):
         return callback
 
     def _open_manual_database_editor(self):
-        """Open the manual database editor from Tools - RETURN TO TOOLS"""
+        """Open the manual database editor from Tools — return to UniversalConverter."""
 
         def editor_closed(result=None):
-            """Return to the tools menu"""
+            """Callback when the editor closes — return to UniversalConverter."""
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Database editor closed, RE-opening tools menu")
-            self.reopen_tools_timer = eTimer()
-            self.reopen_tools_timer.callback.append(self._show_enhanced_tools_menu)
-            self.reopen_tools_timer.start(100, True)
+                logger.info("Manual database editor closed, returning to UniversalConverter")
+            # Update status text in UniversalConverter
+            self["status"].setText(_("Manual database editing completed"))
+            # Buttons are already set correctly
 
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.session.openWithCallback(
@@ -8070,6 +8070,7 @@ class ManualMatchEditor(Screen):
                 if config.plugins.m3uconverter.auto_reload.value:
                     self.reload_services_after_manual_edit()
 
+                # self["status"].setText(_("All changes saved successfully"))
                 return True
             else:
                 self["status"].setText(_("No MANUAL corrections saved"))
@@ -9227,9 +9228,11 @@ class ManualDatabaseEditor(Screen):
         self.showing_duplicates = False
 
     def handle_blue_button(self):
-        """Handle BLUE button - only for toggle duplicates"""
+        """Handle BLUE button - toggle duplicates view"""
         if not self.showing_duplicates:
             self.show_duplicates()
+        else:
+            self.show_all_mappings()
 
     def find_duplicates(self):
         """Find duplicate mappings based on clean_name"""
@@ -9281,7 +9284,7 @@ class ManualDatabaseEditor(Screen):
 
         self["mapping_list"].setList(display_list)
         self["status"].setText(_("Found {} duplicate groups").format(len(duplicates)))
-        self["key_blue"].setText("")
+        self["key_blue"].setText(_("Back"))
         self.showing_duplicates = True
 
     def get_current_mapping(self):
@@ -9439,14 +9442,21 @@ class ManualDatabaseEditor(Screen):
         return self.changes_made
 
     def request_close(self):
-        """Handle closing"""
+        """Handle closing — manages both the normal and duplicates views."""
         try:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug("ManualDatabaseEditor: Close requested - returning to caller")
+                logger.debug(f"ManualDatabaseEditor: Close requested - showing_duplicates={self.showing_duplicates}")
 
+            if self.showing_duplicates:
+                # If we are currently showing the duplicates view, return to the normal view
+                self.show_all_mappings()
+                return  # Do NOT close the editor yet
+
+            # Only ask for confirmation if there are unsaved changes in the main view
             if self.has_unsaved_changes():
                 self.ask_save_before_close()
             else:
+                # Close and return to the Tools menu
                 self.close()
 
         except Exception as e:
@@ -9454,7 +9464,7 @@ class ManualDatabaseEditor(Screen):
             self.close()
 
     def ask_save_before_close(self):
-        """Ask user if they want to save before closing to return to correct view"""
+        """Ask user if they want to save before closing"""
         message = _("You have unsaved changes in the database.\n\nDo you want to save before closing?")
 
         def callback(result):
@@ -9464,21 +9474,16 @@ class ManualDatabaseEditor(Screen):
                         # User said YES to save
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info("💾 User chose to save changes before closing")
-                        # For database editor, changes are saved immediately
-                        # so we just need to close
-                        self.do_final_close()
+                        # Save and close
+                        if self.save_all_changes():
+                            self.do_final_close()
+                        else:
+                            self.do_final_close()
                     else:
                         # User said NO - close without saving
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info("❌ User chose to close without saving")
-                        # If we see duplicates, return to normal before closing
-                        if self.showing_duplicates:
-                            self.show_all_mappings()
-                            self.close_timer = eTimer()
-                            self.close_timer.callback.append(self.do_final_close)
-                            self.close_timer.start(100, True)
-                        else:
-                            self.do_final_close()
+                        self.do_final_close()
             except Exception as e:
                 logger.error(f"❌ Error in save callback: {str(e)}")
                 self.do_final_close()
@@ -9506,6 +9511,15 @@ class ManualDatabaseEditor(Screen):
             logger.error(f"Error in do_final_close: {str(e)}")
             self.close()
 
+    def keyCancel(self):
+        """Handle the CANCEL key — manages hierarchical navigation."""
+        if self.showing_duplicates:
+            # If we are in the duplicates view, return to the normal view
+            self.show_all_mappings()
+        else:
+            # If we are in the main view, close the editor
+            self.request_close()
+
 
 class ManualDatabaseManager:
 
@@ -9520,6 +9534,7 @@ class ManualDatabaseManager:
         self._ensure_db_file()
         self.cleanup_inconsistent_data()
         self._ensure_db_integrity()
+        self.fix_existing_mappings()
         """
         try:
             self.load_database()
@@ -9726,8 +9741,21 @@ class ManualDatabaseManager:
                             logger.debug(f"🔄 Auto-save skip: identical mapping already exists for {mapping_data.get('channel_name')}")
                         return True  # Do not save duplicates
 
+                # Check that assigned_sref is not an encoded URL
+                assigned_sref = mapping_data.get('assigned_sref', '')
+                if assigned_sref and assigned_sref.startswith('http'):
+                    # This is a URL, not a valid service reference – convert it properly
+                    if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                        mapping_data['assigned_sref'] = self.epg_mapper._generate_service_reference(assigned_sref)
+                    else:
+                        # Fallback: generate an IPTV-style service reference
+                        url_hash = hashlib.md5(assigned_sref.encode('utf-8')).hexdigest()[:8]
+                        service_id = int(url_hash, 16) % 65536
+                        encoded_url = assigned_sref.replace(':', '%3a').replace(' ', '%20')
+                        mapping_data['assigned_sref'] = f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
+
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"💾 SAVE: {mapping_data.get('channel_name')}")
+                    logger.info(f"💾 SAVE: {mapping_data.get('channel_name')} -> {mapping_data.get('assigned_sref')}")
 
                 if not mapping_data.get('assigned_sref') or not mapping_data.get('channel_name'):
                     if config.plugins.m3uconverter.enable_debug.value:
@@ -10237,6 +10265,36 @@ class ManualDatabaseManager:
 
         except Exception as e:
             logger.error(f"Backup cleanup error: {str(e)}")
+
+    def fix_existing_mappings(self):
+        """Fix existing mappings that contain URLs instead of service references"""
+        try:
+            data = self.load_database()
+            mappings = data.get('mappings', [])
+            fixed_count = 0
+            
+            for mapping in mappings:
+                assigned_sref = mapping.get('assigned_sref', '')
+                if assigned_sref and assigned_sref.startswith('http'):
+                    # Convert URL to service reference
+                    url = assigned_sref
+                    url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()[:8]
+                    service_id = int(url_hash, 16) % 65536
+                    encoded_url = url.replace(':', '%3a').replace(' ', '%20')
+                    mapping['assigned_sref'] = f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
+                    fixed_count += 1
+                    logger.info(f"🔧 Fixed mapping: {mapping.get('channel_name')}")
+            
+            if fixed_count > 0:
+                data['mappings'] = mappings
+                self.save_database(data)
+                logger.info(f"✅ Fixed {fixed_count} mappings with URL instead of service reference")
+            
+            return fixed_count
+            
+        except Exception as e:
+            logger.error(f"❌ Error fixing existing mappings: {str(e)}")
+            return 0
 
 
 class PluginInfoScreen(Screen):
