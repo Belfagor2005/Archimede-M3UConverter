@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "23:30 - 20251029"                    #
+#  Last Modified: "19:15 - 20251029"                    #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -4697,15 +4697,14 @@ class UniversalConverter(Screen):
         return callback
 
     def _open_manual_database_editor(self):
-        """Open the manual database editor from Tools — return to UniversalConverter."""
+        """Open the manual database editor from Tools - RETURN TO Tools"""
 
         def editor_closed(result=None):
-            """Callback when the editor closes — return to UniversalConverter."""
+            """Return to Tools menu, NOT to UniversalConverter"""
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Manual database editor closed, returning to UniversalConverter")
-            # Update status text in UniversalConverter
-            self["status"].setText(_("Manual database editing completed"))
-            # Buttons are already set correctly
+                logger.info("Database editor closed, RE-opening tools menu")
+            # Reopen the Tools menu
+            self._show_enhanced_tools_menu()
 
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.session.openWithCallback(
@@ -4950,12 +4949,12 @@ class UniversalConverter(Screen):
             )
 
     def _open_manual_match_editor_from_tools(self):
-        """Open manual editor from Tools menu - RETURN TO TOOLS"""
+        """Open manual editor from Tools menu - RETURN TO Tools"""
 
         if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
 
             def error_callback(result=None):
-                self._show_enhanced_tools_menu()
+                self._show_enhanced_tools_menu()  # Torna al Tools
 
             self.session.openWithCallback(
                 error_callback,
@@ -4973,9 +4972,7 @@ class UniversalConverter(Screen):
             """Callback when editor closes - RE-open the Tools menu"""
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("Editor closed, RE-opening tools menu")
-            self.reopen_tools_timer = eTimer()
-            self.reopen_tools_timer.callback.append(self._show_enhanced_tools_menu)
-            self.reopen_tools_timer.start(100, True)
+            self._show_enhanced_tools_menu()
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(f"Opening ManualMatchEditor from tools for: {bouquet_name}")
@@ -5204,7 +5201,7 @@ class UniversalConverter(Screen):
 
             def location_selected(choice):
                 if not choice:
-                    self._show_enhanced_tools_menu()
+                    self._show_enhanced_tools_menu()  # Return to Tools if you cancel
                     return
 
                 base_import_path = choice[1]
@@ -5222,8 +5219,13 @@ class UniversalConverter(Screen):
                     found_files.extend(glob.glob(full_pattern))
 
                 if not found_files:
+                    # Return to location selection, not Tools
+                    def no_files_callback(result=None):
+                        # Reopen location selection
+                        self._import_manual_database()
+
                     self.session.openWithCallback(
-                        lambda result=None: self._show_enhanced_tools_menu(),
+                        no_files_callback,
                         MessageBox,
                         _("No database files found in:\n{}").format(base_import_path),
                         MessageBox.TYPE_INFO,
@@ -5264,6 +5266,7 @@ class UniversalConverter(Screen):
 
                 def file_selected(file_choice):
                     if not file_choice or file_choice[1] == "back":
+                        # Return to location selection
                         self._import_manual_database()
                         return
 
@@ -5278,11 +5281,11 @@ class UniversalConverter(Screen):
                 )
 
             location_items = [(desc, path) for path, desc in import_locations]
-            location_items.append((_("🔙 Back"), "back"))
+            location_items.append((_("🔙 Back to Tools"), "back"))
 
             def location_callback(choice):
                 if not choice or choice[1] == "back":
-                    self._show_enhanced_tools_menu()
+                    self._show_enhanced_tools_menu()  # Return to Tools only if you press Back
                     return
                 location_selected(choice)
 
@@ -5295,6 +5298,7 @@ class UniversalConverter(Screen):
 
         except Exception as e:
             logger.error(f"Error starting database import: {str(e)}")
+            # If you get an error, go back to Tools
             self.session.openWithCallback(
                 lambda result=None: self._show_enhanced_tools_menu(),
                 MessageBox,
@@ -9442,22 +9446,19 @@ class ManualDatabaseEditor(Screen):
         return self.changes_made
 
     def request_close(self):
-        """Handle closing — manages both the normal and duplicates views."""
+        """Handle closing — simply close the editor."""
         try:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(f"ManualDatabaseEditor: Close requested - showing_duplicates={self.showing_duplicates}")
 
             if self.showing_duplicates:
-                # If we are currently showing the duplicates view, return to the normal view
+                # If we are in the duplicates view, return to the normal view
                 self.show_all_mappings()
-                return  # Do NOT close the editor yet
+                return  # Do NOT close the editor
 
-            # Only ask for confirmation if there are unsaved changes in the main view
-            if self.has_unsaved_changes():
-                self.ask_save_before_close()
-            else:
-                # Close and return to the Tools menu
-                self.close()
+            # If we are in the main view, simply close
+            # The callback will handle reopening the Tools menu
+            self.close()
 
         except Exception as e:
             logger.error(f"Error in request_close: {str(e)}")
@@ -9465,28 +9466,26 @@ class ManualDatabaseEditor(Screen):
 
     def ask_save_before_close(self):
         """Ask user if they want to save before closing"""
+        if not self.has_unsaved_changes():
+            self.close()
+            return
+
         message = _("You have unsaved changes in the database.\n\nDo you want to save before closing?")
 
         def callback(result):
-            try:
-                if result is not None:
-                    if result:
-                        # User said YES to save
-                        if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info("💾 User chose to save changes before closing")
-                        # Save and close
-                        if self.save_all_changes():
-                            self.do_final_close()
-                        else:
-                            self.do_final_close()
-                    else:
-                        # User said NO - close without saving
-                        if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info("❌ User chose to close without saving")
-                        self.do_final_close()
-            except Exception as e:
-                logger.error(f"❌ Error in save callback: {str(e)}")
-                self.do_final_close()
+            if result:
+                # User said YES to save
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.info("💾 User chose to save changes before closing")
+                if self.save_all_changes():
+                    self.close()
+                else:
+                    self.close()
+            else:
+                # User said NO - close without saving
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.info("❌ User chose to close without saving")
+                self.close()
 
         self.session.openWithCallback(
             callback,
@@ -9805,31 +9804,31 @@ class ManualDatabaseManager:
         """Enforce manual database size limit - SENZA ricorsione"""
         if not config.plugins.m3uconverter.use_manual_database.value:
             return
-            
+
         max_size = config.plugins.m3uconverter.manual_db_max_size.value
-        
+
         try:
             # Load data directly from the file to avoid recursion
             with open(self.db_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
+
             mappings = data.get('mappings', [])
-            
+
             if len(mappings) > max_size:
                 # Sort by usage count and keep most used
                 mappings.sort(key=lambda x: x.get('usage_count', 0))
                 data['mappings'] = mappings[-max_size:]
                 data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
-                
+
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"📏 Enforced DB size limit: {len(mappings)} -> {max_size}")
-                
+
                 # Save directly without calling save_database
                 temp_path = f"{self.db_path}.tmp"
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 replace(temp_path, self.db_path)
-                
+
         except Exception as e:
             logger.error(f"❌ Error enforcing DB size limit: {str(e)}")
 
@@ -10272,7 +10271,7 @@ class ManualDatabaseManager:
             data = self.load_database()
             mappings = data.get('mappings', [])
             fixed_count = 0
-            
+
             for mapping in mappings:
                 assigned_sref = mapping.get('assigned_sref', '')
                 if assigned_sref and assigned_sref.startswith('http'):
@@ -10284,14 +10283,14 @@ class ManualDatabaseManager:
                     mapping['assigned_sref'] = f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
                     fixed_count += 1
                     logger.info(f"🔧 Fixed mapping: {mapping.get('channel_name')}")
-            
+
             if fixed_count > 0:
                 data['mappings'] = mappings
                 self.save_database(data)
                 logger.info(f"✅ Fixed {fixed_count} mappings with URL instead of service reference")
-            
+
             return fixed_count
-            
+
         except Exception as e:
             logger.error(f"❌ Error fixing existing mappings: {str(e)}")
             return 0
