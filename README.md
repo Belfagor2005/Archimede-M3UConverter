@@ -1,4 +1,3 @@
-```markdown
 # 📺 Archimede Universal Converter
 
 **Universal playlist converter for Enigma2 (Python 3 only)**  
@@ -6,7 +5,6 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 
 ## 🚀 Key Features
 
-   
 ### 🎯 Enhanced Matching System
 - **Configurable Similarity Thresholds**: Global, Rytec-specific, and DVB-specific matching (20-100%)
 - **Advanced Manual Database**: Persistent storage for manual corrections with usage tracking
@@ -55,6 +53,56 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Large File Handling**: Efficient processing of massive playlists
 - **Backup System**: Automatic backup and restore functionality
 
+## 🔍 Duplicates Management
+
+### 🎯 Smart Duplicates Detection
+- **Automatic Detection**: Find duplicate channels based on clean names
+- **Grouped Display**: Organize duplicates by channel groups
+- **Selection Mode**: Safe multi-select with checkbox interface
+- **Bulk Operations**: Delete multiple duplicates at once
+
+### 🎮 Duplicates Interface Controls
+
+| Button | Action in Duplicates View |
+|--------|---------------------------|
+| **🔵 BLUE** | Toggle between All Mappings and Duplicates view |
+| **🟢 GREEN** | Enter/Exit Selection Mode (shows/hides checkboxes) |
+| **🟡 YELLOW** | Delete selected duplicates |
+| **⏺️ OK** | Select/Deselect individual items |
+| **🔴 RED** | Return to normal view/Close |
+
+### 📋 Duplicates Workflow
+
+#### Step 1: Access Duplicates View
+- Press **BLUE** → "Duplicates" to enter duplicates management
+- View all duplicate channel groups with counts
+
+#### Step 2: Activate Selection Mode  
+- Press **GREEN** → "Select" to enter selection mode
+- Checkboxes `[ ]` appear next to each channel
+- Status: "Selection mode active. Select items with OK"
+
+#### Step 3: Select Duplicates to Remove
+- Press **OK** on each duplicate you want to remove
+- Checkboxes change to `[X]` for selected items
+- Keep only the correct version of each channel
+
+#### Step 4: Delete Selected Items
+- Press **YELLOW** → "Delete" to remove selected duplicates
+- Confirm deletion in the popup dialog
+- **Remain in selection mode** for continued operations
+
+#### Step 5: Continue or Exit
+- **Stay in selection mode** - select more items if needed
+- Press **GREEN** again → "Done" to exit selection mode
+- Press **BLUE** → "All Mappings" to return to normal view
+
+### 💡 Duplicates Management Tips
+- **Keep**: Exact matches and manually corrected versions
+- **Remove**: Fuzzy matches and incorrectly capitalized versions  
+- **Verify**: Check service references before deletion
+- **Batch Process**: Handle multiple groups without leaving selection mode
+
 ## 🎮 How to Use
 
 ### Main Interface Controls
@@ -89,6 +137,17 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 | 🔵 **BLUE** | Save all changes |
 | ▶️ **OK** | Select channel/match |
 | 🔄 **ARROWS** | Navigate between lists |
+
+### Manual Database Editor Controls
+
+| Button | Action |
+|--------|--------|
+| 🔴 **RED** | Close editor |
+| 🟢 **GREEN** | Toggle Selection Mode |
+| 🟡 **YELLOW** | Delete selected items |
+| 🔵 **BLUE** | Toggle Duplicates View |
+| ▶️ **OK** | Select/Deselect items |
+| ❌ **CANCEL** | Navigate back/Close |
 
 ## ⚙️ Configuration Options
 
@@ -169,6 +228,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Export/Import**: Backup and restore manual mappings
 - **Usage Statistics**: Track how often corrections are used
 - **Automatic Cleanup**: Remove old or unused entries
+- **Duplicates Management**: Find and remove duplicate mappings
 
 ### Analysis Tools
 - **Cache Statistics**: Hit rates, performance metrics
@@ -181,6 +241,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **EPG Cache Clear**: Reset EPG matching cache
 - **Service Reload**: Force Enigma2 service reload
 - **Backup Management**: Manual backup creation
+- **Duplicates Cleanup**: Remove duplicate channel mappings
 
 ## 💡 Pro Tips
 
@@ -195,12 +256,14 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Batch Processing**: Efficient 50-channel batch processing
 - **Memory Management**: Smart cleanup when storage is low
 - **Incremental Parsing**: Handle very large files efficiently
+- **Regular Duplicates Cleanup**: Maintain database efficiency
 
 ### Troubleshooting
 - **Check Logs**: Enable debug mode for detailed logging
 - **Verify EPG**: Use analysis tools to check EPG coverage
 - **Manual Correction**: Use editor for problematic channels and save to database
 - **Service Reload**: Force reload if bouquets don't appear
+- **Duplicates Check**: Regularly clean duplicates for better performance
 
 ## 🗂️ Supported Attributes
 
@@ -221,50 +284,111 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
   "tvg_id": "channel.id",
   "logo": "logo_url",
   "tvg_name": "Display Name"
-}
-```
+}```
+
+## 📊 Output & Export Features
+
+### 🔄 Export Capabilities
+- **Output Location**: `/tmp/exported_*.m3u` (automatically timestamped)
+- **Content Preservation**: Each channel retains original name and streaming URL
+- **Smart Filtering**: Only valid IPTV services included (`#SERVICE 4097`, `5001`, etc.)
+- **Service Exclusion**: Non-stream services (DVB, radio, PVR) automatically filtered
+- **Backup Utility**: Perfect for creating backup playlists or external editing
+
+### 🎯 System Requirements & Architecture
+- **Python 3 Exclusive**: Designed for modern Enigma2 images only
+- **Modern Hardware**: Optimized for current-generation Enigma2 receivers
+- **Offline Operation**: No internet connection required for conversion
+- **Privacy Focused**: Clean local processing — no logging or tracking
+
+### 🏗️ Technical Excellence
+- **Solid Architecture**: Well-structured code with clear separation of responsibilities
+- **Comprehensive Format Support**: M3U↔TV, JSON↔TV, XSPF→M3U, and more
+- **Hybrid Service Reference System**: Intelligent handling of mixed service types
+- **Multi-Storage Detection**: Auto-detection of mounted storage devices
+
+### 📺 Playback & Video Management
+- **Aspect Ratio Intelligence**: Automatic management of video aspect ratios during playback
+- **HLS Native Support**: Built-in conversion and support for HLS streams
+- **Binary Data Protection**: Advanced filtering against data corruption
+- **Seamless Integration**: Direct channel playback from editor interface
+
+### 🛰️ Advanced EPG System
+- **Multi-Source EPG**: Support for multiple EPG sources with mirroring capabilities
+- **Rytec Integration**: Automatic channel mapping with Rytec database support
+- **Intelligent Matching**: Similarity-based matching with configurable thresholds (20-100%)
+- **Multi-Database Modes**: Full (DVB+Rytec+DVB-T), Both, DVB Only, Rytec Only, DTT Only
+
+### 🔧 Professional Tools Suite
+- **Manual EPG Match Editor**: Visual interface for precise channel matching
+- **Real-time Analytics**: Detailed EPG coverage statistics and cache performance metrics
+- **Database Management**: Persistent storage and management of manual corrections
+- **Export/Import System**: Comprehensive backup and restore functionality for mappings
+
+### 🎮 Enhanced User Experience
+- **Adaptive Interface**: Professional UI that adapts to different screen resolutions
+- **Multi-language Support**: Comprehensive European language coverage
+- **Batch Processing**: Optimized 50-channel batches for superior performance
+- **Context-Aware Tools**: Intelligent tools menu with relevant options
+
+### 🛡️ Reliability & Maintenance
+- **Robust Error Handling**: Automatic backup and recovery mechanisms
+- **Memory Optimization**: Smart cleanup when storage space is low
+- **Automatic Maintenance**: Database cleanup and optimization routines
+- **Enhanced Debugging**: Detailed logging and analysis tools for troubleshooting
+
+### 📈 Performance Features
+- **Efficient Processing**: Large file handling with incremental parsing
+- **Cache Optimization**: Smart caching system for improved performance
+- **Resource Management**: Automatic memory and storage management
+- **Quality Filtering**: Intelligent removal of quality indicators for better matching
+
+### 🔄 Workflow Excellence
+- **Backup Integration**: Built-in backup system with rollback capability
+- **Service Reload**: Automatic Enigma2 service reload after operations
+- **Duplicate Management**: Advanced detection and removal of duplicate channels
+- **Real-time Feedback**: Immediate status updates and progress indicators
 
 ## 📊 Conversion Statistics
 
-The plugin provides detailed analytics:
-- **Total Channels Processed**
-- **EPG Match Success Rate**
-- **Database-specific Match Counts**
-- **Cache Performance Metrics**
-- **Effective EPG Coverage** (based on selected mode)
+## The plugin provides detailed analytics:
 
-## 🔒 Backup & Safety
+- **Total Channels Processed
+- **EPG Match Success Rate
+- **Database-specific Match Counts
+- **Cache Performance Metrics
+- **Effective EPG Coverage (based on selected mode)
+- **Duplicates Found and Removed
 
-### Automatic Protection
-- **Pre-conversion Backup**: Automatic bouquet backup
-- **Rollback Capability**: Restore from backup on failure
-- **Multiple Backups**: Configurable backup retention
-- **Safe File Operations**: Transactional file writing
+### 🔒 Backup & Safety
+- **Automatic Protection
+- **Pre-conversion Backup: Automatic bouquet backup
+- **Rollback Capability: Restore from backup on failure
+- **Multiple Backups: Configurable backup retention
+- **Safe File Operations: Transactional file writing
+- **Selection Mode Safety: Prevents accidental deletions
+- **Error Handling
+- **Graceful Failure: Continue processing on individual errors
+- **Detailed Error Reporting: Specific error messages and solutions
+- **Recovery Options: Multiple fallback strategies
+- **Validation Checks: Pre-conversion validation
+- **Duplicates Protection: Confirmation before bulk deletions
 
-### Error Handling
-- **Graceful Failure**: Continue processing on individual errors
-- **Detailed Error Reporting**: Specific error messages and solutions
-- **Recovery Options**: Multiple fallback strategies
-- **Validation Checks**: Pre-conversion validation
-
-## 📄 Credits & License
-
-**Archimede Universal Converter v2.4**  
-Created by **Lululla** (@Belfagor2005)
+### 📄 Credits & License
+- *Archimede Universal Converter v2.4
+- *Created by Lululla (@Belfagor2005)
 
 ### 📜 License
-- **CC BY-NC-SA 4.0**: Creative Commons Attribution-NonCommercial-ShareAlike
-- **Redistribution**: Only with proper attribution
-- **Modifications**: Must maintain credit header
-- **Commercial Use**: Not permitted without authorization
+- *CC BY-NC-SA 4.0: Creative Commons Attribution-NonCommercial-ShareAlike
+- *Redistribution: Only with proper attribution
+- *Modifications: Must maintain credit header
+- *Commercial Use: Not permitted without authorization
 
 ### 🙏 Acknowledgments
-- Enigma2 Community for testing and feedback
-- EPGShare for EPG data sources
-- Rytec for channel mapping database
+--Enigma2 Community for testing and feedback
+--EPGShare for EPG data sources
+--Rytec for channel mapping database
 
----
+### Made with ❤️ for the Enigma2 Community
+--Keep your playlists organized, your EPG accurate, and your database clean!
 
-**Made with ❤️ for the Enigma2 Community**  
-*Keep your playlists organized and your EPG accurate!*
-```
