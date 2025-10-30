@@ -507,9 +507,9 @@ config.plugins.m3uconverter.epg_database_mode = ConfigSelection(
 config.plugins.m3uconverter.ignore_dvbt = ConfigYesNo(default=False)
 
 # Matching and Similarity Settings
-config.plugins.m3uconverter.similarity_threshold = ConfigSelectionNumber(default=60, stepwidth=10, min=20, max=100)
-config.plugins.m3uconverter.similarity_threshold_rytec = ConfigSelectionNumber(default=60, stepwidth=10, min=20, max=100)
-config.plugins.m3uconverter.similarity_threshold_dvb = ConfigSelectionNumber(default=60, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold = ConfigSelectionNumber(default=70, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold_rytec = ConfigSelectionNumber(default=70, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold_dvb = ConfigSelectionNumber(default=70, stepwidth=10, min=20, max=100)
 
 # Manual Database Settings
 config.plugins.m3uconverter.use_manual_database = ConfigYesNo(default=True)
