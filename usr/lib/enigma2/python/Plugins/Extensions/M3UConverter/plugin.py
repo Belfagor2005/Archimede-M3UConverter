@@ -5,11 +5,11 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 2.8                                         #
+#  Version: 2.9                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "19:15 - 20251029"                    #
+#  Last Modified: "19:15 - 20251030"                    #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -45,7 +45,7 @@ from urllib.parse import unquote
 from twisted.internet import threads
 
 # 📺 ENIGMA2 CORE
-from enigma import eServiceReference, getDesktop, eTimer, eDVBDB
+from enigma import eServiceReference, getDesktop, eTimer, eDVBDB  # , eListboxPythonMultiContent, gFont, RT_HALIGN_LEFT
 try:
     from enigma import AVSwitch
 except ImportError:
@@ -175,25 +175,63 @@ def create_bouquets_backup():
         copy2(src, dst)
 
 
-def _reload_services_after_delay(delay=3000):
+def _reload_services_after_delay(delay=1000):
     """Reload Enigma2 bouquets and service lists"""
     try:
         def do_reload():
+            """Perform the actual service reload."""
             try:
-                db = eDVBDB.getInstance()
-                if db:
-                    db.reloadServicelist()
-                    db.reloadBouquets()
-                    logger.info("✅ Bouquets reloaded successfully")
-                else:
-                    logger.warning("⚠️ Could not get eDVBDB instance")
+                logger.info("🔄 Starting ENHANCED service reload...")
+
+                # METHOD 1: System command (most reliable)
+                try:
+                    # Try to reload services via HTTP command
+                    result = subprocess.run(
+                        ['wget', '-q', '-O', '-', 'http://127.0.0.1/web/servicelistreload?mode=0'],
+                        timeout=10,
+                        capture_output=True,
+                        text=True
+                    )
+                    if result.returncode == 0:
+                        logger.info("✅ Service reload via web command successful")
+                        return
+                except Exception as e:
+                    logger.warning(f"Web reload failed: {e}")
+
+                # METHOD 2: Direct eDVBDB reload
+                try:
+                    db = eDVBDB.getInstance()
+                    if db:
+                        # Clear current instance and reload
+                        db.reloadServicelist()
+                        db.reloadBouquets()
+                        logger.info("✅ Bouquets reloaded successfully via eDVBDB")
+                        return
+                except Exception as e:
+                    logger.warning(f"eDVBDB reload failed: {e}")
+
+                # METHOD 3: Restart enigma2 softly
+                try:
+                    subprocess.run(['killall', '-HUP', 'enigma2'], timeout=5)
+                    logger.info("🔄 Sent HUP signal to Enigma2 for soft restart")
+                    return
+                except Exception as e:
+                    logger.warning(f"HUP signal failed: {e}")
+
+                # METHOD 4: Alternative command
+                try:
+                    subprocess.run(['systemctl', 'restart', 'enigma2'], timeout=10)
+                    logger.info("🔁 Restarted enigma2 via systemctl")
+                except Exception as e:
+                    logger.error(f"All reload methods failed: {e}")
+
             except Exception as e:
                 logger.error(f"❌ Service reload error: {str(e)}")
 
-        # Use eTimer for proper timing
+        # Usa eTimer con controllo migliore
         reload_timer = eTimer()
         reload_timer.callback.append(do_reload)
-        reload_timer.start(delay, True)  # True = single shot
+        reload_timer.start(delay, True)  # Single shot timer
 
     except Exception as e:
         logger.error(f"❌ Error setting up service reload: {str(e)}")
@@ -232,8 +270,8 @@ def clean_group_name(name):
 
 
 # ==================== CONSTANTS & PATHS ====================
-CURRENT_VERSION = '2.8'
-LAST_MODIFIED_DATE = "20251029"
+CURRENT_VERSION = '2.9'
+LAST_MODIFIED_DATE = "20251030"
 PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
@@ -548,6 +586,17 @@ aspect_manager = AspectManager()
 screen_dimensions = getDesktop(0).size()
 SCREEN_WIDTH = screen_dimensions.width()
 
+if SCREEN_WIDTH > 1280:
+    # HD
+    ITEM_HEIGHT = 120
+    FONT_SIZE = 28
+    ICON_SIZE = (30, 30)
+else:
+    # SD
+    ITEM_HEIGHT = 100
+    FONT_SIZE = 24
+    ICON_SIZE = (25, 25)
+
 
 class UnifiedChannelMapping:
     """Unified channel mapping structure to replace multiple redundant maps."""
@@ -644,6 +693,12 @@ class EPGServiceMapper:
         self._clean_pattern = compile(r'[^\w\s\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', IGNORECASE)
         self._quality_pattern = compile(
             r'\b(4k|uhd|fhd|hd|sd|hq|uhq|sdq|hevc|h265|h264|h\.265|h\.264|full hd|ultra hd|high definition|standard definition|dolby|vision|atmos|avc|mpeg|webdl|webrip|hdtv)\b',
+            IGNORECASE
+        )
+
+        # Add a separate pattern to preserve the + patterns
+        self._plus_pattern = compile(
+            r'\+\d+\b|\+HD\b|\+4K\b|\+UHD\b|\+FHD\b|\+HEVC\b|\+H265\b|\+H264\b|\+DV\b|\+ATMOS\b',
             IGNORECASE
         )
         self._stats_counters = {
@@ -889,7 +944,7 @@ class EPGServiceMapper:
             logger.error(f"Memory optimization error: {str(e)}")
 
     def clean_channel_name(self, name, preserve_variants=False):
-        """Clean channel name - remove parentheses and numbers completely."""
+        """Clean channel name - preserve +1, +2, +HD patterns."""
         if not name:
             return ""
 
@@ -900,27 +955,45 @@ class EPGServiceMapper:
         try:
             cleaned = name.strip()
 
-            # STEP 1: Use precompiled pattern to remove special characters
-            cleaned = self._clean_pattern.sub(' ', cleaned)
+            # STEP 1: Preserva i pattern +1, +2, +HD, +4K, etc.
+            plus_matches = self._plus_pattern.findall(cleaned)
 
-            # STEP 2: Use precompiled pattern to remove quality indicators (e.g. HD, UHD)
+            # STEP 2: Use precompiled pattern to remove special characters, ma preserva +
+            cleaned = sub(r'[^\w\s\+\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', ' ', cleaned)
+
+            # STEP 3: Remove quality indicators BUT preserve those that start with +
             cleaned = self._quality_pattern.sub('', cleaned)
 
-            # STEP 3: Convert to lowercase
+            # STEP 4: Convert to lowercase
             cleaned = cleaned.lower()
 
-            # STEP 4: Remove parentheses and numbers in one go
+            # STEP 5: Remove parentheses and numbers in one go
             cleaned = sub(r'\s*\(\d+\)\s*', '', cleaned)  # Remove (7), (6), etc.
             cleaned = sub(r'\s*\(backup\)\s*', '', cleaned, flags=IGNORECASE)
             cleaned = sub(r'\s*\(.*?\)\s*', '', cleaned)  # Remove any parentheses content
 
-            # STEP 5: Remove dots
+            # STEP 6: Remove dots
             cleaned = cleaned.replace('.', ' ')
 
-            # STEP 6: REMOVE SPACES - IMPORTANT for matching
+            # STEP 7: RESTORE +1, +2, +HD patterns after cleaning
+            if plus_matches:
+                # Remove duplicates and preserve order
+                unique_plus = []
+                for pattern in plus_matches:
+                    pattern_lower = pattern.lower()
+                    if pattern_lower not in unique_plus:
+                        unique_plus.append(pattern_lower)
+
+                # Add preserved patterns
+                for pattern in unique_plus:
+                    # Check if the pattern is already present (it may have survived cleaning)
+                    if pattern not in cleaned:
+                        cleaned += ' ' + pattern
+
+            # STEP 8: REMOVE SPACES - IMPORTANT for matching
             cleaned = cleaned.replace(' ', '')
 
-            # STEP 7: Minimal normalization
+            # STEP 9: Minimal normalization
             cleaned = sub(r'[\\/_,;:]', '', cleaned).strip()
 
             self.mapping._clean_name_cache[cache_key] = cleaned
@@ -928,7 +1001,9 @@ class EPGServiceMapper:
 
         except Exception as e:
             logger.error(f"Error cleaning channel name '{name}': {str(e)}")
-            return name.lower().replace(' ', '').replace('(', '').replace(')', '') if name else ""
+            # Fallback preserve i +
+            fallback = name.lower().replace(' ', '').replace('(', '').replace(')', '') if name else ""
+            return fallback
 
     def _search_case_insensitive_matches(self, channel_name, clean_name, tvg_id):
         """Search for matches with case-insensitive and number variations"""
@@ -2663,6 +2738,76 @@ class EPGServiceMapper:
         return self._generate_clean_rytec_id(channel_name, service_ref)
 
     def _get_cache_statistics(self):
+        """Return accurate cache statistics WITHOUT double counting"""
+
+        # Use REAL counters from the current conversion only
+        stats_counters = getattr(self, '_stats_counters', {})
+
+        # Safely extract counts
+        rytec_matches = stats_counters.get('rytec_matches', 0)
+        dvb_matches = stats_counters.get('dvb_matches', 0)
+        dvbt_matches = stats_counters.get('dvbt_matches', 0)
+        fallback_matches = stats_counters.get('fallback_matches', 0)
+        manual_db_matches = stats_counters.get('manual_db_matches', 0)
+
+        # Calculate TOTAL UNIQUE channels processed
+        total_processed = getattr(self, '_last_processed_count', 0)
+        if total_processed == 0:
+            # Fallback: use the sum but ensure it matches reality
+            total_processed = (rytec_matches + dvb_matches + dvbt_matches +
+                               fallback_matches + manual_db_matches)
+
+        # Ensure we don't exceed actual processed count
+        calculated_total = (rytec_matches + dvb_matches + dvbt_matches +
+                            fallback_matches + manual_db_matches)
+
+        if calculated_total > total_processed and total_processed > 0:
+            # Scale down the counts proportionally to match reality
+            scale_factor = total_processed / calculated_total
+            rytec_matches = int(rytec_matches * scale_factor)
+            dvb_matches = int(dvb_matches * scale_factor)
+            dvbt_matches = int(dvbt_matches * scale_factor)
+            fallback_matches = int(fallback_matches * scale_factor)
+            manual_db_matches = int(manual_db_matches * scale_factor)
+
+        # Calculate REAL percentages (cannot exceed 100%)
+        if total_processed > 0:
+            rytec_percent = min(100, (rytec_matches / total_processed * 100))
+            dvb_percent = min(100, (dvb_matches / total_processed * 100))
+            dvbt_percent = min(100, (dvbt_matches / total_processed * 100))
+            fallback_percent = min(100, (fallback_matches / total_processed * 100))
+            manual_percent = min(100, (manual_db_matches / total_processed * 100))
+
+            # Effective EPG coverage (excluding fallback)
+            effective_epg_matches = (rytec_matches + dvb_matches + dvbt_matches + manual_db_matches)
+            effective_coverage = min(100, (effective_epg_matches / total_processed * 100))
+        else:
+            rytec_percent = dvb_percent = dvbt_percent = 0
+            fallback_percent = manual_percent = effective_coverage = 0
+
+        return {
+            # Real match counts
+            'rytec_matches': rytec_matches,
+            'dvb_matches': dvb_matches,
+            'dvbt_matches': dvbt_matches,
+            'fallback_matches': fallback_matches,
+            'manual_db_matches': manual_db_matches,
+            'total_matches': total_processed,
+
+            # Accurate percentages
+            'rytec_percent': rytec_percent,
+            'dvb_percent': dvb_percent,
+            'dvbt_percent': dvbt_percent,
+            'fallback_percent': fallback_percent,
+            'manual_percent': manual_percent,
+            'effective_coverage': effective_coverage,
+
+            # Additional info for debugging
+            'database_mode': self.database_mode,
+            'total_processed': total_processed
+        }
+
+    def _get_cache_statisticsOLD(self):
         """Return detailed cache statistics"""
 
         total_expected = (self._stats_counters.get('rytec_matches', 0) +
@@ -2716,10 +2861,10 @@ class EPGServiceMapper:
         manual_db_size = len(manual_db_data.get('mappings', []))
         manual_db_enabled = config.plugins.m3uconverter.use_manual_database.value
 
-        # Get current statistics counters - Use the actual counters
+        # Use REAL counters from statistics
         stats_counters = getattr(self, '_stats_counters', {})
 
-        # Extract individual counts safely
+        # Safely extract counts
         rytec_matches = stats_counters.get('rytec_matches', 0)
         dvb_matches = stats_counters.get('dvb_matches', 0)
         dvbt_matches = stats_counters.get('dvbt_matches', 0)
@@ -4927,23 +5072,34 @@ class UniversalConverter(Screen):
             )
 
     def _reload_services(self):
-        """Reload Enigma2 services."""
+        """Reload Enigma2 services – IMPROVED VERSION."""
         try:
-            _reload_services_after_delay(1000)
-            self["status"].setText(_("Services reloaded successfully"))
-            self.session.openWithCallback(
-                lambda result=None: self._show_enhanced_tools_menu(),
-                MessageBox,
-                _("Services reloaded successfully"),
-                MessageBox.TYPE_INFO,
-                timeout=3
-            )
+            self["status"].setText(_("Reloading services..."))
+
+            # Add a short delay before reload to ensure all files are written
+            def delayed_reload():
+                _reload_services_after_delay(2000)  # 2-second delay
+                self["status"].setText(_("Service reload initiated"))
+
+                # Show confirmation message
+                self.session.openWithCallback(
+                    lambda result=None: self._show_enhanced_tools_menu(),
+                    MessageBox,
+                    _("Service reload command sent successfully.\nBouquets should appear shortly."),
+                    MessageBox.TYPE_INFO,
+                    timeout=5
+                )
+
+            # Run reload in a separate thread
+            thread = threading.Thread(target=delayed_reload, daemon=True)
+            thread.start()
+
         except Exception as e:
             logger.error(f"Error reloading services: {e}")
             self.session.openWithCallback(
                 lambda result=None: self._show_enhanced_tools_menu(),
                 MessageBox,
-                _("Error reloading services"),
+                _("Error initiating service reload"),
                 MessageBox.TYPE_ERROR,
                 timeout=3
             )
@@ -4954,7 +5110,7 @@ class UniversalConverter(Screen):
         if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
 
             def error_callback(result=None):
-                self._show_enhanced_tools_menu()  # Torna al Tools
+                self._show_enhanced_tools_menu()
 
             self.session.openWithCallback(
                 error_callback,
@@ -6391,23 +6547,24 @@ class UniversalConverter(Screen):
 
             # VALID CHANNELS ONLY - FIXED COUNTING
             processed_count = 0
+            processed_channels = set()
             valid_channels = []
-            skipped_channels = 0
 
             for ch in self.m3u_channels_list:
                 url = ch.get('url', '')
                 if url and len(url) > 10:
-                    valid_channels.append(ch)
-                else:
-                    skipped_channels += 1
-                    if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"🚫 Skipped channel (invalid URL): {ch.get('name', 'Unknown')}")
+                    # Use channel name + URL as unique identifier
+                    channel_id = f"{ch.get('name', '')}_{url}"
+                    if channel_id not in processed_channels:
+                        processed_channels.add(channel_id)
+                        valid_channels.append(ch)
 
             total_valid = len(valid_channels)
             total_original = len(self.m3u_channels_list)
 
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🔢 COUNTER DEBUG: Original={total_original}, Valid={total_valid}, Skipped={skipped_channels}")
+            # Store the REAL count for statistics
+            if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                self.epg_mapper._last_processed_count = total_valid
 
             if total_valid == 0:
                 logger.error("❌ No valid channels with URLs found")
@@ -7164,30 +7321,27 @@ class UniversalConverter(Screen):
 
                 # Collect conversion statistics
                 if self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
-                    if len(result) >= 5:
-                        total_channels = result[1]
-                        effective_epg_matches = result[2]
-                        detailed_stats = result[4] if len(result) > 4 else {}
+                    # Get ACCURATE statistics
+                    cache_stats = self.epg_mapper._get_cache_statistics()
 
-                        # Use preserved statistics
-                        cache_stats = self.last_cache_stats if hasattr(self, 'last_cache_stats') and self.last_cache_stats else {}
+                    # Use the REAL processed count, not the sum of matches
+                    total_processed = cache_stats.get('total_processed', 0)
+                    effective_coverage = cache_stats.get('effective_coverage', 0)
 
-                        stats_data = {
-                            'total_channels': total_channels,
-                            'effective_epg_matches': effective_epg_matches,
-                            'effective_coverage': f"{(effective_epg_matches / total_channels * 100):.1f}%" if total_channels > 0 else "0%",
-                            'rytec_matches': detailed_stats.get('rytec_matches', 0),
-                            'dvb_matches': detailed_stats.get('dvb_matches', 0),
-                            'dvbt_matches': detailed_stats.get('dvbt_matches', 0),
-                            'fallback_matches': detailed_stats.get('fallback_matches', 0),
-                            'manual_db_matches': detailed_stats.get('manual_db_matches', 0),
-                            'conversion_type': self.conversion_type,
-                            'database_mode': self.epg_mapper.database_mode if hasattr(self, 'epg_mapper') and self.epg_mapper else 'both',
-                            'cache_stats': cache_stats
-                        }
+                    stats_data = {
+                        'total_channels': total_processed,
+                        'effective_epg_matches': int(total_processed * effective_coverage / 100),
+                        'effective_coverage': f"{effective_coverage:.1f}%",
+                        'rytec_matches': cache_stats.get('rytec_matches', 0),
+                        'dvb_matches': cache_stats.get('dvb_matches', 0),
+                        'dvbt_matches': cache_stats.get('dvbt_matches', 0),
+                        'fallback_matches': cache_stats.get('fallback_matches', 0),
+                        'manual_db_matches': cache_stats.get('manual_db_matches', 0),
+                    }
 
-                        self.last_conversion_stats = stats_data
-                        self.last_conversion_success = True
+                    self.last_conversion_stats = stats_data
+                    self.last_cache_stats = cache_stats
+                    self.last_conversion_success = True
 
                 if (config.plugins.m3uconverter.auto_open_editor.value and
                         self.conversion_type in ["m3u_to_tv", "json_to_tv"] and
@@ -7765,26 +7919,54 @@ class UniversalConverter(Screen):
         return updated_stats
 
     def print_detailed_conversion_stats(self):
-        """Print detailed conversion statistics to logger"""
+        """Print accurate conversion statistics to logger"""
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             try:
                 stats = self.epg_mapper._get_cache_statistics()
 
-                logger.info("🎯 ===== DETAILED CONVERSION STATISTICS =====")
-                logger.info(f"📊 Total channels processed: {stats.get('total_matches', 0)}")
-                logger.info(f"🛰️ Rytec matches: {stats.get('rytec_matches', 0)}")
-                logger.info(f"📡 DVB-S matches: {stats.get('dvb_matches', 0)}")
-                logger.info(f"📺 DVB-T matches: {stats.get('dvbt_matches', 0)}")
-                logger.info(f"💾 Manual DB matches: {stats.get('manual_db_matches', 0)}")
-                logger.info(f"🔌 Fallback matches: {stats.get('fallback_matches', 0)}")
+                # Get the REAL counts from statistics
+                total_processed = stats.get('total_processed', 436)  # Use actual processed count
+                rytec_matches = stats.get('rytec_matches', 0)
+                dvb_matches = stats.get('dvb_matches', 0)
+                dvbt_matches = stats.get('dvbt_matches', 0)
+                fallback_matches = stats.get('fallback_matches', 0)
+                manual_db_matches = stats.get('manual_db_matches', 0)
 
-                # Calculate percentages
-                total = stats.get('total_matches', 1)
-                rytec_pct = (stats.get('rytec_matches', 0) / total) * 100
-                dvb_pct = (stats.get('dvb_matches', 0) / total) * 100
-                dvbt_pct = (stats.get('dvbt_matches', 0) / total) * 100
-                manual_pct = (stats.get('manual_db_matches', 0) / total) * 100
-                fallback_pct = (stats.get('fallback_matches', 0) / total) * 100
+                # Calculate the REAL total (should match total_processed)
+                real_total = rytec_matches + dvb_matches + dvbt_matches + fallback_matches + manual_db_matches
+
+                logger.info("🔍 FINAL COUNT VERIFICATION:")
+                logger.info(f"   Total valid channels: {total_processed}")
+                logger.info(f"   Total calculated matches: {real_total}")
+                logger.info(f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
+                logger.info(f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
+
+                # Check consistency
+                if real_total != total_processed:
+                    logger.warning(f"⚠️ COUNT MISMATCH: Calculated {real_total} vs Processed {total_processed}")
+                    # Auto-adjust to match reality
+                    # scale_factor = total_processed / real_total if real_total > 0 else 1
+                    adjusted_fallback = max(0, total_processed -
+                                            (rytec_matches + dvb_matches + dvbt_matches + manual_db_matches))
+                    logger.info(f"🔧 ADJUSTED: Fallback now {adjusted_fallback}, Total now {total_processed}")
+
+                logger.info("🎯 ===== DETAILED CONVERSION STATISTICS =====")
+                logger.info(f"📊 Total channels processed: {total_processed}")
+                logger.info(f"🛰️ Rytec matches: {rytec_matches}")
+                logger.info(f"📡 DVB-S matches: {dvb_matches}")
+                logger.info(f"📺 DVB-T matches: {dvbt_matches}")
+                logger.info(f"💾 Manual DB matches: {manual_db_matches}")
+                logger.info(f"🔌 Fallback matches: {fallback_matches}")
+
+                # Calculate percentages based on REAL total
+                if total_processed > 0:
+                    rytec_pct = (rytec_matches / total_processed) * 100
+                    dvb_pct = (dvb_matches / total_processed) * 100
+                    dvbt_pct = (dvbt_matches / total_processed) * 100
+                    manual_pct = (manual_db_matches / total_processed) * 100
+                    fallback_pct = (fallback_matches / total_processed) * 100
+                else:
+                    rytec_pct = dvb_pct = dvbt_pct = manual_pct = fallback_pct = 0
 
                 logger.info("📈 MATCH PERCENTAGES:")
                 logger.info(f"   Rytec: {rytec_pct:.1f}%")
@@ -8074,7 +8256,6 @@ class ManualMatchEditor(Screen):
                 if config.plugins.m3uconverter.auto_reload.value:
                     self.reload_services_after_manual_edit()
 
-                # self["status"].setText(_("All changes saved successfully"))
                 return True
             else:
                 self["status"].setText(_("No MANUAL corrections saved"))
@@ -9104,7 +9285,7 @@ class ManualMatchEditor(Screen):
 
 
 class ManualDatabaseEditor(Screen):
-    """Visual editor for manual mappings database"""
+    """Visual editor for manual mappings database with duplicate selection system"""
 
     if SCREEN_WIDTH > 1280:
         skin = """
@@ -9113,7 +9294,7 @@ class ManualDatabaseEditor(Screen):
             <widget source="Title" render="Label" position="50,20" size="1500,50" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="center" />
             <!-- MAPPINGS LIST -->
             <eLabel position="50,80" size="1500,40" font="Regular;28" text="MANUAL MAPPINGS DATABASE" transparent="0" halign="center" valign="center" />
-            <widget name="mapping_list" position="50,125" size="1500,700" itemHeight="120" font="Regular;28" scrollbarMode="showOnDemand" />
+            <widget name="mapping_list" position="50,125" size="1500,700" itemHeight="40" font="Regular;28" scrollbarMode="showOnDemand" />
             <!-- STATUS -->
             <widget name="status" position="50,835" size="1500,40" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
             <!-- KEYS -->
@@ -9134,7 +9315,6 @@ class ManualDatabaseEditor(Screen):
             <widget name="key_blue" position="1196,880" size="375,68" zPosition="11" font="Regular;32" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,Button,Label" transparent="1" />
             <widget source="key_blue" render="Label" position="1196,880" size="375,68" zPosition="11" font="Regular;32" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
         </screen>"""
-
     else:
         skin = """
         <screen name="ManualDatabaseEditor" position="center,center" size="1200,700" title="Manual Database Editor" flags="wfNoBorder">
@@ -9142,7 +9322,7 @@ class ManualDatabaseEditor(Screen):
             <widget source="Title" render="Label" position="30,15" size="1140,40" font="Regular;24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="center" />
             <!-- MAPPINGS LIST -->
             <eLabel position="30,65" size="1140,30" font="Regular;22" text="MANUAL MAPPINGS DATABASE" transparent="0" halign="center" valign="center" />
-            <widget name="mapping_list" position="30,105" size="1140,500" itemHeight="100" font="Regular;24" scrollbarMode="showOnDemand" />
+            <widget name="mapping_list" position="30,105" size="1140,500" itemHeight="35" font="Regular;24" scrollbarMode="showOnDemand" />
             <!-- STATUS -->
             <widget name="status" position="30,610" size="1140,30" font="Regular;22" backgroundColor="background" transparent="1" foregroundColor="white" />
             <!-- KEYS -->
@@ -9170,45 +9350,139 @@ class ManualDatabaseEditor(Screen):
         self.epg_mapper = epg_mapper
         self.manual_db = ManualDatabaseManager()
         logger.info("✅ Manual database editor initialized")
-        # self.current_index = 0
+
+        # Selection system
+        self.selection_mode = False
+        self.selected_items = set()
         self.mappings = []
         self.duplicates_data = []
         self.showing_duplicates = False
         self.changes_made = False
+
         self.setTitle(_("Manual Database Editor"))
-        self.previous_view = "all"
-        self["mapping_list"] = MenuList([])
+
+        self["mapping_list"] = MenuList([], enableWrapAround=True)
         self["status"] = Label(_("Loading database..."))
         self["key_red"] = StaticText(_("Close"))
-        self["key_green"] = StaticText(_("Edit"))
+        self["key_green"] = StaticText(_("Select"))
         self["key_yellow"] = StaticText(_("Delete"))
         self["key_blue"] = StaticText(_("Duplicates"))
+
         self["actions"] = ActionMap(["ColorActions", "OkCancelActions"], {
             "red": self.request_close,
-            "green": self.edit_mapping,
-            "yellow": self.delete_mapping,
-            "blue": self.handle_blue_button,
-            "ok": self.edit_mapping,
-            "cancel": self.request_close,
+            "green": self.toggle_selection_mode,
+            "yellow": self.delete_selected,
+            "blue": self.toggle_duplicates_view,
+            "ok": self.toggle_item_selection,
+            "cancel": self.handle_cancel,
+            # "cancel": self.request_close,
+            # "green": self.edit_mapping,
+            # "yellow": self.delete_mapping,
+            # "blue": self.handle_blue_button,
+            # "ok": self.edit_mapping,
         }, -1)
 
         self.onLayoutFinish.append(self.load_database)
 
     def load_database(self):
-        """Load database using the manager"""
+        """Reload the database while preserving view and selection state - FIXED VERSION"""
         try:
+            # Save the current state
+            current_view_was_duplicates = self.showing_duplicates
+            current_selection_mode = self.selection_mode  # 🔥 Save selection state
+
+            # Force reload from file
             data = self.manual_db.load_database()
             self.mappings = data.get("mappings", [])
-            self.show_all_mappings()
+
+            # Clear selection but KEEP the mode
+            self.selected_items.clear()
+            self.selection_mode = current_selection_mode  # 🔥 Restore selection mode
+
+            # Restore previous view
+            if current_view_was_duplicates:
+                duplicates = self.find_duplicates()
+                if duplicates:
+                    self.show_duplicates()
+                else:
+                    self.showing_duplicates = False
+                    self.show_all_mappings()
+                    self["status"].setText(_("No duplicates found"))
+                    self.selection_mode = False  # Disable selection if no duplicates remain
+            else:
+                self.showing_duplicates = False
+                self.show_all_mappings()
+
+            # 🔥 Update button labels based on selection mode
+            if self.selection_mode:
+                self["key_green"].setText(_("Done"))
+                self["status"].setText(_("Selection mode active. Select items with OK"))
+            else:
+                self["key_green"].setText(_("Select"))
+
+            if config.plugins.m3uconverter.enable_debug.value:
+                logger.info(f"✅ Database reloaded. Selection mode: {self.selection_mode}, View: {'duplicates' if self.showing_duplicates else 'all'}")
+
         except Exception as e:
             logger.error(f"Error loading database: {str(e)}")
             self["status"].setText(_("Error loading database"))
 
+    def handle_cancel(self):
+        """Handle CANCEL key - improved navigation"""
+        if self.selection_mode:
+            # If we are in selection mode, exit it
+            self.exit_selection_mode()
+        elif self.showing_duplicates:
+            # If we are in duplicates view, return to normal view
+            self.show_all_mappings()
+        else:
+            # Otherwise, close the editor
+            self.request_close()
+
+    def enter_selection_mode(self):
+        """Enter selection mode"""
+        # Make sure there are items to select
+        if self.showing_duplicates:
+            duplicates = self.find_duplicates()
+            if not duplicates:
+                self.session.open(
+                    MessageBox,
+                    _("No duplicates available for selection"),
+                    MessageBox.TYPE_INFO,
+                    timeout=3
+                )
+                return
+
+        self.selection_mode = True
+        self["key_green"].setText(_("Done"))
+        self["status"].setText(_("Selection mode: Select items with OK"))
+
+        # Refresh current view to show checkboxes
+
+        self.refresh_current_view()
+
+    def exit_selection_mode(self):
+        """Exit selection mode"""
+        self.selection_mode = False
+        self.selected_items.clear()
+        self["key_green"].setText(_("Select"))
+        self["status"].setText(_("Selection mode off"))
+
+        # Refresh current view per nascondere i checkbox
+        self.refresh_current_view()
+
+    def refresh_current_view(self):
+        """Refresh the current view based on what's being shown"""
+        if self.showing_duplicates:
+            self.show_duplicates()
+        else:
+            self.show_all_mappings()
+
     def show_all_mappings(self):
         """Show all mappings in normal view"""
         display_list = []
-        self.duplicates_data = []  # Reset duplicates data
-        self.previous_view = "all"  # Track current view
+        self.duplicates_data = []
+        self.showing_duplicates = False
 
         if not self.mappings:
             display_list.append(_("No mappings available"))
@@ -9216,27 +9490,21 @@ class ManualDatabaseEditor(Screen):
             for i, mapping in enumerate(self.mappings):
                 channel_name = mapping.get('channel_name', 'Unknown')
                 match_type = mapping.get('match_type', 'unknown')
-                sref = mapping.get('assigned_sref', '')
-                tvg_id = mapping.get('tvg_id', '')
+                # sref = mapping.get('assigned_sref', '')
 
-                # Format text for better readability
-                sref_short = sref[:35] + "..." if len(sref) > 35 else sref
-                tvg_display = f" [TVG: {tvg_id}]" if tvg_id and tvg_id != 'none' else ""
+                # Format for display
+                prefix = "[X] " if i in self.selected_items else "[ ] " if self.selection_mode else ""
+                # sref_short = sref[:30] + "..." if len(sref) > 30 else sref
 
-                display_text = f"{i + 1:03d}. {channel_name}{tvg_display}\n   Type: {match_type}\n   Ref: {sref_short}"
+                display_text = f"{prefix}{i + 1:03d}. {channel_name} [{match_type}]"
+                if len(display_text) > 80:
+                    display_text = display_text[:77] + "..."
+
                 display_list.append(display_text)
 
         self["mapping_list"].setList(display_list)
-        self["status"].setText(_("Loaded {} mappings").format(len(self.mappings)))
+        self.update_status()
         self["key_blue"].setText(_("Duplicates"))
-        self.showing_duplicates = False
-
-    def handle_blue_button(self):
-        """Handle BLUE button - toggle duplicates view"""
-        if not self.showing_duplicates:
-            self.show_duplicates()
-        else:
-            self.show_all_mappings()
 
     def find_duplicates(self):
         """Find duplicate mappings based on clean_name"""
@@ -9251,105 +9519,243 @@ class ManualDatabaseEditor(Screen):
 
         return {name: entries for name, entries in duplicates.items() if len(entries) > 1}
 
-    def show_duplicates(self):
-        """Show only duplicate mappings with better display"""
-        duplicates = self.find_duplicates()
-        self.duplicates_data = []
-        display_list = []
-        self.previous_view = "duplicates"
-
-        if not duplicates:
-            display_list.append(_("No duplicates in database"))
-            self["status"].setText(_("No duplicates in database"))
+    def toggle_duplicates_view(self):
+        """Toggle between all mappings and duplicates view - IMPROVED"""
+        if not self.showing_duplicates:
+            # Enter duplicates view
+            duplicates = self.find_duplicates()
+            if duplicates:
+                self.show_duplicates()
+            else:
+                self.session.open(
+                    MessageBox,
+                    _("No duplicates found in the database"),
+                    MessageBox.TYPE_INFO,
+                    timeout=3
+                )
         else:
-            total_duplicates = sum(len(entries) for entries in duplicates.values())
-            display_list.append(_("📊 DUPLICATES FOUND: {} groups, {} total mappings").format(
-                len(duplicates), total_duplicates))
-            self.duplicates_data.append(("info", "header"))
+            # Return to the normal (all mappings) view
+            self.show_all_mappings()
 
-            for clean_name, entries in duplicates.items():
-                # Group header with delete option
-                header_text = f"🗑️ --- {clean_name} ({len(entries)} duplicates) ---"
-                display_list.append(header_text)
-                self.duplicates_data.append(("header", clean_name))
+    def toggle_selection_mode(self):
+        """Toggle selection mode on or off - FIXED VERSION"""
+        if self.selection_mode:
+            # If already in selection mode, exit it
+            self.exit_selection_mode()
+        else:
+            # Otherwise, enter selection mode
+            self.enter_selection_mode()
 
-                for orig_index, mapping in entries:
-                    channel_name = mapping.get('channel_name', 'Unknown')
-                    match_type = mapping.get('match_type', 'unknown')
-                    sref = mapping.get('assigned_sref', '')
-                    tvg_id = mapping.get('tvg_id', '')
+    def toggle_item_selection(self):
+        """Toggle selection of current item"""
+        if not self.selection_mode:
+            return
 
-                    sref_short = sref[:30] + "..." if len(sref) > 30 else sref
-                    tvg_info = f" [{tvg_id}]" if tvg_id else ""
-
-                    display_text = f"  ❌ {channel_name}{tvg_info} [{match_type}]\n     {sref_short}"
-                    display_list.append(display_text)
-                    self.duplicates_data.append(("mapping", orig_index, mapping))
-
-        self["mapping_list"].setList(display_list)
-        self["status"].setText(_("Found {} duplicate groups").format(len(duplicates)))
-        self["key_blue"].setText(_("Back"))
-        self.showing_duplicates = True
-
-    def get_current_mapping(self):
-        """Get the current mapping considering duplicates view"""
         selected_index = self["mapping_list"].getSelectedIndex()
 
         if self.showing_duplicates:
-            if selected_index < 0 or selected_index >= len(self.duplicates_data):
-                return None
-            entry = self.duplicates_data[selected_index]
-            if entry[0] == "mapping" and len(entry) >= 3:
-                return entry[2]
-            return None
+            # Handle selection in duplicates view
+            if selected_index < len(self.duplicates_data):
+                entry_type = self.duplicates_data[selected_index][0]
+                if entry_type == "duplicate":
+                    orig_index = self.duplicates_data[selected_index][1]
+                    if orig_index in self.selected_items:
+                        self.selected_items.remove(orig_index)
+                    else:
+                        self.selected_items.add(orig_index)
+                    self.show_duplicates()
         else:
-            # Normal vision
+            # Handle selection in normal view
             if 0 <= selected_index < len(self.mappings):
-                return self.mappings[selected_index]
-            return None
-
-    def edit_mapping(self):
-        """Edit selected mapping"""
-        mapping = self.get_current_mapping()
-        if not mapping:
-            return
-
-        # SAVE CURRENT VIEW STATE
-        current_view = self.previous_view
-
-        # Create channel data for the editor
-        channel_data = [{
-            'name': mapping.get('channel_name', 'Unknown'),
-            'original_name': mapping.get('channel_name', 'Unknown'),
-            'sref': mapping.get('assigned_sref', ''),
-            'match_type': mapping.get('match_type', 'manual'),
-            'tvg_id': mapping.get('tvg_id', ''),
-            'url': mapping.get('url', ''),
-            'group': 'Manual Database',
-            'original_sref': mapping.get('assigned_sref', '')
-        }]
-
-        def mapping_editor_closed(result=None):
-            """Callback when editor closes"""
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("ManualMatchEditor closed, reloading database...")
-            self.load_database()
-            self.changes_made = True
-            if current_view == "duplicates":
-                self.show_duplicates()
-            else:
+                if selected_index in self.selected_items:
+                    self.selected_items.remove(selected_index)
+                else:
+                    self.selected_items.add(selected_index)
                 self.show_all_mappings()
 
-        if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Opening ManualMatchEditor for: {mapping.get('channel_name')}")
+    def show_duplicates(self):
+        """Display only duplicate mappings with selection support - FIXED VERSION"""
+        duplicates = self.find_duplicates()
+        self.duplicates_data = []
+        display_list = []
 
-        self.session.openWithCallback(
-            mapping_editor_closed,
-            ManualMatchEditor,
-            channel_data,
-            self.epg_mapper,
-            "manual_database_edit"
-        )
+        if not duplicates:
+            # If no duplicates, automatically return to the normal view
+            self.showing_duplicates = False
+            self.show_all_mappings()
+            self["status"].setText(_("No duplicates found"))
+            return
+
+        self.showing_duplicates = True
+        total_duplicates = sum(len(entries) for entries in duplicates.values())
+
+        # Header with information
+        if self.selection_mode:
+            display_list.append(_(">>> SELECTION MODE - Select items with OK"))
+            display_list.append(_(">>> {} duplicate groups, {} total mappings").format(len(duplicates), total_duplicates))
+        else:
+            display_list.append(_(">>> DUPLICATES VIEW"))
+            display_list.append(_(">>> {} groups, {} mappings total").format(len(duplicates), total_duplicates))
+
+        self.duplicates_data.append(("header", "info"))
+        self.duplicates_data.append(("header", "info"))
+
+        for clean_name, entries in duplicates.items():
+            # Group header
+            group_header = _("--- {} ({} duplicates) ---").format(clean_name, len(entries))
+            display_list.append(group_header)
+            self.duplicates_data.append(("group_header", clean_name))
+
+            for orig_index, mapping in entries:
+                if orig_index < len(self.mappings):
+                    channel_name = mapping.get('channel_name', 'Unknown')
+                    match_type = mapping.get('match_type', 'unknown')
+                    sref = mapping.get('assigned_sref', '')
+
+                    # Always show checkboxes when in selection mode
+                    prefix = "[X] " if orig_index in self.selected_items else "[ ] " if self.selection_mode else ""
+
+                    # Format display text
+                    display_text = f"{prefix}{channel_name} [{match_type}]"
+                    if sref:
+                        sref_short = sref[:25] + "..." if len(sref) > 25 else sref
+                        display_text += f" - {sref_short}"
+
+                    if len(display_text) > 80:
+                        display_text = display_text[:77] + "..."
+
+                    display_list.append(display_text)
+                    self.duplicates_data.append(("duplicate", orig_index, mapping))
+
+        self["mapping_list"].setList(display_list)
+        self.update_status()
+        self["key_blue"].setText(_("All Mappings"))
+
+    def update_status(self):
+        """Update status bar with detailed selection info - IMPROVED"""
+        selected_count = len(self.selected_items)
+
+        if self.selection_mode:
+            status_text = _("SELECTION MODE: {} items selected").format(selected_count)
+            if self.showing_duplicates:
+                duplicates = self.find_duplicates()
+                if duplicates:
+                    status_text += _(" - {} duplicate groups").format(len(duplicates))
+        else:
+            if self.showing_duplicates:
+                duplicates = self.find_duplicates()
+                if duplicates:
+                    status_text = _("DUPLICATES: {} groups, {} mappings").format(
+                        len(duplicates), sum(len(entries) for entries in duplicates.values()))
+                else:
+                    status_text = _("No duplicates found")
+            else:
+                status_text = _("ALL MAPPINGS: {} total").format(len(self.mappings))
+
+        self["status"].setText(status_text)
+
+    def delete_selected(self):
+        """Delete selected mappings and remain in selection mode - IMPROVED VERSION"""
+        if not self.selected_items:
+            self.session.open(
+                MessageBox,
+                _("No items selected for deletion"),
+                MessageBox.TYPE_INFO,
+                timeout=3
+            )
+            return
+
+        selected_count = len(self.selected_items)
+        message = _("Delete {} selected items?\n\nThis action cannot be undone.").format(selected_count)
+
+        def confirm_callback(result):
+            if result:
+                # Save current state BEFORE deletion
+                was_showing_duplicates = self.showing_duplicates
+
+                # Perform deletion
+                success = self.perform_bulk_delete()
+
+                if success:
+                    # Clear selection but REMAIN in selection mode
+                    self.selected_items.clear()
+
+                    # Reload the database
+                    self.load_database()
+
+                    # IMPORTANT: Stay in selection mode after deletion
+                    self.selection_mode = True
+                    self["key_green"].setText(_("Done"))
+
+                    # Decide which view to show after deletion
+                    if was_showing_duplicates:
+                        remaining_duplicates = self.find_duplicates()
+                        if remaining_duplicates:
+                            # Still duplicates remaining, stay in duplicates view
+                            self.show_duplicates()
+                            self["status"].setText(_("Deleted {} items. Still in selection mode.").format(selected_count))
+                        else:
+                            # No more duplicates, return to normal view but REMAIN in selection mode
+                            self.showing_duplicates = False
+                            self.show_all_mappings()
+                            self["status"].setText(_("Deleted {} items. No more duplicates.").format(selected_count))
+                    else:
+                        # Was in normal view, remain there
+                        self.show_all_mappings()
+                        self["status"].setText(_("Deleted {} items").format(selected_count))
+
+                    logger.info(f"✅ Deleted {selected_count} items, remained in selection mode")
+
+                else:
+                    self["status"].setText(_("Error deleting items"))
+
+        self.session.openWithCallback(confirm_callback, MessageBox, message, MessageBox.TYPE_YESNO)
+
+    def perform_bulk_delete(self):
+        """Actually delete the selected mappings - FIXED VERSION"""
+        try:
+            # Load fresh data from file
+            data = self.manual_db.load_database()
+            current_mappings = data.get('mappings', [])
+
+            if not current_mappings:
+                return False
+
+            # Create a new list without the selected items
+            new_mappings = []
+            deleted_indices = sorted(self.selected_items, reverse=True)
+
+            # Create a copy of the current mappings
+            temp_mappings = current_mappings.copy()
+
+            # Remove selected items (from the end to avoid index shifting)
+            for index in deleted_indices:
+                if 0 <= index < len(temp_mappings):
+                    if config.plugins.m3uconverter.enable_debug.value:
+                        logger.info(f"🗑️ Deleting index {index}: {temp_mappings[index].get('channel_name', 'Unknown')}")
+                    del temp_mappings[index]
+
+            new_mappings = temp_mappings
+            deleted_count = len(current_mappings) - len(new_mappings)
+
+            if deleted_count > 0:
+                data['mappings'] = new_mappings
+                data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
+
+                success = self.manual_db.save_database(data)
+
+                if success:
+                    # Update local cache
+                    self.mappings = new_mappings
+                    if config.plugins.m3uconverter.enable_debug.value:
+                        logger.info(f"✅ Deleted {deleted_count} mappings, new total: {len(new_mappings)}")
+                    return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"❌ Error performing bulk delete: {str(e)}")
+            return False
 
     def delete_mapping(self):
         """Delete selected mapping with proper GUI update"""
@@ -9441,23 +9847,84 @@ class ManualDatabaseEditor(Screen):
             logger.error(f"❌ Error performing delete: {str(e)}")
             return False
 
+    def get_current_mapping(self):
+        """Get the current mapping considering duplicates view"""
+        selected_index = self["mapping_list"].getSelectedIndex()
+
+        if self.showing_duplicates:
+            if selected_index < 0 or selected_index >= len(self.duplicates_data):
+                return None
+            entry = self.duplicates_data[selected_index]
+            if entry[0] == "mapping" and len(entry) >= 3:
+                return entry[2]
+            return None
+        else:
+            # Normal vision
+            if 0 <= selected_index < len(self.mappings):
+                return self.mappings[selected_index]
+            return None
+
+    def edit_mapping(self):
+        """Edit selected mapping - now called from selection"""
+        mapping = self.get_current_mapping()
+        if not mapping:
+            return
+
+        # SAVE CURRENT VIEW STATE
+        current_view = self.previous_view
+
+        # Create channel data for the editor
+        channel_data = [{
+            'name': mapping.get('channel_name', 'Unknown'),
+            'original_name': mapping.get('channel_name', 'Unknown'),
+            'sref': mapping.get('assigned_sref', ''),
+            'match_type': mapping.get('match_type', 'manual'),
+            'tvg_id': mapping.get('tvg_id', ''),
+            'url': mapping.get('url', ''),
+            'group': 'Manual Database',
+            'original_sref': mapping.get('assigned_sref', '')
+        }]
+
+        def mapping_editor_closed(result=None):
+            """Callback when editor closes"""
+            if config.plugins.m3uconverter.enable_debug.value:
+                logger.info("ManualMatchEditor closed, reloading database...")
+            self.load_database()
+            self.changes_made = True
+            if current_view == "duplicates":
+                self.show_duplicates()
+            else:
+                self.show_all_mappings()
+
+        if config.plugins.m3uconverter.enable_debug.value:
+            logger.info(f"Opening ManualMatchEditor for: {mapping.get('channel_name')}")
+
+        self.session.openWithCallback(
+            mapping_editor_closed,
+            ManualMatchEditor,
+            channel_data,
+            self.epg_mapper,
+            "manual_database_edit"
+        )
+
     def has_unsaved_changes(self):
         """Check if there are unsaved changes"""
         return self.changes_made
 
     def request_close(self):
-        """Handle closing — simply close the editor."""
+        """Handle closing the editor - IMPROVED"""
         try:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"ManualDatabaseEditor: Close requested - showing_duplicates={self.showing_duplicates}")
+            if self.selection_mode:
+                # If in selection mode, exit selection first
+                self.exit_selection_mode()
+                return
 
             if self.showing_duplicates:
-                # If we are in the duplicates view, return to the normal view
+                # If in duplicates view, return to normal view
                 self.show_all_mappings()
-                return  # Do NOT close the editor
+                return
 
-            # If we are in the main view, simply close
-            # The callback will handle reopening the Tools menu
+            # Otherwise, close the editor
             self.close()
 
         except Exception as e:

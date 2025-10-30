@@ -3,8 +3,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: M3UConverter\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-27 15:32+0100\n"
-"PO-Revision-Date: 2025-10-27 15:32+0100\n"
+"POT-Creation-Date: 2025-10-30 17:23+0100\n"
+"PO-Revision-Date: 2025-10-30 17:23+0100\n"
 "Last-Translator: \n"
 "Language-Team: <ekekaz@gmail.com>\n"
 "Language: cs\n"
@@ -18,469 +18,520 @@ msgstr ""
 "X-Poedit-SearchPath-1: Logger_clr.py\n"
 "X-Poedit-SearchPath-2: plugin.py\n"
 
-#: plugin.py:112
+#: plugin.py:102
 msgid "HDD Drive"
 msgstr ""
 
-#: plugin.py:113 plugin.py:129
+#: plugin.py:103 plugin.py:119
 msgid "USB Drive"
 msgstr ""
 
-#: plugin.py:114
+#: plugin.py:104
 msgid "Barry Allen"
 msgstr ""
 
-#: plugin.py:115
+#: plugin.py:105
 msgid "Network Storage"
 msgstr ""
 
-#: plugin.py:116
+#: plugin.py:106
 msgid "Temporary"
 msgstr ""
 
-#: plugin.py:162
+#: plugin.py:275
 #, python-format
 msgid "Archimede Universal Converter v.%s by Lululla"
 msgstr ""
 
-#: plugin.py:416
+#: plugin.py:428
 msgid "Single Bouquet"
 msgstr ""
 
-#: plugin.py:416
+#: plugin.py:428
 msgid "Multiple Bouquets"
 msgstr ""
 
-#: plugin.py:421
+#: plugin.py:433
 msgid "Top"
 msgstr ""
 
-#: plugin.py:421
+#: plugin.py:433
 msgid "Bottom"
 msgstr ""
 
-#: plugin.py:481
+#: plugin.py:493
 msgid "EPGShare Mode"
 msgstr ""
 
-#: plugin.py:481
+#: plugin.py:493
 msgid "Standard Mode"
 msgstr ""
 
-#: plugin.py:487 plugin.py:7845
+#: plugin.py:499 plugin.py:7458
 msgid "DVB + Rytec + DTT (Full)"
 msgstr ""
 
-#: plugin.py:488 plugin.py:7842
+#: plugin.py:500 plugin.py:7455
 msgid "DVB + Rytec"
 msgstr ""
 
-#: plugin.py:489 plugin.py:7843
+#: plugin.py:501 plugin.py:7456
 msgid "Only DVB"
 msgstr ""
 
-#: plugin.py:490 plugin.py:7844
+#: plugin.py:502 plugin.py:7457
 msgid "Only Rytec"
 msgstr ""
 
-#: plugin.py:491 plugin.py:7846
+#: plugin.py:503 plugin.py:7459
 msgid "Only DTT"
 msgstr ""
 
-#: plugin.py:4544
+#: plugin.py:4111
 msgid "M3U ➔ Enigma2 Bouquets"
 msgstr ""
 
-#: plugin.py:4545
+#: plugin.py:4112
 msgid "M3U ➔ JSON"
 msgstr ""
 
-#: plugin.py:4546
+#: plugin.py:4113
 msgid "Enigma2 Bouquets ➔ M3U"
 msgstr ""
 
-#: plugin.py:4547
+#: plugin.py:4114
 msgid "JSON ➔ Enigma2 Bouquets"
 msgstr ""
 
-#: plugin.py:4548
+#: plugin.py:4115
 msgid "JSON ➔ M3U"
 msgstr ""
 
-#: plugin.py:4549
+#: plugin.py:4116
 msgid "XSPF ➔ M3U Playlist"
 msgstr ""
 
-#: plugin.py:4550
+#: plugin.py:4117
 msgid "Remove M3U Bouquets"
 msgstr ""
 
-#: plugin.py:4551 plugin.py:10812
+#: plugin.py:4118 plugin.py:10809
 msgid "Plugin Information"
 msgstr ""
 
-#: plugin.py:4558
+#: plugin.py:4125
 msgid "We're ready: what do you want to do?"
 msgstr ""
 
-#: plugin.py:4568 plugin.py:8518 plugin.py:9836 plugin.py:10815
+#: plugin.py:4135 plugin.py:8096 plugin.py:9366 plugin.py:10812
 msgid "Close"
 msgstr ""
 
-#: plugin.py:4569
+#: plugin.py:4136 plugin.py:9367 plugin.py:9421 plugin.py:9468
 msgid "Select"
 msgstr ""
 
-#: plugin.py:4570
+#: plugin.py:4137
 msgid "Remove Bouquets"
 msgstr ""
 
-#: plugin.py:4571
+#: plugin.py:4138
 msgid "EPGImporter"
 msgstr ""
 
-#: plugin.py:4585 plugin.py:8173
+#: plugin.py:4154 plugin.py:4486
+msgid "Press RED to select file"
+msgstr ""
+
+#: plugin.py:4175 plugin.py:7673
 #, python-format
 msgid "Error opening plugin information: %s"
 msgstr ""
 
-#: plugin.py:4595
+#: plugin.py:4185
 msgid "EPGImport plugin not found"
 msgstr ""
 
-#: plugin.py:4630
-#, python-format
+#: plugin.py:4216
+#, python-brace-format
 msgid ""
-"Removed %d bouquet(s):\n"
-"%s"
+"Removed {count} bouquet(s):\n"
+"{files}"
 msgstr ""
 
-#: plugin.py:4632
+#: plugin.py:4221
 msgid "No M3UConverter bouquets found to remove."
 msgstr ""
 
-#: plugin.py:4791 plugin.py:4940
-msgid "Press RED to select file"
-msgstr ""
-
-#: plugin.py:4889
+#: plugin.py:4435
 msgid "M3U to Enigma2 Bouquet Conversion"
 msgstr ""
 
-#: plugin.py:4890
+#: plugin.py:4436
 msgid "Enigma2 Bouquet to M3U Conversion"
 msgstr ""
 
-#: plugin.py:4891
+#: plugin.py:4437
 msgid "JSON to Enigma2 Bouquet Conversion"
 msgstr ""
 
-#: plugin.py:4892
+#: plugin.py:4438
 msgid "JSON to M3U Conversion"
 msgstr ""
 
-#: plugin.py:4893
+#: plugin.py:4439
 msgid "XSPF to M3U Playlist Conversion"
 msgstr ""
 
-#: plugin.py:4894
+#: plugin.py:4440
 msgid "M3U to JSON Conversion"
 msgstr ""
 
-#: plugin.py:4911 plugin.py:8093 plugin.py:8162
+#: plugin.py:4457 plugin.py:4732 plugin.py:7662
 msgid "Ready"
 msgstr ""
 
-#: plugin.py:4912 plugin.py:7764 plugin.py:7976 plugin.py:7993 plugin.py:8005
-#: plugin.py:8268
+#: plugin.py:4458 plugin.py:7376 plugin.py:7588 plugin.py:7605 plugin.py:7614
+#: plugin.py:7767
 msgid "Open File"
 msgstr ""
 
-#: plugin.py:4915 plugin.py:7767 plugin.py:7979 plugin.py:7995 plugin.py:8007
-#: plugin.py:8271
+#: plugin.py:4461 plugin.py:7379 plugin.py:7591 plugin.py:7607 plugin.py:7616
+#: plugin.py:7770
 msgid "Tools"
 msgstr ""
 
-#: plugin.py:4931
+#: plugin.py:4477
 #, python-format
 msgid "Ready: Select the file from the %s you configured in settings."
 msgstr ""
 
-#: plugin.py:4937
+#: plugin.py:4483
 #, python-brace-format
 msgid "File loaded: {}"
 msgstr ""
 
-#: plugin.py:5063
-msgid "Backup created successfully!"
-msgstr ""
-
-#: plugin.py:5071
-#, python-brace-format
-msgid "Backup failed: {}"
-msgstr ""
-
-#: plugin.py:5119
+#: plugin.py:4594
 #, python-format
 msgid ""
 "Error opening file browser:\n"
 "%s"
 msgstr ""
 
-#: plugin.py:5127
+#: plugin.py:4605
+msgid "No file selected for conversion"
+msgstr ""
+
+#: plugin.py:4610 plugin.py:5927
+msgid "Convert M3U to TV"
+msgstr ""
+
+#: plugin.py:4611 plugin.py:5928
+msgid "Convert TV to M3U"
+msgstr ""
+
+#: plugin.py:4612 plugin.py:5929
+msgid "Convert JSON to TV"
+msgstr ""
+
+#: plugin.py:4613 plugin.py:5930
+msgid "Convert JSON to M3U"
+msgstr ""
+
+#: plugin.py:4614 plugin.py:5931
+msgid "Convert XSPF to M3U"
+msgstr ""
+
+#: plugin.py:4615 plugin.py:5932
+msgid "Convert M3U to JSON"
+msgstr ""
+
+#: plugin.py:4618 plugin.py:7377 plugin.py:7589 plugin.py:7606 plugin.py:7615
+#: plugin.py:7768
+msgid "Convert"
+msgstr ""
+
+#: plugin.py:4620
+msgid "Conversion in progress..."
+msgstr ""
+
+#: plugin.py:4636
+msgid "Unsupported conversion type"
+msgstr ""
+
+#: plugin.py:4642 plugin.py:5118
+msgid "No conversion data available."
+msgstr ""
+
+#: plugin.py:4656
+msgid "Manual editing completed - ready for conversion"
+msgstr ""
+
+#: plugin.py:4688 plugin.py:5863 plugin.py:6051
+msgid "No file selected"
+msgstr ""
+
+#: plugin.py:4699
+msgid "Invalid .tv item format"
+msgstr ""
+
+#: plugin.py:4708
+msgid "Invalid .m3u item format"
+msgstr ""
+
+#: plugin.py:4711
+#, python-format
+msgid "Playing: %s"
+msgstr ""
+
+#: plugin.py:4777
 msgid "📋 Plugin Info"
 msgstr ""
 
-#: plugin.py:5128
+#: plugin.py:4778
 msgid "📊 EPG Cache Statistics"
 msgstr ""
 
-#: plugin.py:5129
+#: plugin.py:4779
 msgid "💾 Create Backup"
 msgstr ""
 
-#: plugin.py:5130
+#: plugin.py:4780
 msgid "🔄 Reload EPG Database"
 msgstr ""
 
-#: plugin.py:5131
+#: plugin.py:4781
 msgid "🔄 Reload Services"
 msgstr ""
 
-#: plugin.py:5132
+#: plugin.py:4782
 msgid "🧹 Clear EPG Cache"
 msgstr ""
 
-#: plugin.py:5133
+#: plugin.py:4783
 msgid "🗑️ Clear Log File"
 msgstr ""
 
-#: plugin.py:5135
+#: plugin.py:4785
 msgid "🗃️ === Manual Database Management ==="
 msgstr ""
 
-#: plugin.py:5136
+#: plugin.py:4786
 msgid "✏️ Open Database Editor"
 msgstr ""
 
-#: plugin.py:5137
+#: plugin.py:4787
 msgid "👁️ View Manual Database"
 msgstr ""
 
-#: plugin.py:5138
+#: plugin.py:4788
 msgid "📝 Manual Match Editing"
 msgstr ""
 
-#: plugin.py:5139
+#: plugin.py:4789
 msgid "📤 Export Manual Database"
 msgstr ""
 
-#: plugin.py:5140
+#: plugin.py:4790
 msgid "📥 Import Manual Database"
 msgstr ""
 
-#: plugin.py:5141
+#: plugin.py:4791
 msgid "🧹 Clean Manual Database"
 msgstr ""
 
-#: plugin.py:5185
+#: plugin.py:4834
 msgid "Advanced Tools Menu"
 msgstr ""
 
-#: plugin.py:5214 plugin.py:6008
+#: plugin.py:4863 plugin.py:5669
 msgid "EPG mapper not available"
 msgstr ""
 
-#: plugin.py:5232
+#: plugin.py:4883
 msgid "No statistics available"
 msgstr ""
 
-#: plugin.py:5244
+#: plugin.py:4895
 msgid ""
 "No conversion statistics available.\n"
 "Run a conversion first to see statistics."
 msgstr ""
 
-#: plugin.py:5252 plugin.py:5276
+#: plugin.py:4903 plugin.py:4927
 #, python-brace-format
 msgid "📊 EPG STATISTICS - {}"
 msgstr ""
 
-#: plugin.py:5254
+#: plugin.py:4905
 msgid "No conversion statistics available."
 msgstr ""
 
-#: plugin.py:5255
+#: plugin.py:4906
 msgid "Run a conversion first to see statistics."
 msgstr ""
 
-#: plugin.py:5278
+#: plugin.py:4929
 #, python-brace-format
 msgid "🎯 TOTAL CHANNELS: {}"
 msgstr ""
 
-#: plugin.py:5279
+#: plugin.py:4930
 #, python-brace-format
 msgid "📈 EPG COVERAGE: {:.1f}%"
 msgstr ""
 
-#: plugin.py:5281
+#: plugin.py:4932
 msgid "🔧 MATCH BREAKDOWN:"
 msgstr ""
 
-#: plugin.py:5282
+#: plugin.py:4933
 #, python-brace-format
 msgid "• 🛰️ Rytec: {} ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:5283
+#: plugin.py:4934
 #, python-brace-format
 msgid "• 📡 DVB-S: {} ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:5284
+#: plugin.py:4935
 #, python-brace-format
 msgid "• 📺 DVB-T: {} ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:5285
+#: plugin.py:4936
 #, python-brace-format
 msgid "• 💾 Manual DB: {} ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:5286
+#: plugin.py:4937
 #, python-brace-format
 msgid "• 🔌 IPTV Fallback: {} ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:5303
+#: plugin.py:4954
 msgid "💾 CACHE PERFORMANCE:"
 msgstr ""
 
-#: plugin.py:5304
+#: plugin.py:4955
 #, python-brace-format
 msgid "• Hit: {} ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:5305
+#: plugin.py:4956
 #, python-brace-format
 msgid "• Miss: {}"
 msgstr ""
 
-#: plugin.py:5306
+#: plugin.py:4957
 #, python-brace-format
 msgid "• Size: {} entries"
 msgstr ""
 
-#: plugin.py:5312
+#: plugin.py:4963
 msgid "🗄️ DATABASE INFO:"
 msgstr ""
 
-#: plugin.py:5313
+#: plugin.py:4964
 #, python-brace-format
 msgid "• Rytec: {} channels"
 msgstr ""
 
-#: plugin.py:5314
+#: plugin.py:4965
 #, python-brace-format
 msgid "• DVB: {} channels"
 msgstr ""
 
-#: plugin.py:5315
+#: plugin.py:4966
 #, python-brace-format
 msgid "• Mode: {}"
 msgstr ""
 
-#: plugin.py:5345
+#: plugin.py:4998
 msgid "EPG database reloaded successfully!"
 msgstr ""
 
-#: plugin.py:5354
+#: plugin.py:5008
 msgid "Failed to initialize EPG mapper - check logs"
 msgstr ""
 
-#: plugin.py:5365
+#: plugin.py:5019
 #, python-brace-format
 msgid "Error reloading EPG database: {}"
 msgstr ""
 
-#: plugin.py:5379
+#: plugin.py:5033
 #, python-brace-format
 msgid "EPG cache cleared! {} entries removed"
 msgstr ""
 
-#: plugin.py:5389
+#: plugin.py:5043
 msgid "Error clearing EPG cache"
 msgstr ""
 
-#: plugin.py:5396
+#: plugin.py:5050
 msgid "EPG mapper not initialized"
 msgstr ""
 
-#: plugin.py:5404 plugin.py:5408
-msgid "Services reloaded successfully"
+#: plugin.py:5061
+msgid "Backup created successfully!"
 msgstr ""
 
-#: plugin.py:5417
-msgid "Error reloading services"
+#: plugin.py:5069
+#, python-brace-format
+msgid "Backup failed: {}"
 msgstr ""
 
-#: plugin.py:5430
-msgid "Log file cleared successfully"
+#: plugin.py:5077
+msgid "Reloading services..."
 msgstr ""
 
-#: plugin.py:5441 plugin.py:5511
-msgid "No conversion data available."
+#: plugin.py:5082
+msgid "Service reload initiated"
 msgstr ""
 
-#: plugin.py:5454
-msgid "Manual editing completed - ready for conversion"
+#: plugin.py:5088
+msgid ""
+"Service reload command sent successfully.\n"
+"Bouquets should appear shortly."
 msgstr ""
 
-#: plugin.py:5579
+#: plugin.py:5102
+msgid "Error initiating service reload"
+msgstr ""
+
+#: plugin.py:5151
 msgid "Manual database not available"
 msgstr ""
 
-#: plugin.py:5592
+#: plugin.py:5164
 msgid "No manual corrections found"
 msgstr ""
 
-#: plugin.py:5619
+#: plugin.py:5191
 msgid "✏️ Edit this mapping"
 msgstr ""
 
-#: plugin.py:5620
+#: plugin.py:5192
 msgid "🗑️ Delete this mapping"
 msgstr ""
 
-#: plugin.py:5621 plugin.py:5945 plugin.py:6147
+#: plugin.py:5193 plugin.py:5808
 msgid "🔙 Back"
 msgstr ""
 
-#: plugin.py:5642
+#: plugin.py:5214
 #, python-brace-format
 msgid "Action for: {}"
 msgstr ""
 
-#: plugin.py:5649
+#: plugin.py:5221
 #, python-brace-format
 msgid "Manual Corrections ({} total)"
 msgstr ""
 
-#: plugin.py:5661
-#, python-brace-format
-msgid ""
-"Delete manual correction for:\n"
-"{}\n"
-"\n"
-"This action cannot be undone."
-msgstr ""
-
-#: plugin.py:5672
-msgid "Error deleting correction"
-msgstr ""
-
-#: plugin.py:5729
+#: plugin.py:5233
 #, python-brace-format
 msgid ""
 "This will delete ALL manual corrections.\n"
@@ -491,19 +542,19 @@ msgid ""
 "Are you sure?"
 msgstr ""
 
-#: plugin.py:5745
+#: plugin.py:5249
 msgid "Manual database cleared"
 msgstr ""
 
-#: plugin.py:5753
+#: plugin.py:5257
 msgid "Error clearing database"
 msgstr ""
 
-#: plugin.py:5797
+#: plugin.py:5285
 msgid "No manual corrections to export"
 msgstr ""
 
-#: plugin.py:5832
+#: plugin.py:5321
 #, python-brace-format
 msgid ""
 "Manual database exported successfully!\n"
@@ -514,68 +565,89 @@ msgid ""
 "Size: {} bytes"
 msgstr ""
 
-#: plugin.py:5856
+#: plugin.py:5345
 msgid "Error exporting database"
 msgstr ""
 
-#: plugin.py:5865
+#: plugin.py:5354
 msgid "Database Directory"
 msgstr ""
 
-#: plugin.py:5866
+#: plugin.py:5355
 msgid "Temporary Files"
 msgstr ""
 
-#: plugin.py:5892
+#: plugin.py:5386
 #, python-brace-format
 msgid ""
 "No database files found in:\n"
 "{}"
 msgstr ""
 
-#: plugin.py:5927
+#: plugin.py:5421
 msgid "🔙 Back to locations"
 msgstr ""
 
-#: plugin.py:5940
+#: plugin.py:5435
 #, python-brace-format
 msgid "Select file to import from {}"
 msgstr ""
 
-#: plugin.py:5956
+#: plugin.py:5440
+msgid "🔙 Back to Tools"
+msgstr ""
+
+#: plugin.py:5451
 msgid "Select import location"
 msgstr ""
 
-#: plugin.py:5965
+#: plugin.py:5461
 #, python-brace-format
 msgid "Error starting import: {}"
 msgstr ""
 
-#: plugin.py:5976
+#: plugin.py:5473
+msgid "Log file cleared successfully"
+msgstr ""
+
+#: plugin.py:5548
+#, python-brace-format
+msgid ""
+"Delete manual correction for:\n"
+"{}\n"
+"\n"
+"This action cannot be undone."
+msgstr ""
+
+#: plugin.py:5559
+msgid "Error deleting correction"
+msgstr ""
+
+#: plugin.py:5637
 #, python-brace-format
 msgid ""
 "Import file not found:\n"
 "{}"
 msgstr ""
 
-#: plugin.py:5990
+#: plugin.py:5651
 msgid "Invalid database file structure"
 msgstr ""
 
-#: plugin.py:6017
+#: plugin.py:5678
 #, python-brace-format
 msgid "Error importing database: {}"
 msgstr ""
 
-#: plugin.py:6038
+#: plugin.py:5699
 msgid "replaced"
 msgstr ""
 
-#: plugin.py:6044
+#: plugin.py:5705
 msgid "merged"
 msgstr ""
 
-#: plugin.py:6057
+#: plugin.py:5718
 #, python-brace-format
 msgid ""
 "Database import successful!\n"
@@ -585,152 +657,107 @@ msgid ""
 "Mode: {}"
 msgstr ""
 
-#: plugin.py:6075
+#: plugin.py:5736
 msgid "Error saving imported database"
 msgstr ""
 
-#: plugin.py:6084
+#: plugin.py:5745
 #, python-brace-format
 msgid "Error finalizing import: {}"
 msgstr ""
 
-#: plugin.py:6096
+#: plugin.py:5757
 msgid "📊 IMPORT PREVIEW"
 msgstr ""
 
-#: plugin.py:6097
+#: plugin.py:5758
 #, python-brace-format
 msgid "File: {}"
 msgstr ""
 
-#: plugin.py:6099
+#: plugin.py:5760
 msgid "📈 Statistics:"
 msgstr ""
 
-#: plugin.py:6100
+#: plugin.py:5761
 #, python-brace-format
 msgid "• Total in import file: {}"
 msgstr ""
 
-#: plugin.py:6101
+#: plugin.py:5762
 #, python-brace-format
 msgid "• New mappings: {}"
 msgstr ""
 
-#: plugin.py:6102
+#: plugin.py:5763
 #, python-brace-format
 msgid "• Duplicate mappings: {}"
 msgstr ""
 
-#: plugin.py:6103
+#: plugin.py:5764
 #, python-brace-format
 msgid "• Current total: {}"
 msgstr ""
 
-#: plugin.py:6105
+#: plugin.py:5766
 #, python-brace-format
 msgid "🆕 New mappings ({}):"
 msgstr ""
 
-#: plugin.py:6117
+#: plugin.py:5778
 #, python-brace-format
 msgid "🔄 Duplicates ({}):"
 msgstr ""
 
-#: plugin.py:6144
+#: plugin.py:5805
 #, python-brace-format
 msgid "🔄 Replace All ({} mappings)"
 msgstr ""
 
-#: plugin.py:6145
+#: plugin.py:5806
 msgid "➕ Merge (keep both)"
 msgstr ""
 
-#: plugin.py:6146
+#: plugin.py:5807
 msgid "📊 Preview Changes"
 msgstr ""
 
-#: plugin.py:6165
+#: plugin.py:5826
 #, python-brace-format
 msgid "Import {} mappings from {}"
 msgstr ""
 
-#: plugin.py:6195
-msgid "No file selected for conversion"
-msgstr ""
-
-#: plugin.py:6200 plugin.py:6313
-msgid "Convert M3U to TV"
-msgstr ""
-
-#: plugin.py:6201 plugin.py:6314
-msgid "Convert TV to M3U"
-msgstr ""
-
-#: plugin.py:6202 plugin.py:6315
-msgid "Convert JSON to TV"
-msgstr ""
-
-#: plugin.py:6203 plugin.py:6316
-msgid "Convert JSON to M3U"
-msgstr ""
-
-#: plugin.py:6204 plugin.py:6317
-msgid "Convert XSPF to M3U"
-msgstr ""
-
-#: plugin.py:6205 plugin.py:6318
-msgid "Convert M3U to JSON"
-msgstr ""
-
-#: plugin.py:6208 plugin.py:7765 plugin.py:7977 plugin.py:7994 plugin.py:8006
-#: plugin.py:8269
-msgid "Convert"
-msgstr ""
-
-#: plugin.py:6210
-msgid "Conversion in progress..."
-msgstr ""
-
-#: plugin.py:6226
-msgid "Unsupported conversion type"
-msgstr ""
-
-#: plugin.py:6234
+#: plugin.py:5848
 msgid "Invalid selection"
 msgstr ""
 
-#: plugin.py:6243
+#: plugin.py:5857
 msgid "Processing selection..."
 msgstr ""
 
-#: plugin.py:6249 plugin.py:6451 plugin.py:8039
-msgid "No file selected"
-msgstr ""
-
-#: plugin.py:6260
+#: plugin.py:5874
 msgid "File not found"
 msgstr ""
 
-#: plugin.py:6321
+#: plugin.py:5935
 msgid "Ready to convert"
 msgstr ""
 
-#: plugin.py:6324
+#: plugin.py:5938
 #, python-format
-msgid "Loaded %d channels. Press Green to convert."
+msgid "Loaded first %d channels. Press Green to convert."
 msgstr ""
 
-#: plugin.py:6397
+#: plugin.py:5998
 #, python-brace-format
 msgid "Large file detected: {:.1f}MB. Processing first {} channels..."
 msgstr ""
 
-#: plugin.py:6682
+#: plugin.py:6276
 msgid "No IPTV channels found in the bouquet"
 msgstr ""
 
-#: plugin.py:6847
+#: plugin.py:6438
 #, python-format
 msgid ""
 "Error parsing JSON file. Please check the format.\n"
@@ -738,79 +765,79 @@ msgid ""
 "Error: %s"
 msgstr ""
 
-#: plugin.py:7102
-#, python-format
-msgid "Processing: %d/%d (%d%%)"
-msgstr ""
-
-#: plugin.py:7242 plugin.py:7506
+#: plugin.py:6843 plugin.py:7115
 msgid "Conversion already in progress"
 msgstr ""
 
-#: plugin.py:7273 plugin.py:7335 plugin.py:7423 plugin.py:7495 plugin.py:7571
-#: plugin.py:7638
+#: plugin.py:6874 plugin.py:6938 plugin.py:7029 plugin.py:7104 plugin.py:7180
+#: plugin.py:7250
 msgid "Cancel"
 msgstr ""
 
-#: plugin.py:7308 plugin.py:7376 plugin.py:7612
-#, python-format
-msgid "Exporting: %s (%d%%)"
+#: plugin.py:6909 plugin.py:6979
+#, python-brace-format
+msgid "Exporting: {name} ({percent}%)"
 msgstr ""
 
-#: plugin.py:7314
+#: plugin.py:6918
 #, python-format
 msgid "File write error: %s"
 msgstr ""
 
-#: plugin.py:7316
+#: plugin.py:6920
 #, python-format
 msgid "tv_to_m3u Conversion error: %s"
 msgstr ""
 
-#: plugin.py:7453
-#, python-format
-msgid "Converting: %s (%d%%)"
+#: plugin.py:7059
+#, python-brace-format
+msgid "Converting: {title} ({percent}%)"
 msgstr ""
 
-#: plugin.py:7522
+#: plugin.py:7131
 msgid "No valid channels found in the JSON file"
 msgstr ""
 
-#: plugin.py:7619
+#: plugin.py:7221
+#, python-brace-format
+msgid "Exporting: {title} ({percent}%)"
+msgstr ""
+
+#: plugin.py:7231
 msgid "Invalid XSPF file"
 msgstr ""
 
-#: plugin.py:7621
+#: plugin.py:7233
 #, python-format
 msgid "XSPF conversion error: %s"
 msgstr ""
 
-#: plugin.py:7684
+#: plugin.py:7298
 msgid "Manual editing completed"
 msgstr ""
 
-#: plugin.py:7759
+#: plugin.py:7371
 msgid "Unknown error"
 msgstr ""
 
-#: plugin.py:7760
+#: plugin.py:7372
 #, python-brace-format
 msgid "Conversion failed: {}"
 msgstr ""
 
-#: plugin.py:7763
+#: plugin.py:7375
 msgid "Conversion completed"
 msgstr ""
 
-#: plugin.py:7766
+#: plugin.py:7378
 msgid "Match"
 msgstr ""
 
-#: plugin.py:7778
+#: plugin.py:7390
 msgid "Error processing conversion result"
 msgstr ""
 
-#: plugin.py:7793
+#: plugin.py:7405
 #, python-brace-format
 msgid ""
 "✅ CONVERSION COMPLETED SUCCESSFULLY\n"
@@ -822,358 +849,433 @@ msgid ""
 "Press OK to continue"
 msgstr ""
 
-#: plugin.py:7812
+#: plugin.py:7425
 msgid "🎯 CONVERSION COMPLETE"
 msgstr ""
 
-#: plugin.py:7824
+#: plugin.py:7437
 #, python-brace-format
 msgid "📊 Total channels in file: {}"
 msgstr ""
 
-#: plugin.py:7825
+#: plugin.py:7438
 #, python-brace-format
 msgid "✅ Valid channels processed: {}"
 msgstr ""
 
-#: plugin.py:7828
+#: plugin.py:7441
 #, python-brace-format
 msgid "🚫 Skipped channels: {}"
 msgstr ""
 
-#: plugin.py:7830 plugin.py:7889
+#: plugin.py:7443 plugin.py:7502
 #, python-brace-format
 msgid "🎯 Effective EPG matches: {}"
 msgstr ""
 
-#: plugin.py:7831 plugin.py:7890
+#: plugin.py:7444 plugin.py:7503
 #, python-brace-format
 msgid "📈 EFFECTIVE EPG coverage: {}"
 msgstr ""
 
-#: plugin.py:7835
+#: plugin.py:7448
 #, python-brace-format
 msgid "✏️ Manual edits applied: {}"
 msgstr ""
 
-#: plugin.py:7836
+#: plugin.py:7449
 #, python-brace-format
 msgid "🕒 Edited at: {}"
 msgstr ""
 
-#: plugin.py:7848
+#: plugin.py:7461
 #, python-brace-format
 msgid "🗄️ Database mode: {}"
 msgstr ""
 
-#: plugin.py:7861 plugin.py:7868 plugin.py:7879
+#: plugin.py:7474 plugin.py:7481 plugin.py:7492
 #, python-brace-format
 msgid "🛰️ Rytec EPG matches: {}"
 msgstr ""
 
-#: plugin.py:7862 plugin.py:7869 plugin.py:7874
+#: plugin.py:7475 plugin.py:7482 plugin.py:7487
 #, python-brace-format
 msgid "📺 DVB EPG matches: {}"
 msgstr ""
 
-#: plugin.py:7863 plugin.py:7884
+#: plugin.py:7476 plugin.py:7497
 #, python-brace-format
 msgid "📡 DVB-T EPG matches: {}"
 msgstr ""
 
-#: plugin.py:7864 plugin.py:7870 plugin.py:7875 plugin.py:7880 plugin.py:7885
+#: plugin.py:7477 plugin.py:7483 plugin.py:7488 plugin.py:7493 plugin.py:7498
 #, python-brace-format
 msgid "🔌 Fallback (no EPG): {}"
 msgstr ""
 
-#: plugin.py:7891
+#: plugin.py:7504
 #, python-brace-format
 msgid "   (Based on selected database mode: {})"
 msgstr ""
 
-#: plugin.py:7904
+#: plugin.py:7517
 #, python-brace-format
 msgid "💾 Cache efficiency: {}"
 msgstr ""
 
-#: plugin.py:7905
+#: plugin.py:7518
 #, python-brace-format
 msgid "🔍 Cache size: {} entries"
 msgstr ""
 
-#: plugin.py:7906
+#: plugin.py:7519
 #, python-brace-format
 msgid "🗄️ Rytec channels in DB: {}"
 msgstr ""
 
-#: plugin.py:7907
+#: plugin.py:7520
 #, python-brace-format
 msgid "📡 DVB channels in DB: {}"
 msgstr ""
 
-#: plugin.py:7915
+#: plugin.py:7528
 #, python-brace-format
 msgid "💾 Output file: {}"
 msgstr ""
 
-#: plugin.py:7916
+#: plugin.py:7529
 #, python-brace-format
 msgid "📁 File size: {}"
 msgstr ""
 
-#: plugin.py:7924
+#: plugin.py:7537
 #, python-brace-format
 msgid "💾 Manual DB matches: {}"
 msgstr ""
 
-#: plugin.py:7925
+#: plugin.py:7538
 msgid "   (Reused previous manual corrections)"
 msgstr ""
 
-#: plugin.py:7931
+#: plugin.py:7544
 #, python-brace-format
 msgid "⏱️ Conversion type: {}"
 msgstr ""
 
-#: plugin.py:7932
+#: plugin.py:7545
 #, python-brace-format
 msgid "🕒 Completed at: {}"
 msgstr ""
 
-#: plugin.py:7933
+#: plugin.py:7546
 msgid "✅ Status: Completed successfully"
 msgstr ""
 
-#: plugin.py:7938
+#: plugin.py:7551
 msgid "❌ Error generating statistics"
 msgstr ""
 
-#: plugin.py:7952
+#: plugin.py:7565
 msgid "Cancelling..."
 msgstr ""
 
-#: plugin.py:7953
+#: plugin.py:7566
 msgid "Stopped"
 msgstr ""
 
-#: plugin.py:7954
+#: plugin.py:7567
 msgid "Cancelling conversion..."
 msgstr ""
 
-#: plugin.py:7963 plugin.py:7996
+#: plugin.py:7575 plugin.py:7608
 msgid "Conversion cancelled"
 msgstr ""
 
-#: plugin.py:8008
+#: plugin.py:7617
 #, python-format
 msgid "Conversion error: %s"
 msgstr ""
 
-#: plugin.py:8050
-msgid "Invalid .tv item format"
-msgstr ""
-
-#: plugin.py:8059
-msgid "Invalid .m3u item format"
-msgstr ""
-
-#: plugin.py:8062
-#, python-format
-msgid "Playing: %s"
-msgstr ""
-
-#: plugin.py:8086
+#: plugin.py:7653
 msgid "Playback error"
 msgstr ""
 
-#: plugin.py:8208
+#: plugin.py:7702
 msgid "No conversion data available. Please run a conversion first."
 msgstr ""
 
-#: plugin.py:8267
+#: plugin.py:7766
 msgid "Ready for next operation"
 msgstr ""
 
-#: plugin.py:8514
+#: plugin.py:8092
 msgid "Manual EPG Match Editor"
 msgstr ""
 
-#: plugin.py:8517
+#: plugin.py:8095
 msgid "Select a channel to correct the match"
 msgstr ""
 
-#: plugin.py:8519
+#: plugin.py:8097
 msgid "Save All"
 msgstr ""
 
-#: plugin.py:8520
+#: plugin.py:8098
 msgid "Undo"
 msgstr ""
 
-#: plugin.py:8521
+#: plugin.py:8099
 msgid "Reset"
 msgstr ""
 
-#: plugin.py:8673
+#: plugin.py:8239
 msgid "No MANUAL changes to save"
 msgstr ""
 
-#: plugin.py:8684
+#: plugin.py:8251
 #, python-brace-format
 msgid "Saved {} MANUAL corrections"
 msgstr ""
 
-#: plugin.py:8693
+#: plugin.py:8261
 msgid "No MANUAL corrections saved"
 msgstr ""
 
-#: plugin.py:8698
+#: plugin.py:8266
 msgid "Save error"
 msgstr ""
 
-#: plugin.py:8884
+#: plugin.py:8457
 msgid ""
 "You have unsaved manual changes.\n"
 "\n"
 "Do you want to save before closing?"
 msgstr ""
 
-#: plugin.py:9001
+#: plugin.py:8578
 #, python-brace-format
 msgid "EPG Coverage: {}/{} channels ({:.1f}%)"
 msgstr ""
 
-#: plugin.py:9028
+#: plugin.py:8605
 #, python-brace-format
 msgid "Channel: {} | {} | Match: {} | Press RIGHT for matches"
 msgstr ""
 
-#: plugin.py:9046 plugin.py:9356
+#: plugin.py:8623 plugin.py:8933
 #, python-brace-format
 msgid "Searching matches for: {}..."
 msgstr ""
 
-#: plugin.py:9349
+#: plugin.py:8926
 #, python-brace-format
 msgid "Found {} matches for: {} | Select and press OK"
 msgstr ""
 
-#: plugin.py:9351
+#: plugin.py:8928
 #, python-brace-format
 msgid "No matches found for: {}"
 msgstr ""
 
-#: plugin.py:9354
+#: plugin.py:8931
 #, python-brace-format
 msgid "Found {} matches so far for: {} | Searching..."
 msgstr ""
 
-#: plugin.py:9443
+#: plugin.py:9024
 msgid "First select a match from the right list (use RIGHT arrow)"
 msgstr ""
 
-#: plugin.py:9449
+#: plugin.py:9030
 msgid "Please select a valid match from the right list"
 msgstr ""
 
-#: plugin.py:9496
+#: plugin.py:9079
 #, python-brace-format
 msgid "EPG assigned: {} | {}"
 msgstr ""
 
-#: plugin.py:9526
+#: plugin.py:9109
 msgid "No actions to undo"
 msgstr ""
 
-#: plugin.py:9549
+#: plugin.py:9132
 #, python-brace-format
 msgid "Undo: Restored previous state for {}"
 msgstr ""
 
-#: plugin.py:9555
+#: plugin.py:9138
 msgid "Error: Channel index out of range"
 msgstr ""
 
-#: plugin.py:9559
+#: plugin.py:9142
 msgid "Error undoing action"
 msgstr ""
 
-#: plugin.py:9599
+#: plugin.py:9185
 #, python-brace-format
 msgid "Match reset for: {}"
 msgstr ""
 
-#: plugin.py:9692
+#: plugin.py:9219
 msgid "Select a channel to edit (use OK or RIGHT to go to matches)"
 msgstr ""
 
-#: plugin.py:9697
+#: plugin.py:9224
 msgid "No channels available"
 msgstr ""
 
-#: plugin.py:9701
+#: plugin.py:9228
 msgid "Please select a channel first"
 msgstr ""
 
-#: plugin.py:9715
+#: plugin.py:9242
 msgid "Select a match and press OK to assign"
 msgstr ""
 
-#: plugin.py:9717
+#: plugin.py:9244
 msgid "No matches found - try different search"
 msgstr ""
 
-#: plugin.py:9832
+#: plugin.py:9362
 msgid "Manual Database Editor"
 msgstr ""
 
-#: plugin.py:9835
+#: plugin.py:9365
 msgid "Loading database..."
 msgstr ""
 
-#: plugin.py:9837
-msgid "Edit"
-msgstr ""
-
-#: plugin.py:9838
+#: plugin.py:9368
 msgid "Delete"
 msgstr ""
 
-#: plugin.py:9839 plugin.py:9885
+#: plugin.py:9369 plugin.py:9507
 msgid "Duplicates"
 msgstr ""
 
-#: plugin.py:9859
+#: plugin.py:9410 plugin.py:9586 plugin.py:9651
+msgid "No duplicates found"
+msgstr ""
+
+#: plugin.py:9418 plugin.py:9457 plugin.py:9688
+msgid "Done"
+msgstr ""
+
+#: plugin.py:9419
+msgid "Selection mode active. Select items with OK"
+msgstr ""
+
+#: plugin.py:9428
 msgid "Error loading database"
 msgstr ""
 
-#: plugin.py:9868
+#: plugin.py:9450
+msgid "No duplicates available for selection"
+msgstr ""
+
+#: plugin.py:9458
+msgid "Selection mode: Select items with OK"
+msgstr ""
+
+#: plugin.py:9469
+msgid "Selection mode off"
+msgstr ""
+
+#: plugin.py:9488
 msgid "No mappings available"
 msgstr ""
 
-#: plugin.py:9884
+#: plugin.py:9532
+msgid "No duplicates found in the database"
+msgstr ""
+
+#: plugin.py:9594
+msgid ">>> SELECTION MODE - Select items with OK"
+msgstr ""
+
+#: plugin.py:9595
 #, python-brace-format
-msgid "Loaded {} mappings"
+msgid ">>> {} duplicate groups, {} total mappings"
 msgstr ""
 
-#: plugin.py:9914 plugin.py:9915
-msgid "No duplicates in database"
+#: plugin.py:9597
+msgid ">>> DUPLICATES VIEW"
 msgstr ""
 
-#: plugin.py:9936
+#: plugin.py:9598
 #, python-brace-format
-msgid "Found {} duplicate groups"
+msgid ">>> {} groups, {} mappings total"
 msgstr ""
 
-#: plugin.py:10011
+#: plugin.py:9605
+#, python-brace-format
+msgid "--- {} ({} duplicates) ---"
+msgstr ""
+
+#: plugin.py:9632
+msgid "All Mappings"
+msgstr ""
+
+#: plugin.py:9639
+#, python-brace-format
+msgid "SELECTION MODE: {} items selected"
+msgstr ""
+
+#: plugin.py:9643
+#, python-brace-format
+msgid " - {} duplicate groups"
+msgstr ""
+
+#: plugin.py:9648
+#, python-brace-format
+msgid "DUPLICATES: {} groups, {} mappings"
+msgstr ""
+
+#: plugin.py:9653
+#, python-brace-format
+msgid "ALL MAPPINGS: {} total"
+msgstr ""
+
+#: plugin.py:9662
+msgid "No items selected for deletion"
+msgstr ""
+
+#: plugin.py:9669
+#, python-brace-format
+msgid ""
+"Delete {} selected items?\n"
+"\n"
+"This action cannot be undone."
+msgstr ""
+
+#: plugin.py:9696
+#, python-brace-format
+msgid "Deleted {} items. Still in selection mode."
+msgstr ""
+
+#: plugin.py:9701
+#, python-brace-format
+msgid "Deleted {} items. No more duplicates."
+msgstr ""
+
+#: plugin.py:9705
+#, python-brace-format
+msgid "Deleted {} items"
+msgstr ""
+
+#: plugin.py:9710
+msgid "Error deleting items"
+msgstr ""
+
+#: plugin.py:9772
 msgid "Please select a mapping (not a group header)"
 msgstr ""
 
-#: plugin.py:10018
+#: plugin.py:9779
 msgid "Please select a mapping to delete"
 msgstr ""
 
-#: plugin.py:10027
+#: plugin.py:9788
 #, python-brace-format
 msgid ""
 "Delete manual mapping?\n"
@@ -1184,33 +1286,37 @@ msgid ""
 "This action cannot be undone."
 msgstr ""
 
-#: plugin.py:10041
+#: plugin.py:9803
+msgid "Mapping deleted successfully"
+msgstr ""
+
+#: plugin.py:9805
 msgid "Error deleting mapping"
 msgstr ""
 
-#: plugin.py:10103
+#: plugin.py:9940
 msgid ""
 "You have unsaved changes in the database.\n"
 "\n"
 "Do you want to save before closing?"
 msgstr ""
 
-#: plugin.py:10814
+#: plugin.py:10811
 #, python-format
 msgid "Archimede Universal Converter v.%s"
 msgstr ""
 
-#: plugin.py:10816 plugin.py:10861
+#: plugin.py:10813 plugin.py:10862
 msgid "Prev"
 msgstr ""
 
-#: plugin.py:10817 plugin.py:10867
+#: plugin.py:10814 plugin.py:10867
 msgid "Next"
 msgstr ""
 
-#: plugin.py:10857
-#, python-format
-msgid "Archimede Universal Converter v.%s - %s"
+#: plugin.py:10855
+#, python-brace-format
+msgid "Archimede Universal Converter by Lululla v.{version} - {page}"
 msgstr ""
 
 #: plugin.py:11171

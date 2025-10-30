@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='2.8'
-changelog='\nRecoded all source Major Fix'
+version='2.9'
+changelog='\nRecoded Class Duplicates - Stat fixed - major match'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##
