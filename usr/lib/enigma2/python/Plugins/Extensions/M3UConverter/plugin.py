@@ -7180,6 +7180,21 @@ class UniversalConverter(Screen):
                 logger.error(f"JSON to TV conversion error: {str(e)}")
                 return (False, str(e))
 
+        # reset buttons
+        self.reset_conversion_buttons()
+
+        self.is_converting = True
+        self.cancel_conversion = False
+        self["key_red"].setText("")
+        self["key_green"].setText("")
+        self["key_blue"].setText(_("Cancel"))
+
+        # Start memory cleanup timer
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper.optimize_memory_timer.start(30000)
+
+        threads.deferToThread(_json_tv_conversion).addBoth(self.conversion_finished)
+
     def _convert_xspf_to_m3u(self):
         """Convert XSPF to M3U format."""
 
