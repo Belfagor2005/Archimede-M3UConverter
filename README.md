@@ -275,17 +275,6 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - `tvg-language`: Channel language
 - `user-agent`: Custom user agent for streams
 
-### JSON Structure
-```json
-{
-  "name": "Channel Name",
-  "url": "stream_url",
-  "group": "Group Name", 
-  "tvg_id": "channel.id",
-  "logo": "logo_url",
-  "tvg_name": "Display Name"
-}```
-
 ## 📊 Output & Export Features
 
 ### 🔄 Export Capabilities
@@ -348,6 +337,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Service Reload**: Automatic Enigma2 service reload after operations
 - **Duplicate Management**: Advanced detection and removal of duplicate channels
 - **Real-time Feedback**: Immediate status updates and progress indicators
+
 
 ## 📊 Conversion Statistics
 
