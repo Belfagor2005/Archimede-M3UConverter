@@ -3480,8 +3480,8 @@ class EPGServiceMapper:
                         cleaned_cache += 1
 
             # 2. Clean manual database - LOAD FIRST, MODIFY, THEN SAVE ONCE
-            manual_db = ManualDatabaseManager()
-            data = manual_db.load_database()
+            # manual_db = ManualDatabaseManager()
+            data = self.manual_db.load_database()
             cleaned_db = 0
 
             for mapping in data.get('mappings', []):
@@ -3493,7 +3493,7 @@ class EPGServiceMapper:
 
             # SAVE ONLY IF THERE ARE CHANGES, AND DO IT ONCE
             if cleaned_db > 0:
-                manual_db.save_database(data)  # The manager will handle backup intelligently
+                self.manual_db.save_database(data)  # The manager will handle backup intelligently
 
             # 3. Clean conversion_data if it exists
             cleaned_conv = 0
@@ -7136,20 +7136,29 @@ class UniversalConverter(Screen):
                 # Refresh EPG configuration before conversion
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                    # DO NOT reset cache to keep match_type clean
 
                 # Execute the actual conversion safely
                 result = self.core_converter.safe_conversion(self._real_conversion_task)
                 if result[0]:
-                    cache_stats = self.epg_mapper._get_cache_statistics()
+                    # Get cache stats safely with fallbacks
+                    cache_stats = {}
+                    if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                        try:
+                            cache_stats = self.epg_mapper._get_cache_statistics()
+                        except Exception as e:
+                            logger.error(f"Error getting cache stats: {str(e)}")
+                            cache_stats = {}
+
+                    # Build stats data with safe dictionary access
                     stats_data = {
-                        'total_channels': result[1],
-                        'rytec_matches': result[2],
-                        'match_hit_rate': cache_stats['match_hit_rate'],
-                        'match_cache_size': cache_stats['match_cache_size'],
-                        'compatible_cache': cache_stats['cache_analysis'].get('compatible', 0),
-                        'incompatible_matches': cache_stats['incompatible_matches'],
-                        'rytec_channels': cache_stats['rytec_channels']
+                        'total_channels': result[1] if len(result) > 1 else 0,
+                        'rytec_matches': result[2] if len(result) > 2 else 0,
+                        'match_hit_rate': cache_stats.get('match_hit_rate', 'N/A'),
+                        'match_cache_size': cache_stats.get('match_cache_size', 0),
+                        'compatible_cache': cache_stats.get('cache_analysis', {}).get('compatible', 0),
+                        'incompatible_matches': cache_stats.get('incompatible_matches', 0),
+                        'rytec_channels': cache_stats.get('rytec_channels', 0),
+                        'database_mode': getattr(self.epg_mapper, 'database_mode', 'both') if hasattr(self, 'epg_mapper') and self.epg_mapper else 'both'
                     }
 
                     self.last_conversion_stats = stats_data
@@ -7168,22 +7177,8 @@ class UniversalConverter(Screen):
 
                 return result
             except Exception as e:
+                logger.error(f"JSON to TV conversion error: {str(e)}")
                 return (False, str(e))
-
-        # reset buttons
-        self.reset_conversion_buttons()
-
-        self.is_converting = True
-        self.cancel_conversion = False
-        self["key_red"].setText("")
-        self["key_green"].setText("")
-        self["key_blue"].setText(_("Cancel"))
-
-        # Start memory cleanup timer
-        if hasattr(self, 'epg_mapper') and self.epg_mapper:
-            self.epg_mapper.optimize_memory_timer.start(30000)
-
-        threads.deferToThread(_json_tv_conversion).addBoth(self.conversion_finished)
 
     def _convert_xspf_to_m3u(self):
         """Convert XSPF to M3U format."""
@@ -7428,7 +7423,7 @@ class UniversalConverter(Screen):
             if not timestamp:
                 timestamp = strftime("%Y-%m-%d %H:%M:%S")
 
-            # CORRECT COUNTERS
+            # CORRECT COUNTERS - usa get() per accesso sicuro
             total_processed = stats_data.get('total_channels', 0)
             total_original = stats_data.get('total_original_channels', total_processed)
             effective_epg_matches = stats_data.get('effective_epg_matches', 0)
@@ -7507,11 +7502,11 @@ class UniversalConverter(Screen):
                 # Cache statistics if available
                 cache_stats = stats_data.get('cache_stats', {})
                 if cache_stats:
+                    cache_stats = stats_data.get('cache_stats', {})
                     match_hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('match_hit_rate', 'N/A'))
                     match_cache_size = cache_stats.get('match_cache_size', cache_stats.get('match_cache_size', 0))
                     rytec_channels = cache_stats.get('rytec_channels', 0)
                     dvb_channels = cache_stats.get('loaded_dvb_channels', 0)
-
                     stats_message.extend([
                         "",
                         _("💾 Cache efficiency: {}").format(match_hit_rate),
