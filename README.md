@@ -38,6 +38,7 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 ### 🔄 Conversion Capabilities
 - **M3U → Enigma2 Bouquets** with EPG mapping
 - **Enigma2 Bouquets → M3U** format
+- **Enigma2 Bouquets → Enigma2 Bouquets** with EPG mapping
 - **JSON → Enigma2 Bouquets** with metadata preservation
 - **JSON → M3U** playlist conversion
 - **M3U → JSON** structured metadata export
@@ -395,5 +396,8 @@ If you like this plugin, consider supporting the development!
 **Support on**: [www.corvoboys.org](http://www.corvoboys.org) • [www.linuxsat-support.com](http://www.linuxsat-support.com)
 
 ---
+
+## Made with ❤️ for the Enigma2 Community
+
 
 ## Made with ❤️ for the Enigma2 Community
