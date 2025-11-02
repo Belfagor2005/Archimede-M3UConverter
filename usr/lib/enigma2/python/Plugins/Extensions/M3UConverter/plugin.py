@@ -153,7 +153,6 @@ config.plugins.m3uconverter.bouquet_position = ConfigSelection(
 config.plugins.m3uconverter.hls_convert = ConfigYesNo(default=True)
 
 # System and Performance Settings
-config.plugins.m3uconverter.auto_reload = ConfigYesNo(default=True)
 config.plugins.m3uconverter.backup_enable = ConfigYesNo(default=True)
 config.plugins.m3uconverter.max_backups = ConfigNumber(default=3)
 config.plugins.m3uconverter.enable_debug = ConfigYesNo(default=False)
@@ -3474,7 +3473,7 @@ class ConversionSelector(Screen):
         # Clean EPG sources if empty
         self._clean_epg_sources()
 
-        if removed_files and config.plugins.m3uconverter.auto_reload.value:
+        if removed_files:
             _reload_services_after_delay(1000)
 
         if removed_files:
@@ -6757,8 +6756,7 @@ class UniversalConverter(Screen):
             self.show_conversion_stats(self.conversion_type, updated_stats)
 
         # Auto-reload services if configured
-        if config.plugins.m3uconverter.auto_reload.value:
-            _reload_services_after_delay(1000)
+        _reload_services_after_delay(1000)
 
         self["status"].setText(_("Manual editing completed"))
 
@@ -6827,8 +6825,7 @@ class UniversalConverter(Screen):
                         self.show_conversion_stats(self.conversion_type, stats_data)
 
                     # Auto-reload services for standard conversions
-                    if config.plugins.m3uconverter.auto_reload.value:
-                        _reload_services_after_delay(1000)
+                    _reload_services_after_delay(1000)
 
                     # Show success message
                     self.show_normal_conversion_success()
@@ -7718,9 +7715,8 @@ class ManualMatchEditor(Screen):
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"🎉 Success: {saved_count} TRULY MANUAL corrections saved")
 
-                # 4. Reload services if configured (solo se necessario)
-                if config.plugins.m3uconverter.auto_reload.value:
-                    self.reload_services_after_manual_edit()
+                # 4. Reload services
+                self.reload_services_after_manual_edit()
 
                 return True
             else:

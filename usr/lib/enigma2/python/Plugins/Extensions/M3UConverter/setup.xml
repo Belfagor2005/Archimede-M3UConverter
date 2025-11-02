@@ -5,7 +5,6 @@
         <item level="0" text="Bouquet Position" description="Position in channel list">config.plugins.m3uconverter.bouquet_position</item>
         <item level="0" text="Convert HLS Streams" description="Convert HLS to Enigma2 format">config.plugins.m3uconverter.hls_convert</item>
         <item level="0" text="Large file threshold (MB)" description="Files larger than this will be sampled (1000 channels max)">config.plugins.m3uconverter.large_file_threshold_mb</item>
-        <item level="0" text="Auto Reload Services" description="Reload channel list automatically">config.plugins.m3uconverter.auto_reload</item>
         <item level="0" text="Create Backup" description="Create backup before conversion">config.plugins.m3uconverter.backup_enable</item>
         <if conditional="config.plugins.m3uconverter.backup_enable.value">
             <item level="0" text="-- Max Backups" description="Maximum backup copies">config.plugins.m3uconverter.max_backups</item>
