@@ -3388,13 +3388,13 @@ class ConversionSelector(Screen):
         self["text"] = Label('')
         self["status"] = Label(_("We're ready: what do you want to do?"))
         self["actions"] = ActionMap(["ColorActions", "OkCancelActions", "MenuActions"], {
-            "red": self.close,
+            "red": self.do_final_close,
             "green": self._select_current_item,
             "blue": self._open_epg_importer,
             "menu": self._open_settings,
             "ok": self._select_current_item,
             "yellow": self._purge_m3u_bouquets,
-            "cancel": self.close
+            "cancel": self.do_final_close
         })
         self["key_red"] = StaticText(_("Close"))
         self["key_green"] = StaticText(_("Select"))
@@ -3473,8 +3473,7 @@ class ConversionSelector(Screen):
         # Clean EPG sources if empty
         self._clean_epg_sources()
 
-        if removed_files:
-            _reload_services_after_delay(1000)
+        _reload_services_after_delay()
 
         if removed_files:
             message = _("Removed {count} bouquet(s):\n{files}").format(
@@ -3614,6 +3613,15 @@ class ConversionSelector(Screen):
         except Exception as e:
             logger.error(f"Error removing EPG source: {str(e)}")
             return False
+
+    def do_final_close(self):
+        """Final close procedure - ALWAYS close properly"""
+        try:
+            _reload_services_after_delay()
+            self.close()
+        except Exception as e:
+            logger.error(f"Error in do_final_close: {str(e)}")
+            self.close()
 
 
 class UniversalConverter(Screen):
@@ -4351,7 +4359,7 @@ class UniversalConverter(Screen):
 
             # Add a short delay before reload to ensure all files are written
             def delayed_reload():
-                _reload_services_after_delay(2000)  # 2-second delay
+                _reload_services_after_delay()  # 4-second delay
                 self["status"].setText(_("Service reload initiated"))
 
                 # Show confirmation message
@@ -6160,7 +6168,6 @@ class UniversalConverter(Screen):
                 # Check cancellation immediately
                 if self.cancel_conversion:
                     return (False, "Conversion cancelled before start")
-
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
                 return self.core_converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
@@ -6169,7 +6176,7 @@ class UniversalConverter(Screen):
                     logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
-        # reset buttons
+        # Reset UI and start conversion
         self.reset_conversion_buttons()
 
         self.is_converting = True
@@ -6186,8 +6193,13 @@ class UniversalConverter(Screen):
 
     def _convert_tv_to_m3u(self):
         """Convert TV bouquet to M3U format."""
-        # Clear log before starting conversion
+        if self.is_converting:
+            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            return
+
+        # Global cleanup before conversion
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper._cleanup_all_match_types()
             self.epg_mapper._cleanup_log_file()
 
         def _real_tv_to_m3u_conversion():
@@ -6226,14 +6238,19 @@ class UniversalConverter(Screen):
 
         def conversion_task():
             try:
+                # Check cancellation immediately
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
+
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return self.core_converter.safe_conversion(_real_tv_to_m3u_conversion)
+                return _real_tv_to_m3u_conversion()
             except Exception as e:
-                logger.error(f"TV-to-M3U conversion failed: {str(e)}")
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
-        # reset buttons
+        # Reset UI and start conversion
         self.reset_conversion_buttons()
 
         self.is_converting = True
@@ -6253,6 +6270,11 @@ class UniversalConverter(Screen):
         if self.is_converting:
             self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
             return
+
+        # Global cleanup before conversion
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper._cleanup_all_match_types()
+            self.epg_mapper._cleanup_log_file()
 
         if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
             self.session.open(MessageBox, _("No channels loaded. Please select a valid TV bouquet file."), MessageBox.TYPE_ERROR)
@@ -6383,22 +6405,42 @@ class UniversalConverter(Screen):
 
         def conversion_task():
             try:
+                # Check cancellation immediately
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
+                if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    self.epg_mapper._refresh_config()
                 return core_converter.safe_conversion(_tv_to_tv_conversion)
             except Exception as e:
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
         # Reset UI and start conversion
         self.reset_conversion_buttons()
+
         self.is_converting = True
         self.cancel_conversion = False
         self["key_red"].setText("")
         self["key_green"].setText("")
         self["key_blue"].setText(_("Cancel"))
 
+        # Start memory cleanup timer
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper.optimize_memory_timer.start(30000)
+
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
     def _convert_json_to_m3u(self):
         """Convert JSON to M3U format."""
+        if self.is_converting:
+            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            return
+
+        # Global cleanup before conversion
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper._cleanup_all_match_types()
+            self.epg_mapper._cleanup_log_file()
 
         def _json_to_m3u_conversion():
             try:
@@ -6467,13 +6509,18 @@ class UniversalConverter(Screen):
 
         def conversion_task():
             try:
+                # Check cancellation immediately
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return self.core_converter.safe_conversion(_json_to_m3u_conversion)
+                return _json_to_m3u_conversion()
             except Exception as e:
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
-        # reset buttons
+        # Reset UI and start conversion
         self.reset_conversion_buttons()
 
         self.is_converting = True
@@ -6490,6 +6537,14 @@ class UniversalConverter(Screen):
 
     def _convert_m3u_to_json(self):
         """Convert M3U playlist to JSON format."""
+        if self.is_converting:
+            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            return
+
+        # Global cleanup before conversion
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper._cleanup_all_match_types()
+            self.epg_mapper._cleanup_log_file()
 
         def _m3u_to_json_conversion():
             try:
@@ -6542,13 +6597,18 @@ class UniversalConverter(Screen):
 
         def conversion_task():
             try:
+                # Check cancellation immediately
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return self.core_converter.safe_conversion(_m3u_to_json_conversion)
+                return _m3u_to_json_conversion()
             except Exception as e:
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
-        # reset buttons
+        # Reset UI and start conversion
         self.reset_conversion_buttons()
 
         self.is_converting = True
@@ -6572,8 +6632,6 @@ class UniversalConverter(Screen):
         # Global cleanup before conversion
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper._cleanup_all_match_types()
-
-        if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper._cleanup_log_file()
 
         # If the channel list hasn't been loaded yet, parse it from the selected file
@@ -6586,13 +6644,10 @@ class UniversalConverter(Screen):
             return
 
         def _json_tv_conversion():
+            """PRIMA def - contiene la logica di post-conversione"""
             try:
-                # Refresh EPG configuration before conversion
-                if hasattr(self, 'epg_mapper') and self.epg_mapper:
-                    self.epg_mapper._refresh_config()
-
-                # Execute the actual conversion safely
-                result = self.core_converter.safe_conversion(self._real_conversion_task)
+                result = self.core_converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
+                
                 if result[0]:
                     # Get cache stats safely with fallbacks
                     cache_stats = {}
@@ -6634,7 +6689,21 @@ class UniversalConverter(Screen):
                 logger.error(f"JSON to TV conversion error: {str(e)}")
                 return (False, str(e))
 
-        # reset buttons
+        def conversion_task():
+            """SECONDA def - wrapper per il thread"""
+            try:
+                # Check cancellation immediately
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
+                if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                    self.epg_mapper._refresh_config()
+                return _json_tv_conversion()
+            except Exception as e:
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.error(f"Conversion task failed: {str(e)}")
+                return (False, str(e))
+
+        # Reset UI and start conversion
         self.reset_conversion_buttons()
 
         self.is_converting = True
@@ -6647,10 +6716,18 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper.optimize_memory_timer.start(30000)
 
-        threads.deferToThread(_json_tv_conversion).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
     def _convert_xspf_to_m3u(self):
         """Convert XSPF to M3U format."""
+        if self.is_converting:
+            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            return
+
+        # Global cleanup before conversion
+        if hasattr(self, 'epg_mapper') and self.epg_mapper:
+            self.epg_mapper._cleanup_all_match_types()
+            self.epg_mapper._cleanup_log_file()
 
         def _xspf_conversion():
             try:
@@ -6698,13 +6775,17 @@ class UniversalConverter(Screen):
 
         def conversion_task():
             try:
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return self.core_converter.safe_conversion(_xspf_conversion)
+                return _xspf_conversion()
             except Exception as e:
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
-        # reset buttons
+        # Reset UI and start conversion
         self.reset_conversion_buttons()
 
         self.is_converting = True
@@ -6756,7 +6837,7 @@ class UniversalConverter(Screen):
             self.show_conversion_stats(self.conversion_type, updated_stats)
 
         # Auto-reload services if configured
-        _reload_services_after_delay(1000)
+        _reload_services_after_delay()
 
         self["status"].setText(_("Manual editing completed"))
 
@@ -6824,9 +6905,6 @@ class UniversalConverter(Screen):
                     elif self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
                         self.show_conversion_stats(self.conversion_type, stats_data)
 
-                    # Auto-reload services for standard conversions
-                    _reload_services_after_delay(1000)
-
                     # Show success message
                     self.show_normal_conversion_success()
 
@@ -6842,6 +6920,9 @@ class UniversalConverter(Screen):
             self["key_blue"].setText(_("Tools"))
             # attention this save epg on excel csv ;)
             if success and config.plugins.m3uconverter.enable_debug.value:
+                # Auto-reload services for standard conversions
+                _reload_services_after_delay()
+
                 if hasattr(self, 'epg_mapper'):
                     bouquet_name = "test"
                     self.epg_mapper._save_quick_debug(self.m3u_channels_list, bouquet_name)
