@@ -183,9 +183,29 @@ def _reload_services_after_delay(delay=1000):
             try:
                 logger.info("🔄 Starting ENHANCED service reload...")
 
-                # METHOD 1: System command (most reliable)
+                # METHOD 1: Direct eDVBDB reload (most reliable)
                 try:
-                    # Try to reload services via HTTP command
+                    db = eDVBDB.getInstance()
+                    if db:
+                        # Clear and reload everything
+                        db.reloadServicelist()
+                        db.reloadBouquets()
+                        logger.info("✅ Bouquets reloaded successfully via eDVBDB")
+                        return
+                except Exception as e:
+                    logger.warning(f"eDVBDB reload failed: {e}")
+
+                # METHOD 2: Enigma2 command
+                try:
+                    from enigma import eDVBDB
+                    eDVBDB.getInstance().reloadBouquets()
+                    logger.info("✅ Bouquets reloaded via eDVBDB command")
+                    return
+                except Exception as e:
+                    logger.warning(f"eDVBDB command failed: {e}")
+
+                # METHOD 3: System command
+                try:
                     result = subprocess.run(
                         ['wget', '-q', '-O', '-', 'http://127.0.0.1/web/servicelistreload?mode=0'],
                         timeout=10,
@@ -198,37 +218,19 @@ def _reload_services_after_delay(delay=1000):
                 except Exception as e:
                     logger.warning(f"Web reload failed: {e}")
 
-                # METHOD 2: Direct eDVBDB reload
+                # METHOD 4: Restart enigma2
                 try:
-                    db = eDVBDB.getInstance()
-                    if db:
-                        # Clear current instance and reload
-                        db.reloadServicelist()
-                        db.reloadBouquets()
-                        logger.info("✅ Bouquets reloaded successfully via eDVBDB")
-                        return
-                except Exception as e:
-                    logger.warning(f"eDVBDB reload failed: {e}")
-
-                # METHOD 3: Restart enigma2 softly
-                try:
-                    subprocess.run(['killall', '-HUP', 'enigma2'], timeout=5)
-                    logger.info("🔄 Sent HUP signal to Enigma2 for soft restart")
-                    return
-                except Exception as e:
-                    logger.warning(f"HUP signal failed: {e}")
-
-                # METHOD 4: Alternative command
-                try:
-                    subprocess.run(['systemctl', 'restart', 'enigma2'], timeout=10)
+                    subprocess.run(['systemctl', 'restart', 'enigma2'], timeout=15)
                     logger.info("🔁 Restarted enigma2 via systemctl")
                 except Exception as e:
-                    logger.error(f"All reload methods failed: {e}")
+                    logger.warning(f"Systemctl restart failed: {e}")
+
+                logger.info("⚠️ Some reload methods failed, but others may have succeeded")
 
             except Exception as e:
                 logger.error(f"❌ Service reload error: {str(e)}")
 
-        # Usa eTimer con controllo migliore
+        # Use eTimer with better error handling
         reload_timer = eTimer()
         reload_timer.callback.append(do_reload)
         reload_timer.start(delay, True)  # Single shot timer
@@ -909,39 +911,95 @@ class EPGServiceMapper:
         logger.info(f"🔄 Config refreshed - Database mode: {self.database_mode}")
 
     def _optimize_memory_usage(self):
-        """Periodic memory cleanup"""
+        """Periodic memory cleanup with LRU strategy"""
         try:
-            # Clearing match cache if too large
-            if len(self._match_cache) > self._cache_max_size * 1.2:
-                excess = len(self._match_cache) - self._cache_max_size
-                keys_to_remove = list(self._match_cache.keys())[:excess]
-                for key in keys_to_remove:
-                    del self._match_cache[key]
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"Cleaned {excess} entries from match cache")
+            # Initialize caches and counters
+            self._init_caches()
+            current_size = len(self._match_cache)
 
-            # Clean name search cache periodically
+            # 1. LRU-based cleanup for match cache
+            if current_size > self._cache_max_size:
+                self._clean_match_cache_lru()
+
+            # 2. EPG cache cleanup
+            self._clean_epg_cache()
+
+            # 3. Periodic deep cleanup
             self._cache_cleanup_counter += 1
-            if self._cache_cleanup_counter >= 50:  # Clean every 50 operations
-                self._name_search_cache.clear()
-                self._rytec_name_cache.clear()
-                if hasattr(self, '_manual_cache'):
-                    self._manual_cache.clear()
+            if self._cache_cleanup_counter >= 50:
+                self._perform_deep_cleanup()
                 self._cache_cleanup_counter = 0
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug("🔄 Cleared name search caches")
-
-            # Clean EPG cache
-            if len(self.epg_cache) > 10000:
-                excess = len(self.epg_cache) - 10000
-                keys_to_remove = list(self.epg_cache.keys())[:excess]
-                for key in keys_to_remove:
-                    del self.epg_cache[key]
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"Cleaned {excess} entries from EPG cache")
 
         except Exception as e:
             logger.error(f"Memory optimization error: {str(e)}")
+
+    def _init_caches(self):
+        """Initialize all caches if they don't exist"""
+        if not hasattr(self, '_name_search_cache'):
+            self._name_search_cache = {}
+        if not hasattr(self, '_rytec_name_cache'):
+            self._rytec_name_cache = {}
+        if not hasattr(self, '_manual_cache'):
+            self._manual_cache = {}
+        if not hasattr(self, '_cache_cleanup_counter'):
+            self._cache_cleanup_counter = 0
+
+    def _clean_match_cache_lru(self):
+        """Clean match cache using LRU strategy"""
+        current_size = len(self._match_cache)
+        if current_size > self._cache_max_size:
+            # Remove 25% of oldest entries (based on timestamp)
+            excess = current_size - int(self._cache_max_size * 0.75)
+
+            # Sort by timestamp to remove oldest entries
+            entries_with_times = []
+            for key, value in self._match_cache.items():
+                if isinstance(value, dict) and 'timestamp' in value:
+                    entries_with_times.append((key, value['timestamp']))
+
+            if entries_with_times:
+                # Sort by timestamp (oldest first)
+                entries_with_times.sort(key=lambda x: x[1])
+                keys_to_remove = [key for key, timestamp in entries_with_times[:excess]]
+
+                for key in keys_to_remove:
+                    del self._match_cache[key]
+
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.debug(f"🧹 LRU Cleaned {len(keys_to_remove)} oldest entries from match cache")
+
+    def _clean_epg_cache(self):
+        """Clean EPG cache"""
+        if len(self.epg_cache) > 10000:
+            excess = len(self.epg_cache) - 8000
+            # Remove random entries (simpler than tracking usage)
+            keys_to_remove = list(self.epg_cache.keys())[:excess]
+            for key in keys_to_remove:
+                del self.epg_cache[key]
+            if config.plugins.m3uconverter.enable_debug.value:
+                logger.debug(f"🧹 Cleaned {excess} entries from EPG cache")
+
+    def _perform_deep_cleanup(self):
+        """Perform comprehensive cleanup"""
+        # Clear all search caches
+        self._name_search_cache.clear()
+        self._rytec_name_cache.clear()
+        self._manual_cache.clear()
+
+        # Reset statistics if they become too large
+        if hasattr(self, '_match_cache_hits') and hasattr(self, '_match_cache_misses'):
+            if self._match_cache_hits > 1000000 or self._match_cache_misses > 1000000:
+                self._match_cache_hits = 0
+                self._match_cache_misses = 0
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.debug("🔄 Reset cache statistics counters")
+
+        # Force garbage collection
+        import gc
+        gc.collect()
+
+        if config.plugins.m3uconverter.enable_debug.value:
+            logger.debug("🔄 Deep cleanup completed")
 
     def clean_channel_name(self, name, preserve_variants=False):
         """Clean channel name - preserve +1, +2, +HD patterns."""
@@ -2738,74 +2796,88 @@ class EPGServiceMapper:
         return self._generate_clean_rytec_id(channel_name, service_ref)
 
     def _get_cache_statistics(self):
-        """Return accurate cache statistics WITHOUT double counting"""
+        """Return accurate cache statistics with proper reset handling"""
+        try:
+            # Ensure counters exist
+            if not hasattr(self, '_match_cache_hits'):
+                self._match_cache_hits = 0
+            if not hasattr(self, '_match_cache_misses'):
+                self._match_cache_misses = 0
 
-        # Use REAL counters from the current conversion only
-        stats_counters = getattr(self, '_stats_counters', {})
+            # Calculate REAL statistics
+            total_match_requests = self._match_cache_hits + self._match_cache_misses
 
-        # Safely extract counts
-        rytec_matches = stats_counters.get('rytec_matches', 0)
-        dvb_matches = stats_counters.get('dvb_matches', 0)
-        dvbt_matches = stats_counters.get('dvbt_matches', 0)
-        fallback_matches = stats_counters.get('fallback_matches', 0)
-        manual_db_matches = stats_counters.get('manual_db_matches', 0)
+            if total_match_requests > 0:
+                match_hit_rate = (self._match_cache_hits / total_match_requests * 100)
+                # Prevent unrealistic values (should be between 0-100)
+                match_hit_rate = max(0, min(100, match_hit_rate))
+            else:
+                match_hit_rate = 0
 
-        # Calculate TOTAL UNIQUE channels processed
-        total_processed = getattr(self, '_last_processed_count', 0)
-        if total_processed == 0:
-            # Fallback: use the sum but ensure it matches reality
+            # Clean cache if too large (prevent memory issues)
+            if len(self._match_cache) > self._cache_max_size:
+                excess = len(self._match_cache) - self._cache_max_size
+                keys_to_remove = list(self._match_cache.keys())[:excess]
+                for key in keys_to_remove:
+                    del self._match_cache[key]
+                logger.debug(f"🧹 Cleaned {excess} entries from match cache")
+
+            # Get statistics from the stats counters
+            stats_counters = getattr(self, '_stats_counters', {})
+
+            # Safely extract counts with defaults
+            rytec_matches = stats_counters.get('rytec_matches', 0)
+            dvb_matches = stats_counters.get('dvb_matches', 0)
+            dvbt_matches = stats_counters.get('dvbt_matches', 0)
+            fallback_matches = stats_counters.get('fallback_matches', 0)
+            manual_db_matches = stats_counters.get('manual_db_matches', 0)
+
+            # Calculate total processed
             total_processed = (rytec_matches + dvb_matches + dvbt_matches +
                                fallback_matches + manual_db_matches)
 
-        # Ensure we don't exceed actual processed count
-        calculated_total = (rytec_matches + dvb_matches + dvbt_matches +
-                            fallback_matches + manual_db_matches)
+            # Calculate percentages safely
+            if total_processed > 0:
+                rytec_percent = (rytec_matches / total_processed * 100)
+                dvb_percent = (dvb_matches / total_processed * 100)
+                dvbt_percent = (dvbt_matches / total_processed * 100)
+                fallback_percent = (fallback_matches / total_processed * 100)
+                manual_percent = (manual_db_matches / total_processed * 100)
+                effective_coverage = 100 - fallback_percent
+            else:
+                rytec_percent = dvb_percent = dvbt_percent = 0
+                fallback_percent = manual_percent = effective_coverage = 0
 
-        if calculated_total > total_processed and total_processed > 0:
-            # Scale down the counts proportionally to match reality
-            scale_factor = total_processed / calculated_total
-            rytec_matches = int(rytec_matches * scale_factor)
-            dvb_matches = int(dvb_matches * scale_factor)
-            dvbt_matches = int(dvbt_matches * scale_factor)
-            fallback_matches = int(fallback_matches * scale_factor)
-            manual_db_matches = int(manual_db_matches * scale_factor)
+            return {
+                'match_hits': self._match_cache_hits,
+                'match_misses': self._match_cache_misses,
+                'match_total_requests': total_match_requests,
+                'match_hit_rate': f"{match_hit_rate:.1f}%",
+                'match_cache_size': len(self._match_cache),
 
-        # Calculate REAL percentages (cannot exceed 100%)
-        if total_processed > 0:
-            rytec_percent = min(100, (rytec_matches / total_processed * 100))
-            dvb_percent = min(100, (dvb_matches / total_processed * 100))
-            dvbt_percent = min(100, (dvbt_matches / total_processed * 100))
-            fallback_percent = min(100, (fallback_matches / total_processed * 100))
-            manual_percent = min(100, (manual_db_matches / total_processed * 100))
+                # Real match counts
+                'rytec_matches': rytec_matches,
+                'dvb_matches': dvb_matches,
+                'dvbt_matches': dvbt_matches,
+                'fallback_matches': fallback_matches,
+                'manual_db_matches': manual_db_matches,
+                'total_matches': total_processed,
 
-            # Effective EPG coverage (excluding fallback)
-            effective_epg_matches = (rytec_matches + dvb_matches + dvbt_matches + manual_db_matches)
-            effective_coverage = min(100, (effective_epg_matches / total_processed * 100))
-        else:
-            rytec_percent = dvb_percent = dvbt_percent = 0
-            fallback_percent = manual_percent = effective_coverage = 0
+                # Accurate percentages
+                'rytec_percent': rytec_percent,
+                'dvb_percent': dvb_percent,
+                'dvbt_percent': dvbt_percent,
+                'fallback_percent': fallback_percent,
+                'manual_percent': manual_percent,
+                'effective_coverage': effective_coverage,
 
-        return {
-            # Real match counts
-            'rytec_matches': rytec_matches,
-            'dvb_matches': dvb_matches,
-            'dvbt_matches': dvbt_matches,
-            'fallback_matches': fallback_matches,
-            'manual_db_matches': manual_db_matches,
-            'total_matches': total_processed,
-
-            # Accurate percentages
-            'rytec_percent': rytec_percent,
-            'dvb_percent': dvb_percent,
-            'dvbt_percent': dvbt_percent,
-            'fallback_percent': fallback_percent,
-            'manual_percent': manual_percent,
-            'effective_coverage': effective_coverage,
-
-            # Additional info for debugging
-            'database_mode': self.database_mode,
-            'total_processed': total_processed
-        }
+                # Additional info for debugging
+                'database_mode': self.database_mode,
+                'total_processed': total_processed
+            }
+        except Exception as e:
+            logger.error(f"Error in cache statistics: {str(e)}")
+            return {'match_hit_rate': '0%', 'match_cache_size': 0}
 
     def _get_cache_statisticsOLD(self):
         """Return detailed cache statistics"""
@@ -3343,12 +3415,34 @@ class EPGServiceMapper:
             logger.error(f"❌ Batch save error: {str(e)}")
             return False
 
+    def normalize_conversion_data(self, conversion_data):
+        """Convert all channel data to consistent dictionary format"""
+        normalized_data = []
+
+        for channel in conversion_data:
+            if isinstance(channel, dict):
+                normalized_data.append(channel)
+            elif isinstance(channel, (tuple, list)) and len(channel) >= 2:
+                # Convert tuple (name, url) to dictionary
+                normalized_data.append({
+                    'name': channel[0],
+                    'url': channel[1],
+                    'original_name': channel[0],
+                    'match_type': 'tv_bouquet'
+                })
+            else:
+                # Skip or log invalid entries
+                logger.warning(f"Invalid channel data format: {type(channel)}")
+
+        return normalized_data
+
     def _save_quick_debug(self, conversion_data, bouquet_name):
         """Save lightweight debug only when debug mode is enabled"""
         if not config.plugins.m3uconverter.enable_debug.value:
             return
 
         try:
+            normalized_data = self.normalize_conversion_data(conversion_data)
             makedirs(DEBUG_DIR, exist_ok=True)
             # 1. First clean old file
             self._cleanup_old_debug_files()
@@ -3361,16 +3455,44 @@ class EPGServiceMapper:
             with open(debug_file_tab, 'w', encoding='utf-8') as f:
                 separator = ';'  # Excel-friendly delimiter
                 f.write(f"Channel{separator}Original_Name{separator}TVG_ID{separator}Clean_Name{separator}Match_Type{separator}Has_EPG{separator}Service_Ref{separator}URL_Start\n")
-                for channel in conversion_data:
-                    name = channel.get('name', 'Unknown')[:50]
-                    original_name = channel.get('original_name', name)
-                    tvg_id = channel.get('tvg_id', '')
-                    clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
-                    match_type = channel.get('match_type', '')
-                    has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
-                    service_ref = channel.get('sref', '')[:50]
-                    url = channel.get('url', '')[:30]
+
+                for channel in normalized_data:
+                    # CORREZIONE: Gestire sia dizionari che tuple
+                    if isinstance(channel, dict):
+                        # Caso dizionario (M3U, JSON)
+                        name = channel.get('name', 'Unknown')[:50]
+                        original_name = channel.get('original_name', name)
+                        tvg_id = channel.get('tvg_id', '')
+                        clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                        match_type = channel.get('match_type', '')
+                        has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
+                        service_ref = channel.get('sref', '')[:50]
+                        url = channel.get('url', '')[:30]
+
+                    elif isinstance(channel, (tuple, list)) and len(channel) >= 2:
+                        # Caso tuple (TV bouquets) - formato (nome, url)
+                        name = str(channel[0])[:50] if len(channel) > 0 else 'Unknown'
+                        original_name = name
+                        tvg_id = ''
+                        clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                        match_type = 'tv_bouquet'
+                        has_epg = 'NO'  # I bouquet TV di solito non hanno EPG integrato
+                        service_ref = ''
+                        url = str(channel[1])[:30] if len(channel) > 1 else ''
+
+                    else:
+                        # Caso sconosciuto - usare valori di default
+                        name = str(channel)[:50]
+                        original_name = name
+                        tvg_id = ''
+                        clean_name = name
+                        match_type = 'unknown'
+                        has_epg = 'NO'
+                        service_ref = ''
+                        url = ''
+
                     f.write(f"{name}{separator}{original_name}{separator}{tvg_id}{separator}{clean_name}{separator}{match_type}{separator}{has_epg}{separator}{service_ref}{separator}{url}\n")
+
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(f"📁 Debug CSV saved: {debug_file_tab}")
 
@@ -3694,12 +3816,16 @@ class CoreConverter:
 
     def get_safe_filename(self, name):
         """Generate a secure file name for bouquets with duplicate suffixes."""
+        # Remove known suffixes
         for suffix in ['_m3ubouquet', '_bouquet', '_iptv', '_tv']:
             if name.endswith(suffix):
                 name = name[:-len(suffix)]
 
+        # Normalize and convert to ASCII
         normalized = unicodedata.normalize("NFKD", name)
         safe_name = normalized.encode('ascii', 'ignore').decode('ascii')
+
+        # Replace invalid characters with underscores
         safe_name = sub(r'[^a-zA-Z0-9_-]', '_', safe_name)
         safe_name = sub(r'_+', '_', safe_name).strip('_')
 
@@ -3978,6 +4104,8 @@ class M3UFileBrowser(Screen):
             else:
                 if path and path.lower().endswith(".tv") and self._file_contains_http(path):
                     filtered_entries.append(entry)
+                    if config.plugins.m3uconverter.enable_debug.value:
+                        logger.debug(f"✅ Added TV file: {path}")
 
         self["filelist"].list = filtered_entries
         self["filelist"].l.setList(filtered_entries)
@@ -4108,12 +4236,12 @@ class ConversionSelector(Screen):
         # self.is_modal = True
         self.setTitle(PLUGIN_TITLE)
         self.menu_options = [
-            (_("M3U ➔ Enigma2 Bouquets"), "m3u_to_tv", "m3u"),
-            (_("M3U ➔ JSON"), "m3u_to_json", "m3u"),
-            (_("Enigma2 Bouquets ➔ M3U"), "tv_to_m3u", "tv"),
-            (_("JSON ➔ Enigma2 Bouquets"), "json_to_tv", "json"),
-            (_("JSON ➔ M3U"), "json_to_m3u", "json"),
-            (_("XSPF ➔ M3U Playlist"), "xspf_to_m3u", "xspf"),
+            (_("Enigma2 Bouquets to ➔ M3U"), "tv_to_m3u", "tv"),
+            (_("M3U to ➔ Enigma2 Bouquets"), "m3u_to_tv", "m3u"),
+            (_("M3U to ➔ JSON"), "m3u_to_json", "m3u"),
+            (_("JSON to ➔ Enigma2 Bouquets"), "json_to_tv", "json"),
+            (_("JSON to ➔ M3U"), "json_to_m3u", "json"),
+            (_("XSPF to ➔ M3U Playlist"), "xspf_to_m3u", "xspf"),
             (_("Remove M3U Bouquets"), "purge_m3u_bouquets", None),
             (_("Plugin Information"), "plugin_info", None)
         ]
@@ -4622,6 +4750,8 @@ class UniversalConverter(Screen):
         # Handle different conversion types
         if self.conversion_type == "m3u_to_tv":
             self._convert_m3u_to_tv()
+        elif self.conversion_type == "m3u_to_json":
+            self._convert_m3u_to_json()
         elif self.conversion_type == "tv_to_m3u":
             self._convert_tv_to_m3u()
         elif self.conversion_type == "json_to_tv":
@@ -4630,8 +4760,6 @@ class UniversalConverter(Screen):
             self._convert_json_to_m3u()
         elif self.conversion_type == "xspf_to_m3u":
             self._convert_xspf_to_m3u()
-        elif self.conversion_type == "m3u_to_json":
-            self._convert_m3u_to_json()
         else:
             self.session.open(MessageBox, _("Unsupported conversion type"), MessageBox.TYPE_ERROR)
 
@@ -5847,6 +5975,7 @@ class UniversalConverter(Screen):
         if not selected_file or not isinstance(selected_file, (str, list, tuple)):
             self["status"].setText(_("Invalid selection"))
             return
+
         try:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug("=== FILE SELECTION STARTED ===")
@@ -5902,6 +6031,7 @@ class UniversalConverter(Screen):
                 self.file_loaded = True
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.debug(f"File loaded successfully, channels: {len(self.m3u_channels_list)}")
+
             except Exception as e:
                 logger.error(f"Processing failed: {str(e)}")
                 raise
@@ -5934,7 +6064,12 @@ class UniversalConverter(Screen):
 
             ready_text = conversion_ready_texts.get(self.conversion_type, _("Ready to convert"))
             self["key_green"].setText(ready_text)
-            self["key_yellow"].setText("")
+
+            if self.conversion_type in ["tv_to_tv", "m3u_to_tv", "json_to_tv"]:
+                self["key_yellow"].setText(_("Match Editor"))
+            else:
+                self["key_yellow"].setText("")
+
             self["status"].setText(_("Loaded first %d channels. Press Green to convert.") % channel_count)
 
     def _process_url(self, url):
@@ -6279,6 +6414,10 @@ class UniversalConverter(Screen):
             self["list"].setList([c[0] for c in channels])
             self.file_loaded = True
             self._update_ui_success(len(self.m3u_channels_list))
+
+            if config.plugins.m3uconverter.enable_debug.value:
+                logger.info(f"✅ TV file parsed successfully: {len(channels)} channels found")
+
         except Exception as e:
             logger.error(f"Error parsing BOUQUET: {str(e)}")
             self.file_loaded = False
@@ -7174,8 +7313,8 @@ class UniversalConverter(Screen):
                         self.show_conversion_stats("json_to_tv", stats_data)
                         if config.plugins.m3uconverter.enable_debug.value:
                             self.print_simple_stats()
-
                 return result
+
             except Exception as e:
                 logger.error(f"JSON to TV conversion error: {str(e)}")
                 return (False, str(e))
