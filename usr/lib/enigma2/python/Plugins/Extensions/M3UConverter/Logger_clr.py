@@ -19,7 +19,6 @@ from __future__ import absolute_import, print_function
 #  please maintain this credit header.                  #
 #########################################################
 """
-
 import sys
 from threading import Lock
 from os import makedirs, remove, rename

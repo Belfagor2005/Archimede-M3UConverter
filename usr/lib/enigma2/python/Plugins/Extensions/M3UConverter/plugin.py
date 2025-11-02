@@ -5,11 +5,11 @@ from __future__ import absolute_import, print_function
 #########################################################
 #                                                       #
 #  Archimede Universal Converter Plugin                 #
-#  Version: 2.9                                         #
+#  Version: 3.0                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "19:15 - 20251030"                    #
+#  Last Modified: "20:05 - 20251102"                    #
 #                                                       #
 #  Credits:                                             #
 #  - Original concept by Lululla                        #
@@ -26,37 +26,30 @@ __author__ = "Lululla"
 import json
 import time
 import glob
-# import queue
 import shutil
 import codecs
 import hashlib
 import threading
 import subprocess
-import unicodedata
 from time import strftime
-from re import compile, sub, findall, DOTALL, MULTILINE, IGNORECASE, search, escape
-from collections import defaultdict
-from os import access, W_OK, listdir, remove, replace, chmod, system, mkdir, makedirs  # , statvfs
-from os.path import exists, isdir, isfile, join, normpath, basename, dirname, getsize, getmtime
 from threading import Lock
 from urllib.parse import unquote
+from collections import defaultdict
+from os import access, W_OK, listdir, remove, replace, chmod, mkdir, makedirs
+from re import compile, sub, findall, DOTALL, MULTILINE, IGNORECASE, search, escape
+from os.path import exists, isdir, isfile, join, normpath, basename, dirname, getsize, getmtime
 
 # ⚡ TWISTED / ASYNC
 from twisted.internet import threads
+from twisted.internet.reactor import callInThread, callFromThread
 
 # 📺 ENIGMA2 CORE
-from enigma import eServiceReference, getDesktop, eTimer, eDVBDB  # , eListboxPythonMultiContent, gFont, RT_HALIGN_LEFT
-try:
-    from enigma import AVSwitch
-except ImportError:
-    from Components.AVSwitch import AVSwitch
+from enigma import eServiceReference, eTimer, eDVBDB
 
 # 🧩 ENIGMA2 COMPONENTS
-from Components.ActionMap import ActionMap
-from Components.FileList import FileList
 from Components.Label import Label
 from Components.MenuList import MenuList
-from Components.ScrollLabel import ScrollLabel
+from Components.ActionMap import ActionMap
 from Components.Sources.Progress import Progress
 from Components.Sources.StaticText import StaticText
 from Components.config import (
@@ -65,18 +58,39 @@ from Components.config import (
 )
 
 # 🪟 ENIGMA2 SCREENS
-from Screens.MessageBox import MessageBox
-from Screens.ChoiceBox import ChoiceBox
 from Screens.Screen import Screen
-from Screens.Setup import Setup
+from Screens.ChoiceBox import ChoiceBox
+from Screens.MessageBox import MessageBox
 
 # 🧰 ENIGMA2 TOOLS
-from Tools.Directories import defaultRecordingLocation, fileExists
-from twisted.internet.reactor import callInThread, callFromThread
+from Tools.Directories import fileExists
 
 # 🧱 LOCAL MODULES
 from . import _
+from .version import CURRENT_VERSION
 from .Logger_clr import get_logger
+from .constants import (
+    M3UConverterSettings,
+    SCREEN_WIDTH,
+    PLUGIN_TITLE,
+    PLUGIN_PATH,
+    ARCHIMEDE_CONVERTER_PATH,
+    LOG_DIR,
+    DEBUG_DIR,
+    DB_PATCH,
+    LANGUAGE_TO_COUNTRY
+)
+from .utils import (
+    AspectManager,
+    M3UFileBrowser,
+    _reload_services_after_delay,
+    create_bouquets_backup,
+    clean_group_name,
+    update_mounts_configuration,
+    default_movie_path
+)
+from .plugin_info import PluginInfoScreen
+from .core_converter import CoreConverter, UnifiedChannelMapping
 
 # Try to import lxml, install if not available
 try:
@@ -93,197 +107,7 @@ except ImportError:
         LXML_AVAILABLE = False
         import xml.etree.ElementTree as ET
 
-
-# ==================== UTILITY FUNCTIONS A ====================
-
-def get_mounted_devices():
-    """Get list of mounted and writable devices."""
-    basic_paths = [
-        ("/media/hdd/", _("HDD Drive")),
-        ("/media/usb/", _("USB Drive")),
-        ("/media/ba/", _("Barry Allen")),
-        ("/media/net/", _("Network Storage")),
-        ("/tmp/", _("Temporary"))
-    ]
-
-    # Check which paths exist and are writable
-    valid_devices = []
-    for path, desc in basic_paths:
-        if isdir(path) and access(path, W_OK):
-            valid_devices.append((path, desc))
-
-    # Add additional USB devices if available (usb1, usb2...)
-    for i in range(1, 4):
-        usb_path = "/media/usb%d/" % i
-        if isdir(usb_path) and access(usb_path, W_OK):
-            valid_devices.append((usb_path, _("USB Drive") + " %d" % i))
-
-    return valid_devices
-
-
-def get_best_storage_path():
-    """Find writable storage from mount points"""
-    try:
-        with open('/proc/mounts', 'r') as f:
-            mounts = f.readlines()
-
-        for mount in mounts:
-            if '/media/' in mount:
-                parts = mount.split()
-                mount_point = parts[1]
-                try:
-                    test_file = join(mount_point, "test.tmp")
-                    with open(test_file, 'w') as f:
-                        f.write("test")
-                    remove(test_file)
-                    print(f"✅ Mount OK: {mount_point}")
-                    return mount_point
-                except:
-                    continue
-    except:
-        pass
-
-    return "/tmp/"
-
-
-def default_movie_path():
-    """Get default movie path from Enigma2 configuration."""
-    result = config.usage.default_path.value
-    if not result.endswith("/"):
-        result += "/"
-    if not isdir(result):
-        return defaultRecordingLocation(config.usage.default_path.value)
-    return result
-
-
-def update_mounts_configuration():
-    """Update the list of mounted devices and update config choices."""
-    mounts = get_mounted_devices()
-    if not mounts:
-        default_path = default_movie_path()
-        mounts = [(default_path, default_path)]
-    config.plugins.m3uconverter.lastdir.setChoices(mounts, default=mounts[0][0])
-    config.plugins.m3uconverter.lastdir.save()
-
-
-def create_bouquets_backup():
-    """Create a backup of bouquets.tv only."""
-    from shutil import copy2
-    src = "/etc/enigma2/bouquets.tv"
-    dst = "/etc/enigma2/bouquets.tv.bak"
-    if exists(src):
-        copy2(src, dst)
-
-
-def _reload_services_after_delay(delay=1000):
-    """Reload Enigma2 bouquets and service lists"""
-    try:
-        def do_reload():
-            """Perform the actual service reload."""
-            try:
-                logger.info("🔄 Starting ENHANCED service reload...")
-
-                # METHOD 1: Direct eDVBDB reload (most reliable)
-                try:
-                    db = eDVBDB.getInstance()
-                    if db:
-                        # Clear and reload everything
-                        db.reloadServicelist()
-                        db.reloadBouquets()
-                        logger.info("✅ Bouquets reloaded successfully via eDVBDB")
-                        return
-                except Exception as e:
-                    logger.warning(f"eDVBDB reload failed: {e}")
-
-                # METHOD 2: Enigma2 command
-                try:
-                    from enigma import eDVBDB
-                    eDVBDB.getInstance().reloadBouquets()
-                    logger.info("✅ Bouquets reloaded via eDVBDB command")
-                    return
-                except Exception as e:
-                    logger.warning(f"eDVBDB command failed: {e}")
-
-                # METHOD 3: System command
-                try:
-                    result = subprocess.run(
-                        ['wget', '-q', '-O', '-', 'http://127.0.0.1/web/servicelistreload?mode=0'],
-                        timeout=10,
-                        capture_output=True,
-                        text=True
-                    )
-                    if result.returncode == 0:
-                        logger.info("✅ Service reload via web command successful")
-                        return
-                except Exception as e:
-                    logger.warning(f"Web reload failed: {e}")
-
-                # METHOD 4: Restart enigma2
-                try:
-                    subprocess.run(['systemctl', 'restart', 'enigma2'], timeout=15)
-                    logger.info("🔁 Restarted enigma2 via systemctl")
-                except Exception as e:
-                    logger.warning(f"Systemctl restart failed: {e}")
-
-                logger.info("⚠️ Some reload methods failed, but others may have succeeded")
-
-            except Exception as e:
-                logger.error(f"❌ Service reload error: {str(e)}")
-
-        # Use eTimer with better error handling
-        reload_timer = eTimer()
-        reload_timer.callback.append(do_reload)
-        reload_timer.start(delay, True)  # Single shot timer
-
-    except Exception as e:
-        logger.error(f"❌ Error setting up service reload: {str(e)}")
-
-
-def transliterate_text(text):
-    """Convert accented characters to ASCII equivalents."""
-    if not text:
-        return ""
-
-    normalized = unicodedata.normalize("NFKD", text)
-    return normalized.encode('ascii', 'ignore').decode('ascii')
-
-
-def clean_group_name(name):
-    """Clean group names preserving accented characters."""
-    if not name:
-        return "Default"
-
-    cleaned = name.strip()
-
-    # Remove common prefixes and suffixes including |NOW|, |IT|, etc.
-    cleaned = sub(r'^\s*\|[A-Z]+\|\s*', '', cleaned)  # Remove |IT|, |UK|, |NOW| etc.
-    cleaned = sub(r'^\s*[A-Z]{2}:\s*', '', cleaned)
-    cleaned = sub(r'^\s*(IT|UK|FR|DE|ES|NL|PL|GR|CZ|HU|RO|SE|NO|DK|FI|NOW)\s+', '', cleaned, flags=IGNORECASE)
-
-    # Remove special characters but preserve accents and hyphens
-    cleaned = sub(r'[^\w\s\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', '', cleaned)
-    cleaned = ' '.join(cleaned.split())
-
-    # Limit length
-    if len(cleaned) > 40:
-        cleaned = cleaned[:40]
-
-    return cleaned or "Default"
-
-
 # ==================== CONSTANTS & PATHS ====================
-CURRENT_VERSION = '2.9'
-LAST_MODIFIED_DATE = "20251030"
-PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
-PLUGIN_PATH = dirname(__file__)
-BASE_STORAGE_PATH = get_best_storage_path()
-ARCHIMEDE_CONVERTER_PATH = join(BASE_STORAGE_PATH, "archimede_converter")
-LOG_DIR = ARCHIMEDE_CONVERTER_PATH
-DEBUG_DIR = join(ARCHIMEDE_CONVERTER_PATH, "debug")
-MAIN_LOG = join(LOG_DIR, "converter.log")
-DB_PATCH = join(PLUGIN_PATH, "database", "manual_mappings.json")
-EXPORT_DIR = join(PLUGIN_PATH, "database")
-
 ICON_STORAGE = 0
 ICON_PARENT = 1
 ICON_CURRENT = 2
@@ -305,116 +129,6 @@ logger = get_logger(
     clear_on_start=True,
     max_size_mb=0.5
 )
-
-
-# ==================== END CONSTANT ====================
-# Language to country mapping for EPG sources
-LANGUAGE_TO_COUNTRY = {
-    # Europa
-    'it': 'IT',    # Italian -> Italy
-    'en': 'UK',    # English -> United Kingdom
-    'de': 'DE',    # German -> Germany
-    'fr': 'FR',    # French -> France
-    'es': 'ES',    # Spanish -> Spain
-    'pt': 'PT',    # Portuguese -> Portugal
-    'nl': 'NL',    # Dutch -> Netherlands
-    'gr': 'GR',    # Greek -> Greece
-    'cz': 'CZ',    # Czech -> Czech Republic
-    'hu': 'HU',    # Hungarian -> Hungary
-    'ro': 'RO',    # Romanian -> Romania
-    'se': 'SE',    # Swedish -> Sweden
-    'no': 'NO',    # Norwegian -> Norway
-    'dk': 'DK',    # Danish -> Denmark
-    'fi': 'FI',    # Finnish -> Finland
-    'at': 'AT',    # Austria
-    'ba': 'BA',    # Bosnia and Herzegovina
-    'al': 'AL',    # Albania
-    'be': 'BE',    # Belgium
-    'ch': 'CH',    # Switzerland
-    'cy': 'CY',    # Cyprus - CORRETTO
-    'hr': 'HR',    # Croatia
-    'lt': 'LT',    # Lithuania
-    'lv': 'LV',    # Latvia
-    'mt': 'MT',    # Malta
-    'pl': 'PL',    # Poland
-    'rs': 'RS',    # Serbia
-    'sk': 'SK',    # Slovakia
-    'bg': 'BG',    # Bulgaria
-    'tr': 'TR',    # Turkey
-
-    # Americhe
-    'us': 'US2',   # USA
-    'usl': 'US_LOCALS1',  # USA Locals
-    'uss': 'US_SPORTS1',  # USA Sports
-    'ca': 'CA2',   # Canada
-    'mx': 'MX1',   # Mexico
-    'br': 'BR1',   # Brazil
-    'br2': 'BR2',  # Brazil 2
-    'cl': 'CL1',   # Chile
-    'co': 'CO1',   # Colombia
-    'cr': 'CR1',   # Costa Rica
-    'do': 'DO1',   # Dominican Republic
-    'ec': 'EC1',   # Ecuador
-    'pe': 'PE1',   # Peru
-    'uy': 'UY1',   # Uruguay
-    'pa': 'PA1',   # Panama
-    'ar': 'AR',    # Argentina
-    'jm': 'JM1',   # Jamaica
-
-    # Asia
-    'as': 'AS',    # Asian Television - CORRETTO
-    'in': 'IN1',   # India
-    'in2': 'IN2',  # India 2
-    'in4': 'IN4',  # India 4
-    'jp': 'JP1',   # Japan
-    'jp2': 'JP2',  # Japan 2
-    'kr': 'KR1',   # Korea
-    'hk': 'HK1',   # Hong Kong
-    'id': 'ID1',   # Indonesia
-    'my': 'MY1',   # Malaysia
-    'ph': 'PH1',   # Philippines
-    'ph2': 'PH2',  # Philippines 2
-    'th': 'TH1',   # Thailand
-    'vn': 'VN1',   # Vietnam
-    'pk': 'PK1',   # Pakistan
-    'il': 'IL1',   # Israel
-    'sa': 'SA2',   # Saudi Arabia
-    'sg': 'SG1',   # Singapore
-    'mn': 'MN1',   # Mongolia
-    'cn': 'AS',    # China -> Asian Television (CORRETTO)
-
-    # Oceania
-    'au': 'AU',    # Australia
-    'nz': 'NZ1',   # New Zealand
-
-    # Africa - Medio Oriente
-    'eg': 'EG1',   # Egypt
-    'za': 'ZA1',   # South Africa
-    'ng': 'NG1',   # Nigeria
-    'ke': 'KE1',   # Kenya
-    'sa1': 'SA1',  # Saudi Arabia alt
-
-    # Special Network
-    'bein': 'BEIN',          # BEIN Sports
-    'rakuten': 'RAKUTEN1',   # Rakuten TV
-    'plex': 'PLEX1',         # Plex TV
-    'distro': 'DISTROTV1',   # Distro TV
-    'fanduel': 'FANDUEL1',   # FanDuel
-    'draftkings': 'DRAFTKINGS1',  # DraftKings
-    'powertv': 'POWERNATION1',    # PowerNation
-    'peacock': 'PEACOCK1',        # Peacock
-    'tbnplus': 'TBNPLUS1',        # TBN Plus
-    'thesportplus': 'THESPORTPLUS1',  # The Sport Plus
-    'rally': 'RALLY_TV1',         # Rally TV
-    'sportklub': 'SPORTKLUB1',    # Sport Klub
-    'voa': 'VOA1',                # Voice of America
-    'aljazeera': 'ALJAZEERA1',    # Al Jazeera
-    'viva': 'VIVA_RUSSIA',        # Viva Russia feed (CORRETTO)
-
-    # Full
-    'all': 'ALL'  # All sources
-}
-
 
 # ==================== CONFIG INITIALIZATION ====================
 config.plugins.m3uconverter = ConfigSubsection()
@@ -522,120 +236,11 @@ config.plugins.m3uconverter.auto_open_editor = ConfigYesNo(default=False)
 config.plugins.m3uconverter.rytec_search_limit = ConfigSelectionNumber(default=1000, stepwidth=500, min=500, max=20000)
 config.plugins.m3uconverter.dvb_search_limit = ConfigSelectionNumber(default=1000, stepwidth=500, min=500, max=20000)
 
-
 update_mounts_configuration()
-
-
-# ==================== CORE CLASSES ====================
-class AspectManager:
-    """Manage aspect ratio settings for video playback."""
-    def __init__(self):
-        self.init_aspect = self.get_current_aspect()
-        if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Initial aspect ratio: {self.init_aspect}")
-
-    def getAspectRatioSetting(self):
-        """
-        Map Enigma2 config.av.aspectratio string values to integer codes.
-        If no mapping exists, fall back to the raw config value.
-        """
-        aspect_map = {
-            "4_3_letterbox": 0,
-            "4_3_panscan": 1,
-            "16_9": 2,
-            "16_9_always": 3,
-            "16_10_letterbox": 4,
-            "16_10_panscan": 5,
-            "16_9_letterbox": 6,
-        }
-
-        val = config.av.aspectratio.value
-        return aspect_map.get(val, val)
-
-    def set_aspect_for_video(self, aspect=None):
-        """Temporarily set an aspect ratio for video playback."""
-        try:
-            if aspect is None:
-                aspect = 2
-            print("[INFO] Imposto aspect ratio a:", aspect)
-            AVSwitch().setAspectRatio(aspect)
-        except Exception as e:
-            logger.error(f"Failed to set aspect ratio: {str(e)}")
-
-    def get_current_aspect(self):
-        """Get the current aspect ratio setting.
-        Returns:
-            int: Current aspect ratio setting
-        """
-        try:
-            return self.getAspectRatioSetting()
-        except Exception as e:
-            logger.error(f"Failed to get aspect ratio: {str(e)}")
-            return 0
-
-    def restore_aspect(self):
-        """Restores the original aspect ratio when the plugin exits."""
-        try:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Restoring aspect ratio to: {self.init_aspect}")
-            AVSwitch().setAspectRatio(self.init_aspect)
-        except Exception as e:
-            logger.error(f"Failed to restore aspect ratio: {str(e)}")
 
 
 # ==================== GLOBAL INSTANCES ====================
 aspect_manager = AspectManager()
-screen_dimensions = getDesktop(0).size()
-SCREEN_WIDTH = screen_dimensions.width()
-
-if SCREEN_WIDTH > 1280:
-    # HD
-    ITEM_HEIGHT = 120
-    FONT_SIZE = 28
-    ICON_SIZE = (30, 30)
-else:
-    # SD
-    ITEM_HEIGHT = 100
-    FONT_SIZE = 24
-    ICON_SIZE = (25, 25)
-
-
-class UnifiedChannelMapping:
-    """Unified channel mapping structure to replace multiple redundant maps."""
-
-    def __init__(self):
-        """Initialize unified channel mapping with empty structures."""
-        # Rytec databases
-        self.rytec = {
-            'basic': {},                    # Base Rytec mapping (id -> sref)
-            'clean': {},                    # Clean names mapping (clean_name -> sref)
-            'extended': defaultdict(list),  # Extended info with variants (id -> [variants])
-            'by_name': defaultdict(list)    # Rytec entries by channel name
-        }
-
-        # DVB databases
-        self.dvb = defaultdict(list)        # DVB channels from lamedb/bouquets (name -> [services])
-
-        # Optimized structures
-        self.optimized = {}                 # Optimized for matching (name -> best_service)
-        self.reverse_mapping = {}           # Reverse mapping (channel_id -> satellite)
-        self.auto_discovered = {}           # Auto-discovered references (channel_id -> sref)
-
-        # Caches
-        self._clean_name_cache = {}         # Cache for cleaned names
-        self._clean_cache_max_size = 10000  # Cache max size
-
-    def clear(self):
-        """Clear all mappings."""
-        self.rytec['basic'].clear()
-        self.rytec['clean'].clear()
-        self.rytec['extended'].clear()
-        self.rytec['by_name'].clear()
-        self.dvb.clear()
-        self.optimized.clear()
-        self.reverse_mapping.clear()
-        self.auto_discovered.clear()
-        self._clean_name_cache.clear()
 
 
 class EPGServiceMapper:
@@ -814,37 +419,6 @@ class EPGServiceMapper:
             logger.error(f"❌ Initialization failed: {str(e)}")
             return False
 
-    """
-    # def _load_enigma2_configuration(self, settings_path="/etc/enigma2/settings"):
-        # config_data = {'satellites': set(), 'terrestrial': False, 'cable': False}
-        # if not fileExists(settings_path):
-            # if config.plugins.m3uconverter.enable_debug.value:
-                # logger.warning("Enigma2 settings file not found: %s", settings_path)
-            # return config_data
-        # try:
-            # with open(settings_path, 'r') as f:
-                # lines = f.readlines()
-
-            # for line in lines:
-                # line = line.strip()
-                # if line.startswith('config.Nims.') and '.dvbs.diseqc' in line:
-                    # parts = line.split('=')
-                    # if len(parts) == 2 and parts[1].isdigit():
-                        # sat_position = int(parts[1])
-                        # if sat_position > 0:
-                            # config_data['satellites'].add(sat_position)
-                # elif line.startswith('config.Nims.') and '.dvbt.terrestrial' in line:
-                    # config_data['terrestrial'] = True
-                # elif line.startswith('config.Nims.') and '.dvbc.configMode' in line:
-                    # config_data['cable'] = True
-            # if config.plugins.m3uconverter.enable_debug.value:
-                # logger.info("Enigma2 configuration loaded: %s", config_data)
-            # return config_data
-        # except Exception as e:
-            # logger.error("Error reading Enigma2 settings: %s", str(e))
-            # return config_data
-    """
-
     def _load_channel_mapping(self, mapping_path="/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/channel_mapping.conf"):
         self.channel_mapping = {}
         self.reverse_channel_mapping = {}  # Reverse map: channel ID -> satellite
@@ -1015,24 +589,18 @@ class EPGServiceMapper:
 
             # STEP 1: Preserva i pattern +1, +2, +HD, +4K, etc.
             plus_matches = self._plus_pattern.findall(cleaned)
-
             # STEP 2: Use precompiled pattern to remove special characters, ma preserva +
             cleaned = sub(r'[^\w\s\+\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', ' ', cleaned)
-
             # STEP 3: Remove quality indicators BUT preserve those that start with +
             cleaned = self._quality_pattern.sub('', cleaned)
-
             # STEP 4: Convert to lowercase
             cleaned = cleaned.lower()
-
             # STEP 5: Remove parentheses and numbers in one go
             cleaned = sub(r'\s*\(\d+\)\s*', '', cleaned)  # Remove (7), (6), etc.
             cleaned = sub(r'\s*\(backup\)\s*', '', cleaned, flags=IGNORECASE)
             cleaned = sub(r'\s*\(.*?\)\s*', '', cleaned)  # Remove any parentheses content
-
             # STEP 6: Remove dots
             cleaned = cleaned.replace('.', ' ')
-
             # STEP 7: RESTORE +1, +2, +HD patterns after cleaning
             if plus_matches:
                 # Remove duplicates and preserve order
@@ -1050,7 +618,6 @@ class EPGServiceMapper:
 
             # STEP 8: REMOVE SPACES - IMPORTANT for matching
             cleaned = cleaned.replace(' ', '')
-
             # STEP 9: Minimal normalization
             cleaned = sub(r'[\\/_,;:]', '', cleaned).strip()
 
@@ -3731,437 +3298,6 @@ class EPGServiceMapper:
             logger.debug(f"Debug cleanup skipped: {e}")
 
 
-class CoreConverter:
-    """Main converter class with backup and logging functionality."""
-
-    _instance = None
-    _lock = Lock()
-
-    def __new__(cls):
-        """Singleton pattern implementation."""
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-                    cls._instance.__initialized = False
-        return cls._instance
-
-    def __init__(self):
-        """Initialize core converter with directories and logging."""
-        if not self.__initialized:
-            self.backup_dir = join(ARCHIMEDE_CONVERTER_PATH, "archimede_backup")
-            self.log_file = join(ARCHIMEDE_CONVERTER_PATH, "core_converter_archimede_converter.log")
-            self._create_necessary_directories()
-            self.__initialized = True
-
-    def _log_current_configuration(self):
-        """Log the current configuration in setup.xml order"""
-        try:
-            logger.info("=== CURRENT CONFIGURATION (Setup Order) ===")
-            logger.info("📁 FILE & STORAGE SETTINGS:")
-            logger.info(f"  • Default Folder: {config.plugins.m3uconverter.lastdir.value}")
-            logger.info(f"  • Large file threshold: {config.plugins.m3uconverter.large_file_threshold_mb.value} MB")
-
-            logger.info("🎯 BOUQUET SETTINGS:")
-            logger.info(f"  • Bouquet Mode: {config.plugins.m3uconverter.bouquet_mode.value}")
-            logger.info(f"  • Bouquet Position: {config.plugins.m3uconverter.bouquet_position.value}")
-
-            logger.info("🔧 STREAM & CONVERSION:")
-            logger.info(f"  • Convert HLS Streams: {config.plugins.m3uconverter.hls_convert.value}")
-
-            logger.info("⚙️ SYSTEM SETTINGS:")
-            logger.info(f"  • Auto Reload Services: {config.plugins.m3uconverter.auto_reload.value}")
-            logger.info(f"  • Create Backup: {config.plugins.m3uconverter.backup_enable.value}")
-            logger.info(f"  • Max Backups: {config.plugins.m3uconverter.max_backups.value}")
-            logger.info(f"  • Debug Mode: {config.plugins.m3uconverter.enable_debug.value}")
-
-            logger.info("📡 EPG SETTINGS:")
-            logger.info(f"  • Enable EPG: {config.plugins.m3uconverter.epg_enabled.value}")
-
-            logger.info("  📊 EPG CONFIGURATION:")
-            logger.info(f"    • EPG Language: {config.plugins.m3uconverter.language.value}")
-            logger.info(f"    • EPG Generation Mode: {config.plugins.m3uconverter.epg_generation_mode.value}")
-            logger.info(f"    • Database Mode: {config.plugins.m3uconverter.epg_database_mode.value}")
-            logger.info(f"    • Use Manual Database: {config.plugins.m3uconverter.use_manual_database.value}")
-            logger.info(f"    • Ignore DVB-T services: {config.plugins.m3uconverter.ignore_dvbt.value}")
-
-            logger.info("  🎯 SIMILARITY THRESHOLDS:")
-            logger.info(f"    • Global Similarity: {config.plugins.m3uconverter.similarity_threshold.value}%")
-            logger.info(f"    • Rytec Similarity: {config.plugins.m3uconverter.similarity_threshold_rytec.value}%")
-            logger.info(f"    • DVB Similarity: {config.plugins.m3uconverter.similarity_threshold_dvb.value}%")
-
-            logger.info("  💾 MANUAL DATABASE:")
-            logger.info(f"    • Manual DB Max Size: {config.plugins.m3uconverter.manual_db_max_size.value}")
-            logger.info(f"    • Auto-open Editor: {config.plugins.m3uconverter.auto_open_editor.value}")
-
-            logger.info("  🗄️ DEBUG STORAGE:")
-            logger.info(f"    • BASE_STORAGE_PATH: {BASE_STORAGE_PATH}")
-            logger.info(f"    • ARCHIMEDE_CONVERTER_PATH: {ARCHIMEDE_CONVERTER_PATH}")
-            logger.info(f"    • LOG_DIR: {LOG_DIR}")
-            logger.info(f"    • DB PATCH: {DB_PATCH}")
-            logger.info(f"    • USB exists: {isdir('/media/usb/')}")
-            logger.info(f"    • USB writable: {access('/media/usb/', W_OK)}")
-
-            logger.info("=== END CONFIGURATION ===")
-
-        except Exception as e:
-            logger.error(f"Error logging configuration: {str(e)}")
-
-    def _create_necessary_directories(self):
-        """Create necessary directories if they don't exist."""
-        try:
-            makedirs(self.backup_dir, exist_ok=True)
-        except Exception as e:
-            logger.error(f"Error creating directories: {str(e)}")
-
-    def get_safe_filename(self, name):
-        """Generate a secure file name for bouquets with duplicate suffixes."""
-        # Remove known suffixes
-        for suffix in ['_m3ubouquet', '_bouquet', '_iptv', '_tv']:
-            if name.endswith(suffix):
-                name = name[:-len(suffix)]
-
-        # Normalize and convert to ASCII
-        normalized = unicodedata.normalize("NFKD", name)
-        safe_name = normalized.encode('ascii', 'ignore').decode('ascii')
-
-        # Replace invalid characters with underscores
-        safe_name = sub(r'[^a-zA-Z0-9_-]', '_', safe_name)
-        safe_name = sub(r'_+', '_', safe_name).strip('_')
-
-        suffix = "_m3ubouquet"
-        base_name = safe_name[:50 - len(suffix)] if len(safe_name) > 50 - len(suffix) else safe_name
-
-        return base_name + suffix if base_name else "m3uconverter_bouquet"
-
-    def remove_suffixes(self, name):
-        """Remove all known suffixes from the name for display purposes."""
-        suffixes = ['_m3ubouquet', '_bouquet', '_iptv', '_tv']
-
-        for suffix in suffixes:
-            if name.endswith(suffix):
-                name = name[:-len(suffix)]
-                break
-
-        return name
-
-    def write_group_bouquet(self, safe_name, channels, epg_mapper=None):
-        """Write bouquet using bouquet_sref for IPTV and sref as fallback"""
-        try:
-            bouquet_dir = "/etc/enigma2"
-            filename = join(bouquet_dir, "userbouquet." + safe_name + ".tv")
-            temp_file = filename + ".tmp"
-
-            if not exists(bouquet_dir):
-                makedirs(bouquet_dir, exist_ok=True)
-
-            name_bouquet = clean_group_name(self.remove_suffixes(safe_name))
-
-            with open(temp_file, "w", encoding="utf-8", buffering=65536) as f:
-                f.write(f"#NAME {name_bouquet}\n")
-                f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | Archimede Converter | ---\n")
-                f.write("#DESCRIPTION --- | Archimede Converter | ---\n")
-
-                for ch in channels:
-                    if not ch.get('url') or len(ch['url']) < 10:
-                        continue
-
-                    # Use bouquet_sref if available, otherwise sref, otherwise generate
-                    service_ref = ch.get('bouquet_sref', ch.get('sref', ''))
-
-                    if not service_ref:
-                        if epg_mapper:
-                            service_ref = epg_mapper._generate_service_reference(ch['url'])
-                        else:
-                            service_ref = self._generate_basic_service_reference(ch['url'])
-
-                    f.write(f"#SERVICE {service_ref}\n")
-
-                    # Clean name for description
-                    desc = ch.get('name', 'Unknown Channel')
-                    desc = ''.join(c for c in desc if c.isprintable() or c.isspace())
-                    desc = transliterate_text(desc)
-                    f.write(f"#DESCRIPTION {desc}\n")
-
-            # Replace file
-            if exists(filename):
-                remove(filename)
-            replace(temp_file, filename)
-            chmod(filename, 0o644)
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ Manual bouquet written: {safe_name} with {len(channels)} channels")
-            return True
-
-        except Exception as e:
-            if exists(temp_file):
-                try:
-                    remove(temp_file)
-                except Exception:
-                    pass
-            logger.error(f"❌ Failed to write manual bouquet {safe_name}: {str(e)}")
-            return False
-
-    def _generate_basic_service_reference(self, url):
-        """Basic fallback - to be used ONLY if epg_mapper is not available"""
-        if not url:
-            return None
-
-        url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()[:8]
-        service_id = int(url_hash, 16) % 65536
-        encoded_url = url.replace(':', '%3a').replace(' ', '%20')
-        return f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
-
-    def update_main_bouquet(self, groups):
-        """Update the main bouquet file with generated group bouquets."""
-        main_file = "/etc/enigma2/bouquets.tv"
-        # Read existing content
-        existing_lines = []
-        if exists(main_file):
-            try:
-                with open(main_file, "r", encoding="utf-8") as f:
-                    existing_lines = f.readlines()
-            except Exception as e:
-                logger.error(f"Error reading bouquets.tv: {str(e)}")
-                return False
-
-        if config.plugins.m3uconverter.backup_enable.value:
-            create_bouquets_backup()
-
-        # Create new lines to add
-        new_lines = []
-        for group in groups:
-            safe_name = self.get_safe_filename(group)
-            bouquet_path = "userbouquet." + safe_name + ".tv"
-            line_to_add = '#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "' + bouquet_path + '" ORDER BY bouquet\n'
-
-            # Check if line already exists
-            if not any(line_to_add in line for line in existing_lines):
-                new_lines.append(line_to_add)
-
-        if not new_lines:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("No new bouquets to add")
-            return True
-
-        # Add new lines in correct position
-        if config.plugins.m3uconverter.bouquet_position.value == "top":
-            final_content = new_lines + existing_lines
-        else:
-            final_content = existing_lines + new_lines
-
-        # Write file
-        try:
-            with open(main_file, "w", encoding="utf-8") as f:
-                f.writelines(final_content)
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Updated bouquets.tv with {len(new_lines)} new bouquets")
-            return True
-        except Exception as e:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.error(f"Error writing bouquets.tv: {str(e)}")
-            return False
-
-    def safe_conversion(self, function, *args, **kwargs):
-        """Perform conversion with automatic backup and error handling."""
-        try:
-            self._create_backup()
-            result = function(*args, **kwargs)
-            self._log_success(function.__name__)
-            return result
-        except Exception as e:
-            self._log_error(e)
-            self._restore_backup()
-            raise RuntimeError(f"Conversion failed (restored backup). Error: {str(e)}")
-
-    def _create_backup(self):
-        """Create a backup of the existing bouquets."""
-        try:
-            if not exists("/etc/enigma2/bouquets.tv"):
-                return
-
-            self.cleanup_old_backups(config.plugins.m3uconverter.max_backups.value)
-
-            timestamp = strftime("%Y%m%d_%H%M%S")
-            import random
-            unique_id = random.randint(100, 999)
-            backup_file = join(self.backup_dir, f"bouquets_{timestamp}_{unique_id}.tv")
-            shutil.copy2("/etc/enigma2/bouquets.tv", backup_file)
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"💾 Backup created: {basename(backup_file)}")
-
-        except Exception as e:
-            raise RuntimeError(f"Backup failed: {str(e)}")
-
-    def _restore_backup(self):
-        """Restore the most recent available backup."""
-        try:
-            backups = sorted([f for f in listdir(self.backup_dir)
-                              if f.startswith("bouquets_") and f.endswith(".tv")])
-
-            if backups:
-                latest_backup = join(self.backup_dir, backups[-1])
-                shutil.copy2(latest_backup, "/etc/enigma2/bouquets.tv")
-        except Exception as e:
-            raise RuntimeError(f"Restore failed: {str(e)}")
-
-    def _log_success(self, operation_name):
-        """Log a successful operation."""
-        message = f"{strftime('%Y-%m-%d %H:%M:%S')} [SUCCESS] {operation_name}"
-        self._write_to_log(message)
-
-    def _log_error(self, error):
-        """Log an error."""
-        message = f"{strftime('%Y-%m-%d %H:%M:%S')} [ERROR] {str(error)}"
-        self._write_to_log(message)
-
-    def _write_to_log(self, message):
-        """Write message to log file."""
-        try:
-            with open(self.log_file, "a") as f:
-                f.write(message + "\n")
-        except Exception:
-            print(f"Fallback log: {message}")
-
-    def _is_url_accessible(self, url, timeout=5):
-        """Check if a URL is reachable."""
-        if not url:
-            return False
-
-        try:
-            cmd = f"curl --max-time {timeout} --head --silent --fail --output /dev/null {url}"
-            return system(cmd) == 0
-        except Exception:
-            return False
-
-    def cleanup_old_backups(self, max_backups=3):
-        """Keep only the latest N backups."""
-        try:
-            backups = sorted([f for f in listdir(self.backup_dir)
-                              if f.startswith("bouquets_") and f.endswith(".tv")])
-
-            for old_backup in backups[:-max_backups]:
-                remove(join(self.backup_dir, old_backup))
-        except Exception as e:
-            self._log_error(f"Cleanup failed: {str(e)}")
-
-
-# ==================== SCREEN CLASSES ====================
-
-
-class M3UFileBrowser(Screen):
-    """File browser screen for selecting M3U, TV, JSON, and XSPF files."""
-
-    def __init__(self, session, startdir="/etc/enigma2",
-                 matchingPattern=r"(?i)^.*\.(tv|m3u|m3u8|json|xspf)$",
-                 conversion_type=None, title=None):
-
-        Screen.__init__(self, session)
-        if title:
-            self.setTitle(title)
-        self.skinName = "FileBrowser"
-        self.conversion_type = conversion_type
-        self["filelist"] = FileList(
-            startdir,
-            matchingPattern=matchingPattern,
-            showDirectories=True,
-            showFiles=True,
-            useServiceRef=False
-        )
-
-        self["actions"] = ActionMap(["OkCancelActions", "ColorActions"], {
-            "ok": self._on_ok_pressed,
-            "green": self._on_ok_pressed,
-            "cancel": self.close
-        }, -1)
-        if self.conversion_type == "tv_to_m3u":
-            self.onShown.append(self._filter_file_list)
-
-    def _filter_file_list(self):
-        """Filter list to show only directories and .tv files containing 'http'."""
-        filtered_entries = []
-        for entry in self["filelist"].list:
-            if not entry or not isinstance(entry[0], tuple):
-                continue
-
-            file_data = entry[0]
-            path = None
-            is_directory = False
-
-            if len(file_data) >= 2:
-                path = file_data[0]
-                is_directory = file_data[1]
-
-            elif len(file_data) == 1 and isinstance(file_data[0], str):
-                path = file_data[0]
-                is_directory = True
-            else:
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"Skipping invalid entry: {file_data}")
-                continue
-
-            if path == ".." or is_directory:
-                filtered_entries.append(entry)
-            else:
-                if path and path.lower().endswith(".tv") and self._file_contains_http(path):
-                    filtered_entries.append(entry)
-                    if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"✅ Added TV file: {path}")
-
-        self["filelist"].list = filtered_entries
-        self["filelist"].l.setList(filtered_entries)
-
-    def _file_contains_http(self, filename):
-        """Check if file contains 'http' (case-insensitive)."""
-        try:
-            current_directory = self["filelist"].getCurrentDirectory()
-            full_path = join(current_directory, filename)
-
-            with open(full_path, "r") as f:
-                return any("http" in line.lower() for line in f)
-        except Exception as e:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.error(f"Error reading {full_path}: {str(e)}")
-            return False
-
-    def _on_ok_pressed(self):
-        """Handle OK button press for file selection."""
-        selection = self["filelist"].getCurrent()
-        if not selection or not isinstance(selection, list) or not isinstance(selection[0], tuple):
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.error(f"Invalid selection format: {selection}")
-            return
-
-        file_data = selection[0]
-        path = file_data[0]
-        is_directory = file_data[1]
-
-        if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"file_data: {file_data}, path: {path}, is_directory: {is_directory}")
-        try:
-            if is_directory:
-                self["filelist"].changeDir(path)
-                if self.conversion_type == "tv_to_m3u":
-                    self._filter_file_list()
-            else:
-                current_directory = self["filelist"].getCurrentDirectory()
-                full_path = join(current_directory, path)
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"Selected full file path: {full_path}")
-                self.close(full_path)
-        except Exception as e:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.error(f"Error in OK pressed: {str(e)}")
-
-    def close(self, result=None):
-        """Close the file browser."""
-        try:
-            super(M3UFileBrowser, self).close(result)
-        except Exception as e:
-            if config.plugins.m3uconverter.enable_debug.value:
-                logger.error(f"Error closing browser: {str(e)}")
-            super(M3UFileBrowser, self).close(None)
-
-
 class ConversionSelector(Screen):
     """Main conversion selector screen."""
     if SCREEN_WIDTH > 1280:
@@ -4236,6 +3372,7 @@ class ConversionSelector(Screen):
         # self.is_modal = True
         self.setTitle(PLUGIN_TITLE)
         self.menu_options = [
+            (_("Enigma2 Bouquets to ➔ Enigma2 Bouquets"), "tv_to_tv", "tv"),
             (_("Enigma2 Bouquets to ➔ M3U"), "tv_to_m3u", "tv"),
             (_("M3U to ➔ Enigma2 Bouquets"), "m3u_to_tv", "m3u"),
             (_("M3U to ➔ JSON"), "m3u_to_json", "m3u"),
@@ -4560,6 +3697,7 @@ class UniversalConverter(Screen):
         self.selected_file = selected_file
         self.auto_start = auto_start
         title_mapping = {
+            "tv_to_tv": _("Enigma2 Bouquet to Enigma2 Bouquet Conversion"),
             "m3u_to_tv": _("M3U to Enigma2 Bouquet Conversion"),
             "tv_to_m3u": _("Enigma2 Bouquet to M3U Conversion"),
             "json_to_tv": _("JSON to Enigma2 Bouquet Conversion"),
@@ -4699,8 +3837,13 @@ class UniversalConverter(Screen):
             logger.debug(f"Opening file browser for {self.conversion_type}")
 
         try:
-            path = ("/etc/enigma2" if self.conversion_type == "tv_to_m3u"
-                    else config.plugins.m3uconverter.lastdir.value)
+            # Determina il percorso iniziale in base al tipo di conversione
+            if self.conversion_type in ["tv_to_tv", "enigmatoenigma"]:
+                path = "/etc/enigma2"
+            elif self.conversion_type == "tv_to_m3u":
+                path = "/etc/enigma2"
+            else:
+                path = config.plugins.m3uconverter.lastdir.value
 
             pattern = r"(?i)^.*\.(tv|m3u|m3u8|json|xspf)$"
 
@@ -4735,6 +3878,7 @@ class UniversalConverter(Screen):
 
         # Update UI based on conversion type
         conversion_labels = {
+            "tv_to_tv": _("Convert TV to TV"),
             "m3u_to_tv": _("Convert M3U to TV"),
             "tv_to_m3u": _("Convert TV to M3U"),
             "json_to_tv": _("Convert JSON to TV"),
@@ -4752,6 +3896,8 @@ class UniversalConverter(Screen):
             self._convert_m3u_to_tv()
         elif self.conversion_type == "m3u_to_json":
             self._convert_m3u_to_json()
+        elif self.conversion_type == "tv_to_tv":
+            self._convert_tv_to_tv()
         elif self.conversion_type == "tv_to_m3u":
             self._convert_tv_to_m3u()
         elif self.conversion_type == "json_to_tv":
@@ -6016,7 +5162,10 @@ class UniversalConverter(Screen):
             self.selected_file = normpath(str(path))
 
             try:
-                if self.conversion_type == "m3u_to_tv":
+                # AGGIUNTA CRUCIALE: Gestione esplicita per tv_to_tv
+                if self.conversion_type == "tv_to_tv":
+                    self._parse_tv_file(selected_path)  # Questo è il metodo mancante!
+                elif self.conversion_type == "m3u_to_tv":
                     self._parse_m3u_file(selected_path)
                 elif self.conversion_type == "tv_to_m3u":
                     self._parse_tv_file(selected_path)
@@ -6054,6 +5203,7 @@ class UniversalConverter(Screen):
             self._last_channel_count = channel_count
 
             conversion_ready_texts = {
+                "tv_to_tv": _("Convert TV to TV"),
                 "m3u_to_tv": _("Convert M3U to TV"),
                 "tv_to_m3u": _("Convert TV to M3U"),
                 "json_to_tv": _("Convert JSON to TV"),
@@ -6392,12 +5542,17 @@ class UniversalConverter(Screen):
         return entries
 
     def _parse_tv_file(self, filename=None):
-        """Parse TV bouquet file."""
+        """Parse TV bouquet file for TV-to-TV conversion."""
         try:
+            file_to_parse = filename or self.selected_file
+            if not file_to_parse:
+                raise ValueError(_("No file selected"))
+
             channels = []
-            with codecs.open(filename, "r", encoding="utf-8") as f:
+            with codecs.open(file_to_parse, "r", encoding="utf-8") as f:
                 content = f.read()
-                # More robust pattern that handles different spacing and optional fields
+
+                # Enhanced pattern to handle different TV bouquet formats
                 pattern = r'#SERVICE\s(?:4097|5002):[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:(.*?)\s*\n#DESCRIPTION\s*(.*?)\s*\n'
                 matches = findall(pattern, content, DOTALL)
 
@@ -6405,24 +5560,36 @@ class UniversalConverter(Screen):
                     # URL decoding and filtering HTTP/HTTPS/HLS streams
                     url = unquote(service.strip())
                     if any(url.startswith(proto) for proto in ('http://', 'https://', 'hls://')):
-                        channels.append((name.strip(), url))
+                        # Store as tuple for TV bouquets (name, url)
+                        channel_data = (name.strip(), url)
+                        channels.append(channel_data)
 
             if not channels:
                 raise ValueError(_("No IPTV channels found in the bouquet"))
 
             self.m3u_channels_list = channels
-            self["list"].setList([c[0] for c in channels])
+
+            # Update UI with channel names only
+            display_list = [channel[0] for channel in channels]
+            self["list"].setList(display_list)
             self.file_loaded = True
-            self._update_ui_success(len(self.m3u_channels_list))
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(f"✅ TV file parsed successfully: {len(channels)} channels found")
+                logger.info(f"📺 Sample channels: {channels[:3]}")
+
+            self._update_ui_success(len(self.m3u_channels_list))
 
         except Exception as e:
-            logger.error(f"Error parsing BOUQUET: {str(e)}")
+            logger.error(f"❌ Error parsing TV bouquet: {str(e)}")
             self.file_loaded = False
             self.m3u_channels_list = []
-            raise
+            self.session.open(
+                MessageBox,
+                _("Error parsing TV bouquet file:\n%s") % str(e),
+                MessageBox.TYPE_ERROR,
+                timeout=6
+            )
 
     def _parse_json_file(self, filename=None):
         """Parse JSON file containing channel information."""
@@ -7082,6 +6249,155 @@ class UniversalConverter(Screen):
 
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
+    def _convert_tv_to_tv(self):
+        """Convert TV bouquet to optimized TV bouquet format"""
+        if self.is_converting:
+            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            return
+
+        if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
+            self.session.open(MessageBox, _("No channels loaded. Please select a valid TV bouquet file."), MessageBox.TYPE_ERROR)
+            return
+
+        logger.info(f"🎯 Selected file: {self.selected_file}")
+
+        # Extract bouquet name correctly
+        bouquet_name = basename(self.selected_file).replace('userbouquet.', '').replace('.tv', '')
+        safe_name = self.get_safe_filename(bouquet_name)
+
+        logger.info(f"🎯 Bouquet name: {bouquet_name}")
+        logger.info(f"🎯 Safe filename: {safe_name}")
+
+        def _tv_to_tv_conversion():
+            try:
+                if not self.m3u_channels_list:
+                    return (False, "No channels to convert")
+
+                # Convert tuple data to dictionary format for EPG processing
+                processed_channels = []
+                epg_data = []  # ⬅️ NUOVO: Dati per EPG
+                for idx, channel in enumerate(self.m3u_channels_list):
+                    if isinstance(channel, tuple) and len(channel) == 2:
+                        # Convert (name, url) tuple to dictionary
+                        name, url = channel
+                        channel_dict = {
+                            'name': name,
+                            'url': url,
+                            'original_name': name
+                        }
+                        processed_channels.append(channel_dict)
+                    elif isinstance(channel, dict):
+                        # Already in correct format
+                        processed_channels.append(channel)
+                    else:
+                        logger.warning(f"⚠️ Skipping invalid channel format: {channel}")
+                        continue
+
+                if not processed_channels:
+                    return (False, "No valid channels processed")
+
+                # Process channels with EPG matching
+                optimized_channels = []
+                for idx, channel in enumerate(processed_channels):
+                    if self.cancel_conversion:
+                        return (False, "Conversion cancelled")
+
+                    name = channel.get('name', '')
+                    url = channel.get('url', '')
+
+                    # Find better EPG match if available
+                    clean_name = self.epg_mapper.clean_channel_name(name)
+                    service_ref, match_type = self.epg_mapper._find_best_service_match(
+                        clean_name, "", name, url
+                    )
+
+                    # Use existing URL but with better service reference if found
+                    if service_ref and service_ref.startswith('1:0:'):
+                        bouquet_sref = self.epg_mapper._generate_hybrid_sref(service_ref, url, for_epg=False)
+                        epg_sref = service_ref  # ⬅️ Per EPG usa il riferimento DVB originale
+                    else:
+                        bouquet_sref = self.epg_mapper._generate_service_reference(url)
+                        epg_sref = bouquet_sref  # Fallback a IPTV
+
+                    optimized_channel = {
+                        'name': name,
+                        'url': url,
+                        'sref': bouquet_sref,
+                        'match_type': match_type,
+                        'original_name': name,
+                        'original_service_ref': service_ref
+                    }
+                    optimized_channels.append(optimized_channel)
+
+                    # Add to EPG data
+                    epg_entry = {
+                        'tvg_id': name,  # Use the name as TVG ID
+                        'sref': epg_sref,
+                        'name': name,
+                        'url': url,
+                        'original_name': name,
+                        'match_type': match_type
+                    }
+                    epg_data.append(epg_entry)
+
+                    # Update progress
+                    if idx % 10 == 0:
+                        progress = (idx + 1) / len(processed_channels) * 100
+                        self.update_progress(
+                            idx + 1,
+                            _("Optimizing: {} ({}%)").format(name, int(progress))
+                        )
+
+                # Write optimized bouquet
+                if self.write_group_bouquet(safe_name, optimized_channels):
+                    # Update main bouquet
+                    self.update_main_bouquet([safe_name])
+
+                # Generate EPG files if enabled
+                if config.plugins.m3uconverter.epg_enabled.value and epg_data:
+                    logger.info(f"🎯 Generating EPG for TV-to-TV conversion: {len(epg_data)} channels")
+
+                    # Generate channels.xml
+                    epg_success = self.epg_mapper._generate_epg_channels_file(epg_data, safe_name)
+
+                    if epg_success:
+                        # Generate sources.xml
+                        sources_success = self.epg_mapper._generate_epgshare_sources_file(safe_name)
+
+                        if sources_success:
+                            logger.info("✅ EPG files generated successfully for TV-to-TV conversion")
+                        else:
+                            logger.warning("⚠️ Failed to generate EPG sources for TV-to-TV conversion")
+                    else:
+                        logger.warning("⚠️ Failed to generate EPG channels for TV-to-TV conversion")
+
+                    # Store processed channels for potential manual editing
+                    self.m3u_channels_list = optimized_channels
+
+                    return (True, safe_name, len(optimized_channels))
+                else:
+                    return (False, "Failed to write optimized bouquet")
+
+            except Exception as e:
+                logger.error(f"TV-to-TV conversion error: {str(e)}")
+                return (False, str(e))
+
+        def conversion_task():
+            try:
+                return core_converter.safe_conversion(_tv_to_tv_conversion)
+            except Exception as e:
+                return (False, str(e))
+
+        # Reset UI and start conversion
+        self.reset_conversion_buttons()
+        self.is_converting = True
+        self.cancel_conversion = False
+        self["key_red"].setText("")
+        self["key_green"].setText("")
+        self["key_blue"].setText(_("Cancel"))
+
+        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+
     def _convert_json_to_m3u(self):
         """Convert JSON to M3U format."""
 
@@ -7469,7 +6785,7 @@ class UniversalConverter(Screen):
                 self.preserve_conversion_stats()
 
                 # Collect conversion statistics
-                if self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
+                if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
                     # Get ACCURATE statistics
                     cache_stats = self.epg_mapper._get_cache_statistics()
 
@@ -7493,7 +6809,7 @@ class UniversalConverter(Screen):
                     self.last_conversion_success = True
 
                 if (config.plugins.m3uconverter.auto_open_editor.value and
-                        self.conversion_type in ["m3u_to_tv", "json_to_tv"] and
+                        self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"] and  # ⬅️ AGGIUNGI tv_to_tv QUI
                         hasattr(self, 'm3u_channels_list') and self.m3u_channels_list):
 
                     if config.plugins.m3uconverter.enable_debug.value:
@@ -7505,8 +6821,9 @@ class UniversalConverter(Screen):
                     self.open_editor_timer.start(1000)  # 1 second delay
 
                 else:
-                    # Normal conversion completed — show stats
-                    if self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
+                    if self.conversion_type == "tv_to_tv" and hasattr(self, 'last_conversion_stats'):
+                        self.show_conversion_stats("tv_to_tv", self.last_conversion_stats)
+                    elif self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
                         self.show_conversion_stats(self.conversion_type, stats_data)
 
                     # Auto-reload services for standard conversions
@@ -7543,7 +6860,7 @@ class UniversalConverter(Screen):
         """Show success message for normal conversion"""
         try:
             if hasattr(self, 'selected_file') and self.selected_file:
-                bouquet_name = basename(self.selected_file).split('.')[0]
+                bouquet_name = self.get_safe_filename(basename(self.selected_file))
                 safe_name = self.get_safe_filename(bouquet_name)
                 display_name = self.remove_suffixes(safe_name)
             else:
@@ -10887,7 +10204,6 @@ class ManualDatabaseManager:
             data = self.load_database()
             mappings = data.get('mappings', [])
             fixed_count = 0
-
             for mapping in mappings:
                 assigned_sref = mapping.get('assigned_sref', '')
                 if assigned_sref and assigned_sref.startswith('http'):
@@ -10912,536 +10228,6 @@ class ManualDatabaseManager:
             return 0
 
 
-class PluginInfoScreen(Screen):
-    """Dedicated screen for plugin information"""
-    if SCREEN_WIDTH > 1280:
-        skin = """
-        <screen name="PluginInfoScreen" position="center,center" size="1600,1000" title="Plugin Information" flags="wfNoBorder">
-            <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1600,1000" zPosition="-2" />
-            <widget source="Title" render="Label" position="50,20" size="1500,50" font="Regular; 32" noWrap="1" transparent="1" valign="center" zPosition="1" halign="center" />
-            <widget name="scrollable_text" position="50,90" size="1500,807" font="Regular;28" transparent="1" valign="top" />
-            <!--#####red####/-->
-            <eLabel backgroundColor="#00ff0000" position="53,975" size="375,9" zPosition="12" />
-            <widget name="key_red" position="53,905" size="375,68" zPosition="11" font="Regular; 34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
-            <widget source="key_red" render="Label" position="53,905" size="375,68" zPosition="11" font="Regular;32" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
-            <!--#####green####/-->
-            <eLabel backgroundColor="#0038FF48" position="428,975" size="375,9" zPosition="12" />
-            <widget name="key_green" position="428,905" size="375,68" zPosition="11" font="Regular; 34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
-            <widget source="key_green" render="Label" position="428,905" size="375,68" zPosition="11" font="Regular;32" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
-            <!--#####yellow####/-->
-            <eLabel backgroundColor="#00ffff00" position="803,975" size="375,9" zPosition="12" />
-            <widget name="key_yellow" position="803,905" size="375,68" zPosition="11" font="Regular; 34" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
-            <widget source="key_yellow" render="Label" position="803,905" size="375,68" zPosition="11" font="Regular;32" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
-        </screen>"""
-    else:
-        skin = """
-        <screen name="PluginInfoScreen" position="center,center" size="1200,700" title="Plugin Information" flags="wfNoBorder">
-            <eLabel backgroundColor="#002d3d5b" cornerRadius="15" position="1,0" size="1200,700" zPosition="-2" />
-            <widget source="Title" render="Label" position="30,15" size="1140,40" font="Regular; 24" noWrap="1" transparent="1" valign="center" zPosition="1" halign="center" />
-            <widget name="scrollable_text" position="30,65" size="1140,573" font="Regular; 22" transparent="1" valign="top" />
-            <!--#####red####/-->
-            <eLabel backgroundColor="#00ff0000" position="50,685" size="250,6" zPosition="12" />
-            <widget name="key_red" position="50,640" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,Button,Label" transparent="1" />
-            <widget source="key_red" render="Label" position="50,640" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_red,StaticText" transparent="1" />
-            <!--#####green####/-->
-            <eLabel backgroundColor="#0038FF48" position="300,685" size="250,6" zPosition="12" />
-            <widget name="key_green" position="300,640" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,Button,Label" transparent="1" />
-            <widget source="key_green" render="Label" position="300,640" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_green,StaticText" transparent="1" />
-            <!--#####yellow####/-->
-            <eLabel backgroundColor="#00ffff00" position="550,685" size="250,6" zPosition="12" />
-            <widget name="key_yellow" position="550,640" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,Button,Label" transparent="1" />
-            <widget source="key_yellow" render="Label" position="550,640" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_yellow,StaticText" transparent="1" />
-        </screen>"""
-
-    def __init__(self, session):
-        Screen.__init__(self, session)
-        self.setTitle(_("Plugin Information"))
-
-        self["Title"] = StaticText(_("Archimede Universal Converter v.%s") % CURRENT_VERSION)
-        self["key_red"] = StaticText(_("Close"))
-        self["key_green"] = StaticText(_("Prev"))
-        self["key_yellow"] = StaticText(_("Next"))
-        self.current_page = 0
-        self.pages = self._prepare_paginated_info()
-        self["scrollable_text"] = ScrollLabel("")
-        if self.pages:
-            self["scrollable_text"].setText(self.pages[self.current_page])
-        self.onLayoutFinish.append(self._on_layout_finish)
-
-        if config.plugins.m3uconverter.enable_debug.value:
-            core_converter._log_current_configuration
-
-        self["actions"] = ActionMap(["ColorActions", "OkCancelActions", "DirectionActions"], {
-            "red": self.close,
-            "green": self.previous_page,
-            "yellow": self.next_page,
-            "cancel": self.close,
-            "ok": self.next_page if self.current_page < len(self.pages) - 1 else self.close,
-            "up": self.up_pressed,
-            "down": self.down_pressed,
-            "pageUp": self.previous_page,
-            "pageDown": self.next_page,
-            "left": self.previous_page,
-            "right": self.next_page,
-        }, -1)
-
-        self._update_navigation_buttons()
-
-    def _on_layout_finish(self):
-        """Set focus safely after layout is complete"""
-        try:
-            if hasattr(self, "scrollable_text") and self["scrollable_text"] is not None:
-                self.setFocus(self["scrollable_text"])
-        except Exception as e:
-            logger.error(f"Error setting focus: {str(e)}")
-
-    def _update_navigation_buttons(self):
-        """Update navigation buttons based on current page"""
-        total_pages = len(self.pages)
-
-        page_info = f"Page {self.current_page + 1}/{total_pages}"
-        self["Title"].setText(
-            _("Archimede Universal Converter by Lululla v.{version} - {page}").format(
-                version=CURRENT_VERSION,
-                page=page_info
-            )
-        )
-
-        if self.current_page > 0:
-            self["key_green"].setText(_("Prev"))
-        else:
-            self["key_green"].setText("")
-
-        if self.current_page < total_pages - 1:
-            self["key_yellow"].setText(_("Next"))
-        else:
-            self["key_yellow"].setText("")
-
-    def _prepare_paginated_info(self):
-        """Prepare paginated information ensuring categories start at the top of each page"""
-        info_text = self._prepare_info_text()
-        # Calculate lines for page based on screen size
-        if SCREEN_WIDTH > 1280:
-            LINES_PER_PAGE = 22  # Large screen
-        else:
-            LINES_PER_PAGE = 18  # Small screen
-
-        lines = info_text.split('\n')
-        pages = []
-        current_page = []
-        current_line_count = 0
-        # Identify lines that start a new category/section
-        category_indicators = [
-            "🌐️ ARCHIMEDE UNIVERSAL CONVERT BETWEEN M3U, JSON, XSPF AND ENIGMA2 BOUQUETS",
-            "🎯 CORE FEATURES",
-            "💾 STORAGE OPTIONS",
-            "🔧 ADVANCED FEATURES",
-            "📊 DATABASE MODES",
-            "🗃️ DATABASE MANAGEMENT",
-            "🔄 DUPLICATE HANDLING SYSTEM",
-            "📊 DUPLICATE STATISTICS:",
-            "⚙️ DUPLICATE SETTINGS:",
-            "📈 PERFORMANCE FEATURES",
-            "⚙️ SIMILARITY SETTINGS",
-            "🛠️ TOOLS MENU",
-            "🌐 EPG SOURCES",
-            "🎮 CONTROLS",
-            "⚙️ CURRENT CONFIGURATION",
-            "📁 FILE & STORAGE SETTINGS:",
-            "🎯 BOUQUET SETTINGS:",
-            "🔧 STREAM & CONVERSION:",
-            "⚙️ SYSTEM SETTINGS:",
-            "📡 EPG SETTINGS:",
-            "📊 EPG CONFIGURATION:",
-            "🎯 SIMILARITY THRESHOLDS:",
-            "💾 MANUAL DATABASE:",
-            "🗄️ DEBUG STORAGE:",
-            "💖 SUPPORTING",
-        ]
-
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-
-            # Check if this line starts a new category
-            is_new_category = any(line.strip().startswith(indicator) for indicator in category_indicators)
-
-            # If it's a new category AND we already have content on current page
-            # AND adding this category would make us exceed the page limit
-            if is_new_category and current_line_count > 0:
-                # Check if adding this category would exceed page limit
-                if current_line_count + 1 > LINES_PER_PAGE:
-                    # Start new page for this category
-                    pages.append('\n'.join(current_page))
-                    current_page = []
-                    current_line_count = 0
-                else:
-                    # Check how many lines this category has
-                    category_lines = 1  # Start with current line
-                    j = i + 1
-                    while j < len(lines):
-                        next_line = lines[j]
-                        # Stop if we hit another category or empty line followed by category
-                        if any(next_line.strip().startswith(indicator) for indicator in category_indicators):
-                            break
-                        if next_line.strip() == "" and j + 1 < len(lines):
-                            if any(lines[j + 1].strip().startswith(indicator) for indicator in category_indicators):
-                                break
-                        category_lines += 1
-                        j += 1
-
-                    # If the entire category doesn't fit, start new page
-                    if current_line_count + category_lines > LINES_PER_PAGE:
-                        pages.append('\n'.join(current_page))
-                        current_page = []
-                        current_line_count = 0
-
-            # If adding this line would exceed the limit
-            if current_line_count + 1 > LINES_PER_PAGE:
-                pages.append('\n'.join(current_page))
-                current_page = []
-                current_line_count = 0
-
-            current_page.append(line)
-            current_line_count += 1
-            i += 1
-
-        # Add the last page if it's not empty
-        if current_page:
-            pages.append('\n'.join(current_page))
-
-        return pages
-
-    def _prepare_info_text(self):
-        """Prepare formatted information text"""
-        info = [
-            "🌐️ ARCHIMEDE UNIVERSAL CONVERT BETWEEN M3U, JSON, XSPF AND ENIGMA2 BOUQUETS",
-            "🏷️ AUTHOR: Lululla",
-            "📜 LICENSE: CC BY-NC-SA 4.0",
-            "🔄 LAST MODIFIED: " + LAST_MODIFIED_DATE,
-            "💝 SUPPORT ON -> WWW.CORVOBOYS.ORG • WWW.LINUXSAT-SUPPORT.COM",
-            "",
-            "🎯 CORE FEATURES",
-            "• M3U → Enigma2 Bouquets (with EPG)",
-            "• Enigma2 Bouquets → M3U",
-            "• JSON → Enigma2 Bouquets",
-            "• JSON → M3U Playlist",
-            "• M3U → JSON Format",
-            "• XSPF → M3U Playlist",
-            "• Remove M3U Bouquets",
-            "",
-            "📈 PERFORMANCE FEATURES",
-            "• Optimized cache system",
-            "• Batch processing (50 channels/batch)",
-            "• Memory efficient operations",
-            "• Fast channel matching algorithms",
-            "• Automatic memory cleanup",
-            "• Low-space optimization",
-            "",
-            "🔧 ADVANCED FEATURES",
-            "• Smart EPG mapping (Rytec + DVB + DVB-T)",
-            "• Manual EPG Match Editor (visual interface)",
-            "• Manual Database Manager",
-            "• Similarity-based channel matching",
-            "• Configurable similarity thresholds",
-            "• Multi-database support (5 modes)",
-            "• Cache optimization system",
-            "• Multi-language EPG sources",
-            "• HLS stream conversion",
-            "• Group-based bouquet creation",
-            "• Automatic service reference generation",
-            "• Manual corrections database",
-            "• Real-time statistics and analytics",
-            "",
-            "📊 DATABASE MODES",
-            "• Full: DVB + Rytec + DVB-T (complete)",
-            "• Both: DVB + Rytec (recommended)",
-            "• DVB Only: Satellite services only",
-            "• Rytec Only: IPTV EPG data only",
-            "• DTT Only: Terrestrial services only",
-            "",
-            "🗃️ DATABASE MANAGEMENT",
-            "• Manual corrections storage",
-            "• Usage tracking and statistics",
-            "• Automatic cleanup of old entries",
-            "• Import/export functionality",
-            "• Visual database editor",
-            "• Bulk editing capabilities",
-            "",
-            "🔄 DUPLICATE HANDLING SYSTEM",
-            "• Advanced multi-layer duplicate detection",
-            "• Fuzzy name matching with configurable thresholds",
-            "• URL normalization and comparison",
-            "• Service reference validation",
-            "• Automatic merge with quality preference",
-            "• Manual review for ambiguous cases",
-            "",
-            "📊 PROCESSING STATISTICS:",
-            "• Global similarity threshold: " + str(config.plugins.m3uconverter.similarity_threshold.value) + "%",
-            "• Rytec matching threshold: " + str(config.plugins.m3uconverter.similarity_threshold_rytec.value) + "%",
-            "• DVB matching threshold: " + str(config.plugins.m3uconverter.similarity_threshold_dvb.value) + "%",
-            "• Manual database: " + ("Enabled" if config.plugins.m3uconverter.use_manual_database.value else "Disabled"),
-            "• Database mode: " + config.plugins.m3uconverter.epg_database_mode.value,
-            "",
-            "💾 STORAGE OPTIONS",
-            "• Automatic storage detection",
-            "• Support for HDD, USB, NETWORK drives",
-            "• Backup system with rotation",
-            "• Debug logging with size limits",
-            "",
-            "⚙️ SIMILARITY SETTINGS",
-            "• Global similarity threshold (20-100%)",
-            "• DVB and Rytec specific threshold",
-            "• Intelligent fallback system",
-            "• Name-based matching algorithms",
-            "",
-            "🛠️ TOOLS MENU",
-            "• Plugin Information (this screen)",
-            "• EPG Cache Statistics",
-            "• Create Backup",
-            "• Clear EPG Cache",
-            "• Reload EPG Database",
-            "• Reload Services",
-            "• Manual Database Editor",
-            "• View Manual Database",
-            "• Export/Import Database",
-            "• Clean Manual Database",
-            "",
-            "🌐 EPG SOURCES",
-            "• Rytec.channels.xml integration",
-            "• EPGShare online sources",
-            "• Multi-country support (IT, UK, DE, FR, ES, etc.)",
-            "• Automatic EPG URL extraction from M3U",
-            "• Custom EPG source configuration",
-            "",
-            "🎮 CONTROLS",
-            "• GREEN: Convert selection",
-            "• RED: Open file browser / Close",
-            "• YELLOW: Manual match editor",
-            "• BLUE: Advanced tools menu",
-            "• OK: Play stream / Select",
-            "• CH+/CH-: Page navigation",
-            "• MENU: Plugin settings",
-            "",
-            "⚙️ CURRENT CONFIGURATION",
-            "📁 FILE & STORAGE SETTINGS:",
-            "  • Default Folder: " + config.plugins.m3uconverter.lastdir.value,
-            "  • Large file threshold: " + str(config.plugins.m3uconverter.large_file_threshold_mb.value) + " MB",
-            "",
-            "🎯 BOUQUET SETTINGS:",
-            "  • Bouquet Mode: " + config.plugins.m3uconverter.bouquet_mode.value,
-            "  • Bouquet Position: " + config.plugins.m3uconverter.bouquet_position.value,
-            "",
-            "🔧 STREAM & CONVERSION:",
-            "  • Convert HLS Streams: " + str(config.plugins.m3uconverter.hls_convert.value),
-            "",
-            "⚙️ SYSTEM SETTINGS:",
-            "  • Auto Reload Services: " + str(config.plugins.m3uconverter.auto_reload.value),
-            "  • Create Backup: " + str(config.plugins.m3uconverter.backup_enable.value),
-            "  • Max Backups: " + str(config.plugins.m3uconverter.max_backups.value),
-            "  • Debug Mode: " + str(config.plugins.m3uconverter.enable_debug.value),
-            "",
-            "📡 EPG SETTINGS:",
-            "  • Enable EPG: " + str(config.plugins.m3uconverter.epg_enabled.value),
-            "",
-            "  📊 EPG CONFIGURATION:",
-            "    • EPG Language: " + config.plugins.m3uconverter.language.value,
-            "    • EPG Generation Mode: " + config.plugins.m3uconverter.epg_generation_mode.value,
-            "    • Database Mode: " + config.plugins.m3uconverter.epg_database_mode.value,
-            "    • Use Manual Database: " + str(config.plugins.m3uconverter.use_manual_database.value),
-            "    • Ignore DVB-T services: " + str(config.plugins.m3uconverter.ignore_dvbt.value),
-            "",
-            "  💾 MANUAL DATABASE:",
-            "    • Manual DB Max Size: " + str(config.plugins.m3uconverter.manual_db_max_size.value),
-            "    • Auto-open Editor: " + str(config.plugins.m3uconverter.auto_open_editor.value),
-            "",
-            "  🗄️ DEBUG STORAGE:",
-            "    • BASE STORAGE PATH: {}".format(BASE_STORAGE_PATH),
-            "    • ARCHIMEDE_CONVERTER_PATH: {}".format(ARCHIMEDE_CONVERTER_PATH),
-            "    • EXPORT DIR: {}".format(EXPORT_DIR),
-            "    • LOG DIR: {}".format(LOG_DIR),
-            "    • DEBUG DIR: {}".format(DEBUG_DIR),
-            "    • DB PATCH: {}".format(DB_PATCH),
-            "",
-            "💖 SUPPORTING",
-            "────────────────────────────",
-            "If you like this plugin, consider supporting the development!",
-            "",
-            "☕ Offer Coffee → paypal.com/paypalme/belfagor2005",
-            "🍺 Offer Beer   → ko-fi.com/lululla",
-            "",
-            "────────────────────────────",
-            "Thank you for using Archimede Converter!",
-            "                            Bye, Lululla"
-        ]
-        return "\n".join(info)
-
-    def _get_duplicate_statistics(self):
-        """Get REAL duplicate statistics from converter"""
-        try:
-            # Try to get stats from the current converter instance
-            if hasattr(self, 'converter') and self.converter:
-                stats = getattr(self.converter, 'conversion_stats', {})
-                return {
-                    'total': stats.get('total_processed', 0),
-                    'duplicates': stats.get('duplicates_found', 0),
-                    'unique': stats.get('channels_created', 0),
-                    'reduction': stats.get('duplicate_percentage', 0),
-                    'false_positives': stats.get('manual_corrections', 0),
-                    'efficiency': stats.get('processing_efficiency', 'High')
-                }
-
-            # Try to get stats from the core converter
-            if hasattr(core_converter, 'last_conversion_stats'):
-                stats = core_converter.last_conversion_stats
-                total = stats.get('total_channels', 0)
-                fallback = stats.get('fallback_matches', 0)
-
-                # Estimate duplicates based on fallback matches (often duplicates)
-                duplicates = int(fallback * 0.3)  # ~30% of fallbacks are duplicates
-                unique = max(0, total - duplicates)
-                reduction = round((duplicates / total * 100), 1) if total > 0 else 0
-
-                return {
-                    'total': total,
-                    'duplicates': duplicates,
-                    'unique': unique,
-                    'reduction': reduction,
-                    'false_positives': stats.get('manual_db_matches', 0),
-                    'efficiency': 'High' if reduction > 10 else 'Medium'
-                }
-
-            return self._get_stats_from_logs()
-
-        except Exception as e:
-            logger.debug(f"No detailed stats available: {e}")
-            return self._get_basic_stats()
-
-    def _get_stats_from_logs(self):
-        """Extract REAL stats from recent log files"""
-        try:
-            # Look for the main converter log
-            log_file = join(LOG_DIR, "converter.log")
-            if not exists(log_file):
-                return self._get_basic_stats()
-
-            with open(log_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-
-            stats = {
-                'total': 0,
-                'duplicates': 0,
-                'unique': 0,
-                'reduction': 0,
-                'false_positives': 0,
-                'efficiency': 'Unknown'
-            }
-
-            # Search for real conversion statistics in logs
-            import re
-
-            # Pattern for total channels
-            total_match = re.search(r'TOTAL CHANNELS.*?(\d+)', content, re.IGNORECASE)
-            if total_match:
-                stats['total'] = int(total_match.group(1))
-
-            # Pattern for EPG matches (non-duplicates)
-            epg_match = re.search(r'EPG COVERAGE.*?(\d+)/(\d+)', content)
-            if epg_match:
-                epg_count = int(epg_match.group(1))
-                total_count = int(epg_match.group(2))
-                stats['unique'] = epg_count
-                stats['duplicates'] = max(0, total_count - epg_count)
-
-            # Pattern for fallback matches (potential duplicates)
-            fallback_match = re.search(r'Fallback.*?(\d+)', content)
-            if fallback_match and stats['total'] > 0:
-                fallbacks = int(fallback_match.group(1))
-                stats['duplicates'] = int(fallbacks * 0.4)  # Estimate 40% as duplicates
-                stats['unique'] = stats['total'] - stats['duplicates']
-
-            # Pattern for manual corrections (false positives prevented)
-            manual_match = re.search(r'Manual.*?(\d+)', content)
-            if manual_match:
-                stats['false_positives'] = int(manual_match.group(1))
-
-            # Calculate reduction percentage
-            if stats['total'] > 0 and stats['duplicates'] > 0:
-                stats['reduction'] = round((stats['duplicates'] / stats['total']) * 100, 1)
-
-            # Determine efficiency
-            if stats['reduction'] > 15:
-                stats['efficiency'] = 'Excellent'
-            elif stats['reduction'] > 10:
-                stats['efficiency'] = 'High'
-            elif stats['reduction'] > 5:
-                stats['efficiency'] = 'Medium'
-            else:
-                stats['efficiency'] = 'Low'
-
-            # If we found real data, return it
-            if stats['total'] > 0:
-                return stats
-            else:
-                return self._get_basic_stats()
-
-        except Exception as e:
-            logger.debug(f"Could not read log stats: {e}")
-            return self._get_basic_stats()
-
-    def _get_basic_stats(self):
-        """Return realistic placeholder statistics based on common usage"""
-        return {
-            'total': 436,           # Typical M3U file size
-            'duplicates': 58,       # ~13% duplicates (realistic)
-            'unique': 378,          # Total minus duplicates
-            'reduction': 13.3,      # Percentage reduction
-            'false_positives': 12,  # Manual corrections needed
-            'efficiency': 'High'    # Overall efficiency
-        }
-
-    def up_pressed(self):
-        """Handle UP key - scroll up"""
-        try:
-            self["scrollable_text"].pageUp()
-        except Exception as e:
-            logger.error(f"Error in up_pressed: {str(e)}")
-
-    def down_pressed(self):
-        """Handle DOWN key - scroll down"""
-        try:
-            self["scrollable_text"].pageDown()
-        except Exception as e:
-            logger.error(f"Error in down_pressed: {str(e)}")
-
-    def next_page(self):
-        """Navigate to next page"""
-        if self.current_page < len(self.pages) - 1:
-            self.current_page += 1
-            self["scrollable_text"].setText(self.pages[self.current_page])
-            self._update_navigation_buttons()
-
-    def previous_page(self):
-        """Navigate to previous page"""
-        if self.current_page > 0:
-            self.current_page -= 1
-            self["scrollable_text"].setText(self.pages[self.current_page])
-            self._update_navigation_buttons()
-
-
-class M3UConverterSettings(Setup):
-    """Settings screen for M3U Converter plugin."""
-
-    def __init__(self, session, parent=None):
-        """Initialize settings screen."""
-        Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
-        self.parent = parent
-
-    def keySave(self):
-        """Handle save action for settings."""
-        Setup.keySave(self)
-
-
 def main(session, **kwargs):
     """Main entry point with storage verification"""
     if config.plugins.m3uconverter.enable_debug.value:
@@ -11455,7 +10241,7 @@ def Plugins(**kwargs):
     from Plugins.Plugin import PluginDescriptor
     return [PluginDescriptor(
         name=_("Universal Converter"),
-        description=_("Convert between M3U and Enigma2 bouquets"),
+        description=_("Convert between M3U Enigma2 Bouquets Json"),
         where=PluginDescriptor.WHERE_PLUGINMENU,
         icon="plugin.png",
         fnc=main)
