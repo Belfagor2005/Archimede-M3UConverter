@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='2.9'
-changelog='\nRecoded Class Duplicates - Stat fixed - major match'
+version='3.0'
+changelog='\nReorde all fiels - add to_to_tv'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##
