@@ -3,6 +3,10 @@
 **Universal playlist converter for Enigma2 (Python 3 only)**  
 Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG mapping and intelligent channel matching.
 
+![Version](https://img.shields.io/badge/Version-3.0-blue.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)
+![Python](https://img.shields.io/badge/Python-3-only-orange.svg)
+
 ## 🚀 Key Features
 
 ### 🎯 Enhanced Matching System
@@ -32,12 +36,13 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 ## 📋 Core Capabilities
 
 ### 🔄 Conversion Capabilities
-- **M3U ➔ Enigma2 Bouquets** with EPG mapping
-- **Enigma2 Bouquets ➔ M3U** format
-- **JSON ➔ Enigma2 Bouquets** with metadata preservation
-- **JSON ➔ M3U** playlist conversion
-- **XSPF ➔ M3U** playlist conversion
-- **M3U ➔ JSON** structured metadata export
+- **M3U → Enigma2 Bouquets** with EPG mapping
+- **Enigma2 Bouquets → M3U** format
+- **JSON → Enigma2 Bouquets** with metadata preservation
+- **JSON → M3U** playlist conversion
+- **M3U → JSON** structured metadata export
+- **XSPF → M3U** playlist conversion
+- **Remove M3U Bouquets** - Complete cleanup
 
 ### 🛰️ EPG & Service Mapping
 - **Automatic Service Matching**: Intelligent mapping using multiple algorithms
@@ -284,101 +289,111 @@ Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG m
 - **Service Exclusion**: Non-stream services (DVB, radio, PVR) automatically filtered
 - **Backup Utility**: Perfect for creating backup playlists or external editing
 
-### 🎯 System Requirements & Architecture
+## 🎯 System Requirements & Architecture
 - **Python 3 Exclusive**: Designed for modern Enigma2 images only
 - **Modern Hardware**: Optimized for current-generation Enigma2 receivers
 - **Offline Operation**: No internet connection required for conversion
 - **Privacy Focused**: Clean local processing — no logging or tracking
 
-### 🏗️ Technical Excellence
+## 🏗️ Technical Excellence
 - **Solid Architecture**: Well-structured code with clear separation of responsibilities
 - **Comprehensive Format Support**: M3U↔TV, JSON↔TV, XSPF→M3U, and more
 - **Hybrid Service Reference System**: Intelligent handling of mixed service types
 - **Multi-Storage Detection**: Auto-detection of mounted storage devices
 
-### 📺 Playback & Video Management
+## 📺 Playback & Video Management
 - **Aspect Ratio Intelligence**: Automatic management of video aspect ratios during playback
 - **HLS Native Support**: Built-in conversion and support for HLS streams
 - **Binary Data Protection**: Advanced filtering against data corruption
 - **Seamless Integration**: Direct channel playback from editor interface
 
-### 🛰️ Advanced EPG System
+## 🛰️ Advanced EPG System
 - **Multi-Source EPG**: Support for multiple EPG sources with mirroring capabilities
 - **Rytec Integration**: Automatic channel mapping with Rytec database support
 - **Intelligent Matching**: Similarity-based matching with configurable thresholds (20-100%)
 - **Multi-Database Modes**: Full (DVB+Rytec+DVB-T), Both, DVB Only, Rytec Only, DTT Only
 
-### 🔧 Professional Tools Suite
+## 🔧 Professional Tools Suite
 - **Manual EPG Match Editor**: Visual interface for precise channel matching
 - **Real-time Analytics**: Detailed EPG coverage statistics and cache performance metrics
 - **Database Management**: Persistent storage and management of manual corrections
 - **Export/Import System**: Comprehensive backup and restore functionality for mappings
 
-### 🎮 Enhanced User Experience
+## 🎮 Enhanced User Experience
 - **Adaptive Interface**: Professional UI that adapts to different screen resolutions
 - **Multi-language Support**: Comprehensive European language coverage
 - **Batch Processing**: Optimized 50-channel batches for superior performance
 - **Context-Aware Tools**: Intelligent tools menu with relevant options
 
-### 🛡️ Reliability & Maintenance
+## 🛡️ Reliability & Maintenance
 - **Robust Error Handling**: Automatic backup and recovery mechanisms
 - **Memory Optimization**: Smart cleanup when storage space is low
 - **Automatic Maintenance**: Database cleanup and optimization routines
 - **Enhanced Debugging**: Detailed logging and analysis tools for troubleshooting
 
-### 📈 Performance Features
+## 📈 Performance Features
 - **Efficient Processing**: Large file handling with incremental parsing
 - **Cache Optimization**: Smart caching system for improved performance
 - **Resource Management**: Automatic memory and storage management
 - **Quality Filtering**: Intelligent removal of quality indicators for better matching
 
-### 🔄 Workflow Excellence
+## 🔄 Workflow Excellence
 - **Backup Integration**: Built-in backup system with rollback capability
 - **Service Reload**: Automatic Enigma2 service reload after operations
 - **Duplicate Management**: Advanced detection and removal of duplicate channels
 - **Real-time Feedback**: Immediate status updates and progress indicators
 
-
 ## 📊 Conversion Statistics
+The plugin provides detailed analytics:
+- **Total Channels Processed**
+- **EPG Match Success Rate**
+- **Database-specific Match Counts**
+- **Cache Performance Metrics**
+- **Effective EPG Coverage** (based on selected mode)
+- **Duplicates Found and Removed**
 
-## The plugin provides detailed analytics:
+## 🔒 Backup & Safety
 
-- **Total Channels Processed
-- **EPG Match Success Rate
-- **Database-specific Match Counts
-- **Cache Performance Metrics
-- **Effective EPG Coverage (based on selected mode)
-- **Duplicates Found and Removed
+### Automatic Protection
+- **Pre-conversion Backup**: Automatic bouquet backup
+- **Rollback Capability**: Restore from backup on failure
+- **Multiple Backups**: Configurable backup retention
+- **Safe File Operations**: Transactional file writing
+- **Selection Mode Safety**: Prevents accidental deletions
 
-### 🔒 Backup & Safety
-- **Automatic Protection
-- **Pre-conversion Backup: Automatic bouquet backup
-- **Rollback Capability: Restore from backup on failure
-- **Multiple Backups: Configurable backup retention
-- **Safe File Operations: Transactional file writing
-- **Selection Mode Safety: Prevents accidental deletions
-- **Error Handling
-- **Graceful Failure: Continue processing on individual errors
-- **Detailed Error Reporting: Specific error messages and solutions
-- **Recovery Options: Multiple fallback strategies
-- **Validation Checks: Pre-conversion validation
-- **Duplicates Protection: Confirmation before bulk deletions
+### Error Handling
+- **Graceful Failure**: Continue processing on individual errors
+- **Detailed Error Reporting**: Specific error messages and solutions
+- **Recovery Options**: Multiple fallback strategies
+- **Validation Checks**: Pre-conversion validation
+- **Duplicates Protection**: Confirmation before bulk deletions
 
-### 📄 Credits & License
-- *Archimede Universal Converter v2.4
-- *Created by Lululla (@Belfagor2005)
+## 📄 Credits & License
+
+### Developer
+- **Archimede Universal Converter v3.0**
+- **Created by Lululla** ([@Belfagor2005](https://github.com/Belfagor2005))
+- **Last Modified**: 2025-11-02
 
 ### 📜 License
-- *CC BY-NC-SA 4.0: Creative Commons Attribution-NonCommercial-ShareAlike
-- *Redistribution: Only with proper attribution
-- *Modifications: Must maintain credit header
-- *Commercial Use: Not permitted without authorization
+- **CC BY-NC-SA 4.0**: Creative Commons Attribution-NonCommercial-ShareAlike
+- **Redistribution**: Only with proper attribution
+- **Modifications**: Must maintain credit header
+- **Commercial Use**: Not permitted without authorization
 
 ### 🙏 Acknowledgments
---Enigma2 Community for testing and feedback
---EPGShare for EPG data sources
---Rytec for channel mapping database
+- **Enigma2 Community** for testing and feedback
+- **EPGShare** for EPG data sources
+- **Rytec** for channel mapping database
 
-### Made with ❤️ for the Enigma2 Community
---Keep your playlists organized, your EPG accurate, and your database clean!
+### 💝 Supporting
+If you like this plugin, consider supporting the development!
 
+**☕ Offer Coffee** → [paypal.com/paypalme/belfagor2005](https://paypal.com/paypalme/belfagor2005)  
+**🍺 Offer Beer** → [ko-fi.com/lululla](https://ko-fi.com/lululla)
+
+**Support on**: [www.corvoboys.org](http://www.corvoboys.org) • [www.linuxsat-support.com](http://www.linuxsat-support.com)
+
+---
+
+## Made with ❤️ for the Enigma2 Community
