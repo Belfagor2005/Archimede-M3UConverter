@@ -75,6 +75,7 @@ from .constants import (
     PLUGIN_TITLE,
     PLUGIN_PATH,
     ARCHIMEDE_CONVERTER_PATH,
+    ARCHIMEDE_M3U_PATH,
     LOG_DIR,
     DEBUG_DIR,
     DB_PATCH,
@@ -118,6 +119,10 @@ try:
     makedirs(ARCHIMEDE_CONVERTER_PATH, exist_ok=True)
     makedirs(DEBUG_DIR, exist_ok=True)
     print(f"📁 Directories ready: {ARCHIMEDE_CONVERTER_PATH}")
+
+    makedirs(ARCHIMEDE_M3U_PATH, exist_ok=True)
+    makedirs(DEBUG_DIR, exist_ok=True)
+    print(f"📁 Directories ready: {ARCHIMEDE_M3U_PATH}")    
 except Exception as e:
     print(f"Error creating directories: {e}")
 
@@ -3634,8 +3639,8 @@ class UniversalConverter(Screen):
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1920,1080" zPosition="-2" />
             <widget name="list" position="65,70" size="1122,797" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
             <widget name="status" position="65,920" size="1127,50" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="progress_source" render="Progress" position="65,880" size="1125,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="black" />
-            <widget source="progress_text" render="Label" position="65,880" size="1124,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+            <widget source="progress_source" render="Progress" position="65,875" size="1125,40" backgroundColor="#002d3d5b" transparent="1" foregroundColor="black" />
+            <widget source="progress_text" render="Label" position="65,875" size="1124,40" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
             <eLabel name="" position="1200,810" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
             <eLabel name="" position="1200,865" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
             <eLabel name="" position="1200,920" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
@@ -3669,8 +3674,8 @@ class UniversalConverter(Screen):
             <eLabel backgroundColor="#002d3d5b" cornerRadius="20" position="0,0" size="1280,720" zPosition="-2" />
             <widget name="list" position="25,60" size="840,518" itemHeight="40" font="Regular;28" scrollbarMode="showNever" />
             <widget name="status" position="24,616" size="1185,42" font="Regular;28" backgroundColor="background" transparent="1" foregroundColor="white" />
-            <widget source="progress_source" render="Progress" position="25,582" size="840,30" backgroundColor="#002d3d5b" transparent="1" foregroundColor="black" />
-            <widget source="progress_text" render="Label" position="25,582" size="840,30" font="Regular;28" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
+            <widget source="progress_source" render="Progress" position="25,580" size="840,35" backgroundColor="#002d3d5b" transparent="1" foregroundColor="black" />
+            <widget source="progress_text" render="Label" position="25,580" size="840,35" font="Regular; 26" backgroundColor="#002d3d5b" transparent="1" foregroundColor="white" />
             <eLabel name="" position="1111,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="OK" />
             <eLabel name="" position="1165,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="STOP" />
             <eLabel name="" position="1220,657" size="52,52" backgroundColor="#003e4b53" halign="center" valign="center" transparent="0" cornerRadius="9" font="Regular; 16" zPosition="1" text="MENU" />
@@ -3712,7 +3717,8 @@ class UniversalConverter(Screen):
             "xspf_to_m3u": _("XSPF to M3U Playlist Conversion"),
             "m3u_to_json": _("M3U to JSON Conversion")
         }
-        self.setTitle(title_mapping.get(conversion_type, PLUGIN_TITLE))
+        title_text = title_mapping.get(conversion_type, PLUGIN_TITLE)
+        self.setTitle(title_text)
         self.m3u_channels_list = []
         # self.bouquet_list = []
         self.aspect_manager = AspectManager()
@@ -3726,7 +3732,7 @@ class UniversalConverter(Screen):
         base_path = config.plugins.m3uconverter.lastdir.value
         self.full_path = base_path
         self["list"] = MenuList([])
-        self["Title"] = Label(PLUGIN_TITLE)
+        self["Title"] = Label(title_text)
         self["status"] = Label(_("Ready"))
         self["key_red"] = StaticText(_("Open File"))
         self["key_green"] = StaticText("")
@@ -5271,7 +5277,7 @@ class UniversalConverter(Screen):
     def get_output_filename(self):
         """Generate a unique file name for export."""
         timestamp = strftime("%Y%m%d_%H%M%S")
-        return f"{ARCHIMEDE_CONVERTER_PATH}/archimede_export_{timestamp}.m3u"
+        return f"{ARCHIMEDE_M3U_PATH}/archimede_export_{timestamp}.m3u"
 
     def handle_very_large_file(self, filename):
         """Handle extremely large M3U files with higher limits."""
@@ -6010,7 +6016,7 @@ class UniversalConverter(Screen):
                     # processed_count E total_valid
                     if processed_count % 10 == 0:
                         progress = int((processed_count / total_valid) * 100)
-                        progress_message = _(f"Processing: {processed_count}/{total_valid} ({progress}%)")
+                        progress_message = _(f"Converting: {processed_count}/{total_valid} ({progress}%)")
                         self.update_progress(processed_count, progress_message)
 
                     # processed_count
@@ -6158,10 +6164,8 @@ class UniversalConverter(Screen):
 
         # Clear log before starting conversion
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
-            self.epg_mapper._cleanup_log_file()
-
-        if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper._cleanup_all_match_types()
+            self.epg_mapper._cleanup_log_file()
 
         def conversion_task():
             try:
@@ -6223,7 +6227,7 @@ class UniversalConverter(Screen):
                             progress = (idx + 1) / total_items * 100
                             self.update_progress(
                                 idx + 1,
-                                _("Exporting: {name} ({percent}%)").format(
+                                _("Converting: {name} ({percent}%)").format(
                                     name=name,
                                     percent=int(progress)
                                 )
@@ -6294,13 +6298,27 @@ class UniversalConverter(Screen):
                 if not self.m3u_channels_list:
                     return (False, "No channels to convert")
 
+                logger.info(f"🔍 DEBUG: m3u_channels_list type: {type(self.m3u_channels_list)}")
+                logger.info(f"🔍 DEBUG: m3u_channels_list length: {len(self.m3u_channels_list)}")
+                
+                if self.m3u_channels_list:
+                    logger.info(f"🔍 DEBUG: First item type: {type(self.m3u_channels_list[0])}")
+                    logger.info(f"🔍 DEBUG: First item: {self.m3u_channels_list[0]}")
+                    if isinstance(self.m3u_channels_list[0], dict):
+                        logger.info(f"🔍 DEBUG: First item keys: {self.m3u_channels_list[0].keys()}")
+
                 # Convert tuple data to dictionary format for EPG processing
                 processed_channels = []
-                epg_data = []  # ⬅️ NUOVO: Dati per EPG
+                epg_data = []
+                
                 for idx, channel in enumerate(self.m3u_channels_list):
+                    logger.info(f"🔍 DEBUG: Processing channel {idx}, type: {type(channel)}")
+                    
                     if isinstance(channel, tuple) and len(channel) == 2:
                         # Convert (name, url) tuple to dictionary
                         name, url = channel
+                        logger.info(f"🔍 DEBUG: Converting tuple - name: '{name}', url: '{url}'")
+                        
                         channel_dict = {
                             'name': name,
                             'url': url,
@@ -6308,14 +6326,32 @@ class UniversalConverter(Screen):
                         }
                         processed_channels.append(channel_dict)
                     elif isinstance(channel, dict):
-                        # Already in correct format
-                        processed_channels.append(channel)
+                        # Already in correct format - CERCHIAMO SIA 'name' CHE 'title'
+                        channel_name = channel.get('name') or channel.get('title') or 'Unknown'
+                        url = channel.get('url') or channel.get('uri') or ''
+                        
+                        logger.info(f"🔍 DEBUG: Processing dict - found name: '{channel.get('name')}', title: '{channel.get('title')}', selected: '{channel_name}'")
+                        
+                        channel_dict = {
+                            'name': channel_name,
+                            'url': url,
+                            'original_name': channel_name
+                        }
+                        
+                        # Copia tutti gli altri campi utili
+                        for key, value in channel.items():
+                            if key not in ['name', 'title', 'url', 'uri']:
+                                channel_dict[key] = value
+                        
+                        processed_channels.append(channel_dict)
                     else:
-                        logger.warning(f"⚠️ Skipping invalid channel format: {channel}")
+                        logger.warning(f"⚠️ Skipping invalid channel format: {type(channel)} - {channel}")
                         continue
 
                 if not processed_channels:
                     return (False, "No valid channels processed")
+
+                logger.info(f"✅ DEBUG: Successfully processed {len(processed_channels)} channels")
 
                 # Process channels with EPG matching
                 optimized_channels = []
@@ -6323,8 +6359,20 @@ class UniversalConverter(Screen):
                     if self.cancel_conversion:
                         return (False, "Conversion cancelled")
 
+                    # DEBUG: Check channel structure before processing
+                    if not isinstance(channel, dict):
+                        logger.error(f"❌ DEBUG: Channel {idx} is not a dict: {type(channel)}")
+                        continue
+                        
                     name = channel.get('name', '')
                     url = channel.get('url', '')
+                    
+                    if not name:
+                        logger.warning(f"⚠️ DEBUG: Channel {idx} has empty name: {channel}")
+                        # Skip channels without name
+                        continue
+
+                    logger.info(f"🔍 DEBUG: Processing channel {idx}: '{name}'")
 
                     # Find better EPG match if available
                     clean_name = self.epg_mapper.clean_channel_name(name)
@@ -6335,7 +6383,7 @@ class UniversalConverter(Screen):
                     # Use existing URL but with better service reference if found
                     if service_ref and service_ref.startswith('1:0:'):
                         bouquet_sref = self.epg_mapper._generate_hybrid_sref(service_ref, url, for_epg=False)
-                        epg_sref = service_ref  # ⬅️ Per EPG usa il riferimento DVB originale
+                        epg_sref = service_ref  # Per EPG usa il riferimento DVB originale
                     else:
                         bouquet_sref = self.epg_mapper._generate_service_reference(url)
                         epg_sref = bouquet_sref  # Fallback a IPTV
@@ -6366,41 +6414,46 @@ class UniversalConverter(Screen):
                         progress = (idx + 1) / len(processed_channels) * 100
                         self.update_progress(
                             idx + 1,
-                            _("Optimizing: {} ({}%)").format(name, int(progress))
+                            _("Converting: {} ({}%)").format(name, int(progress))
                         )
 
                 # Write optimized bouquet
-                if self.write_group_bouquet(safe_name, optimized_channels):
-                    # Update main bouquet
-                    self.update_main_bouquet([safe_name])
+                if optimized_channels:
+                    if self.write_group_bouquet(safe_name, optimized_channels):
+                        # Update main bouquet
+                        self.update_main_bouquet([safe_name])
 
-                # Generate EPG files if enabled
-                if config.plugins.m3uconverter.epg_enabled.value and epg_data:
-                    logger.info(f"🎯 Generating EPG for TV-to-TV conversion: {len(epg_data)} channels")
+                        # Generate EPG files if enabled
+                        if config.plugins.m3uconverter.epg_enabled.value and epg_data:
+                            logger.info(f"🎯 Generating EPG for TV-to-TV conversion: {len(epg_data)} channels")
 
-                    # Generate channels.xml
-                    epg_success = self.epg_mapper._generate_epg_channels_file(epg_data, safe_name)
+                            # Generate channels.xml
+                            epg_success = self.epg_mapper._generate_epg_channels_file(epg_data, safe_name)
 
-                    if epg_success:
-                        # Generate sources.xml
-                        sources_success = self.epg_mapper._generate_epgshare_sources_file(safe_name)
+                            if epg_success:
+                                # Generate sources.xml
+                                sources_success = self.epg_mapper._generate_epgshare_sources_file(safe_name)
 
-                        if sources_success:
-                            logger.info("✅ EPG files generated successfully for TV-to-TV conversion")
-                        else:
-                            logger.warning("⚠️ Failed to generate EPG sources for TV-to-TV conversion")
+                                if sources_success:
+                                    logger.info("✅ EPG files generated successfully for TV-to-TV conversion")
+                                else:
+                                    logger.warning("⚠️ Failed to generate EPG sources for TV-to-TV conversion")
+                            else:
+                                logger.warning("⚠️ Failed to generate EPG channels for TV-to-TV conversion")
+
+                        # Store processed channels for potential manual editing
+                        self.m3u_channels_list = optimized_channels
+
+                        return (True, safe_name, len(optimized_channels))
                     else:
-                        logger.warning("⚠️ Failed to generate EPG channels for TV-to-TV conversion")
-
-                    # Store processed channels for potential manual editing
-                    self.m3u_channels_list = optimized_channels
-
-                    return (True, safe_name, len(optimized_channels))
+                        return (False, "Failed to write optimized bouquet")
                 else:
-                    return (False, "Failed to write optimized bouquet")
+                    return (False, "No valid channels to write")
 
             except Exception as e:
                 logger.error(f"TV-to-TV conversion error: {str(e)}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 return (False, str(e))
 
         def conversion_task():
@@ -6432,18 +6485,22 @@ class UniversalConverter(Screen):
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
     def _convert_json_to_m3u(self):
-        """Convert JSON to M3U format."""
+        """Convert JSON playlist to M3U format."""
         if self.is_converting:
             self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
             return
 
-        # Global cleanup before conversion
+        # Global cleanup before starting conversion
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper._cleanup_all_match_types()
             self.epg_mapper._cleanup_log_file()
 
-        def _json_to_m3u_conversion():
+        def conversion_task():
             try:
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
+
+                # MAIN CONVERSION LOGIC
                 if not self.m3u_channels_list:
                     self._parse_json_file(self.selected_file)
 
@@ -6472,19 +6529,18 @@ class UniversalConverter(Screen):
                             progress = (idx + 1) / total_channels * 100
                             self.update_progress(
                                 idx + 1,
-                                _("Exporting: {name} ({percent}%)").format(
+                                _("Converting: {name} ({percent}%)").format(
                                     name=channel.get('name', 'Unknown'),
-                                    percent=progress
+                                    percent=int(progress)
                                 )
                             )
 
-                        # Write EXTINF line
+                        # Build EXTINF line
                         name = channel.get('name', '')
                         tvg_id = channel.get('tvg_id', '')
                         tvg_name = channel.get('tvg_name', '')
                         tvg_logo = channel.get('logo', '')
-                        group = channel.get('group', '')
-                        group = clean_group_name(group)
+                        group = clean_group_name(channel.get('group', ''))
                         duration = channel.get('duration', '-1')
 
                         extinf = f'#EXTINF:{duration}'
@@ -6502,36 +6558,17 @@ class UniversalConverter(Screen):
                         f.write(channel['url'] + '\n')
 
                 return (True, output_file, total_channels)
-            except Exception as e:
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.error(f"Error converting JSON to M3U: {str(e)}")
-                return (False, str(e))
 
-        def conversion_task():
-            try:
-                # Check cancellation immediately
-                if self.cancel_conversion:
-                    return (False, "Conversion cancelled before start")
-                if hasattr(self, 'epg_mapper') and self.epg_mapper:
-                    self.epg_mapper._refresh_config()
-                return _json_to_m3u_conversion()
             except Exception as e:
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
         # Reset UI and start conversion
         self.reset_conversion_buttons()
-
         self.is_converting = True
         self.cancel_conversion = False
         self["key_red"].setText("")
         self["key_green"].setText("")
         self["key_blue"].setText(_("Cancel"))
-
-        # Start memory cleanup timer
-        if hasattr(self, 'epg_mapper') and self.epg_mapper:
-            self.epg_mapper.optimize_memory_timer.start(30000)
 
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
@@ -6546,38 +6583,56 @@ class UniversalConverter(Screen):
             self.epg_mapper._cleanup_all_match_types()
             self.epg_mapper._cleanup_log_file()
 
-        def _m3u_to_json_conversion():
+        def conversion_task():
             try:
+                if self.cancel_conversion:
+                    return (False, "Conversion cancelled before start")
+
                 # Parse the M3U file if not already parsed
                 if not self.m3u_channels_list:
                     with open(self.selected_file, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     self.m3u_channels_list = self._parse_m3u_content(content)
 
+                    # Normalize M3U entries ⭐⭐
+                    normalized_list = []
+                    for ch in self.m3u_channels_list:
+                        if ch.get('uri'):
+                            normalized_list.append({
+                                'name': ch.get('title', ''),            # title → name
+                                'url': ch.get('uri', ''),
+                                'group': ch.get('group-title', ''),
+                                'tvg_id': ch.get('tvg-id', ''),
+                                'tvg_name': ch.get('tvg-name', ''),
+                                'logo': ch.get('tvg-logo', ''),
+                                'user_agent': ch.get('user_agent', ''),
+                                'program_id': ch.get('program-id', '')
+                            })
+                    self.m3u_channels_list = normalized_list
+
                 if not self.m3u_channels_list:
                     return (False, "No valid channels found in M3U file")
 
                 # Create JSON structure
                 json_data = {"playlist": []}
-
+                total_channels = len(self.m3u_channels_list)
                 for idx, channel in enumerate(self.m3u_channels_list):
+                    if self.cancel_conversion:
+                        return (False, "Conversion cancelled")
+
+                    channel_name = channel.get('name', 'Unknown')
                     # Update progress
-                    progress = (idx + 1) / len(self.m3u_channels_list) * 100
+                    progress = (idx + 1) / total_channels * 100
                     self.update_progress(
                         idx + 1,
-                        _("Converting: {title} ({percent}%)").format(
-                            title=channel.get('title', 'Unknown'),
-                            percent=progress
+                        _("Converting: {name} ({percent}%)").format(
+                            name=channel_name,
+                            percent=int(progress)
                         )
                     )
 
-                    # Copy all attributes found in parsing
-                    channel_data = {}
-                    for key, value in channel.items():
-                        if self.cancel_conversion:
-                            return (False, "Conversion cancelled")
-                        channel_data[key] = value
-
+                    # Copy all normalized attributes
+                    channel_data = {key: value for key, value in channel.items()}
                     json_data["playlist"].append(channel_data)
 
                 # Generate output filename
@@ -6590,36 +6645,17 @@ class UniversalConverter(Screen):
                     json.dump(json_data, f, indent=4, ensure_ascii=False)
 
                 return (True, output_file, len(json_data["playlist"]))
-            except Exception as e:
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.error(f"Error converting M3U to JSON: {str(e)}")
-                return (False, str(e))
 
-        def conversion_task():
-            try:
-                # Check cancellation immediately
-                if self.cancel_conversion:
-                    return (False, "Conversion cancelled before start")
-                if hasattr(self, 'epg_mapper') and self.epg_mapper:
-                    self.epg_mapper._refresh_config()
-                return _m3u_to_json_conversion()
             except Exception as e:
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.error(f"Conversion task failed: {str(e)}")
                 return (False, str(e))
 
         # Reset UI and start conversion
         self.reset_conversion_buttons()
-
         self.is_converting = True
         self.cancel_conversion = False
         self["key_red"].setText("")
         self["key_green"].setText("")
         self["key_blue"].setText(_("Cancel"))
-
-        # Start memory cleanup timer
-        if hasattr(self, 'epg_mapper') and self.epg_mapper:
-            self.epg_mapper.optimize_memory_timer.start(30000)
 
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
@@ -6643,61 +6679,15 @@ class UniversalConverter(Screen):
             self.session.open(MessageBox, _("No valid channels found in the JSON file"), MessageBox.TYPE_ERROR)
             return
 
-        def _json_tv_conversion():
-            """PRIMA def - contiene la logica di post-conversione"""
-            try:
-                result = self.core_converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
-                
-                if result[0]:
-                    # Get cache stats safely with fallbacks
-                    cache_stats = {}
-                    if hasattr(self, 'epg_mapper') and self.epg_mapper:
-                        try:
-                            cache_stats = self.epg_mapper._get_cache_statistics()
-                        except Exception as e:
-                            logger.error(f"Error getting cache stats: {str(e)}")
-                            cache_stats = {}
-
-                    # Build stats data with safe dictionary access
-                    stats_data = {
-                        'total_channels': result[1] if len(result) > 1 else 0,
-                        'rytec_matches': result[2] if len(result) > 2 else 0,
-                        'match_hit_rate': cache_stats.get('match_hit_rate', 'N/A'),
-                        'match_cache_size': cache_stats.get('match_cache_size', 0),
-                        'compatible_cache': cache_stats.get('cache_analysis', {}).get('compatible', 0),
-                        'incompatible_matches': cache_stats.get('incompatible_matches', 0),
-                        'rytec_channels': cache_stats.get('rytec_channels', 0),
-                        'database_mode': getattr(self.epg_mapper, 'database_mode', 'both') if hasattr(self, 'epg_mapper') and self.epg_mapper else 'both'
-                    }
-
-                    self.last_conversion_stats = stats_data
-
-                    # AUTO-OPEN MANUAL EDITOR FOR JSON
-                    if (config.plugins.m3uconverter.auto_open_editor.value and
-                            hasattr(self, 'm3u_channels_list') and self.m3u_channels_list):
-
-                        self.open_editor_timer = eTimer()
-                        self.open_editor_timer.callback.append(self._open_editor_delayed)
-                        self.open_editor_timer.start(1000)
-                    else:
-                        self.show_conversion_stats("json_to_tv", stats_data)
-                        if config.plugins.m3uconverter.enable_debug.value:
-                            self.print_simple_stats()
-                return result
-
-            except Exception as e:
-                logger.error(f"JSON to TV conversion error: {str(e)}")
-                return (False, str(e))
-
         def conversion_task():
-            """SECONDA def - wrapper per il thread"""
+            """Task per il thread"""
             try:
                 # Check cancellation immediately
                 if self.cancel_conversion:
                     return (False, "Conversion cancelled before start")
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return _json_tv_conversion()
+                return self.core_converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
             except Exception as e:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.error(f"Conversion task failed: {str(e)}")
@@ -6759,7 +6749,7 @@ class UniversalConverter(Screen):
                                 progress = (track + 1) / total_items * 100
                                 self.update_progress(
                                     track + 1,
-                                    _("Exporting: {title} ({percent}%)").format(
+                                    _("Converting: {title} ({percent}%)").format(
                                         title=title,
                                         percent=int(progress)
                                     )
@@ -6801,10 +6791,14 @@ class UniversalConverter(Screen):
         threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
 
     def _open_editor_delayed(self):
-        """Opens the manual editor with a short delay"""
+        """Opens the manual editor after a short delay."""
         try:
             if hasattr(self, 'open_editor_timer'):
                 self.open_editor_timer.stop()
+
+            if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
+                logger.error("❌ No channel data available for the editor")
+                return
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("🎯 Opening ManualMatchEditor...")
@@ -6814,17 +6808,34 @@ class UniversalConverter(Screen):
             if hasattr(self, 'selected_file') and self.selected_file:
                 bouquet_name = basename(self.selected_file).split('.')[0]
 
+            def editor_closed_callback(result=None):
+                """Callback executed when the manual editor is closed."""
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.info("🔒 ManualMatchEditor closed")
+
+                # Show updated statistics after editing
+                if hasattr(self, 'last_conversion_stats'):
+                    updated_stats = self.calculate_updated_stats()
+                    self.show_conversion_stats(self.conversion_type, updated_stats)
+
+                # Automatically reload services if configured
+                _reload_services_after_delay()
+
+                self["status"].setText(_("Manual editing completed"))
+
+            # Open the editor
             self.session.openWithCallback(
-                self._editor_closed_callback,
+                editor_closed_callback,
                 ManualMatchEditor,
                 self.m3u_channels_list,
                 self.epg_mapper,
-                bouquet_name,
-                parent_callback=self._editor_closed_callback
+                bouquet_name
             )
 
         except Exception as e:
             logger.error(f"❌ Error opening manual editor: {str(e)}")
+            if hasattr(self, 'last_conversion_stats'):
+                self.show_conversion_stats(self.conversion_type, self.last_conversion_stats)
 
     def _editor_closed_callback(self, result=None):
         """Callback when the manual editor is closed"""
@@ -6843,14 +6854,19 @@ class UniversalConverter(Screen):
 
     def conversion_finished(self, result):
         """Handles the completion of conversion"""
-        self["progress_source"].setValue(0)
         try:
+            # Reset UI immediately
+            self["progress_source"].setValue(0)
+            self["progress_text"].setText("")
             self.is_converting = False
             self.cancel_conversion = False
+
+            # Reset UI buttons
             self._reset_conversion_ui()
 
             if not isinstance(result, tuple):
-                self._reset_conversion_ui()
+                logger.error("❌ Invalid conversion result format")
+                self["status"].setText(_("Conversion failed: Invalid result"))
                 return
 
             success = result[0]
@@ -6863,32 +6879,32 @@ class UniversalConverter(Screen):
                 # PRESERVE STATISTICS BEFORE ANY RESET
                 self.preserve_conversion_stats()
 
-                # Collect conversion statistics
+                # Collect conversion statistics only for TV conversion
                 if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
-                    # Get ACCURATE statistics
-                    cache_stats = self.epg_mapper._get_cache_statistics()
+                    if hasattr(self, 'epg_mapper') and self.epg_mapper:
+                        cache_stats = self.epg_mapper._get_cache_statistics()
 
-                    # Use the REAL processed count, not the sum of matches
-                    total_processed = cache_stats.get('total_processed', 0)
-                    effective_coverage = cache_stats.get('effective_coverage', 0)
+                        total_processed = cache_stats.get('total_matches', 0)
+                        effective_coverage = cache_stats.get('effective_coverage', 0)
 
-                    stats_data = {
-                        'total_channels': total_processed,
-                        'effective_epg_matches': int(total_processed * effective_coverage / 100),
-                        'effective_coverage': f"{effective_coverage:.1f}%",
-                        'rytec_matches': cache_stats.get('rytec_matches', 0),
-                        'dvb_matches': cache_stats.get('dvb_matches', 0),
-                        'dvbt_matches': cache_stats.get('dvbt_matches', 0),
-                        'fallback_matches': cache_stats.get('fallback_matches', 0),
-                        'manual_db_matches': cache_stats.get('manual_db_matches', 0),
-                    }
+                        stats_data = {
+                            'total_channels': total_processed,
+                            'effective_epg_matches': int(total_processed * effective_coverage / 100),
+                            'effective_coverage': f"{effective_coverage:.1f}%",
+                            'rytec_matches': cache_stats.get('rytec_matches', 0),
+                            'dvb_matches': cache_stats.get('dvb_matches', 0),
+                            'dvbt_matches': cache_stats.get('dvbt_matches', 0),
+                            'fallback_matches': cache_stats.get('fallback_matches', 0),
+                            'manual_db_matches': cache_stats.get('manual_db_matches', 0),
+                        }
 
-                    self.last_conversion_stats = stats_data
-                    self.last_cache_stats = cache_stats
-                    self.last_conversion_success = True
+                        self.last_conversion_stats = stats_data
+                        self.last_cache_stats = cache_stats
+                        self.last_conversion_success = True
 
+                # AUTO-OPEN EDITOR LOGIC only for TV conversion
                 if (config.plugins.m3uconverter.auto_open_editor.value and
-                        self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"] and  # ⬅️ AGGIUNGI tv_to_tv QUI
+                        self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"] and
                         hasattr(self, 'm3u_channels_list') and self.m3u_channels_list):
 
                     if config.plugins.m3uconverter.enable_debug.value:
@@ -6897,41 +6913,47 @@ class UniversalConverter(Screen):
                     # Small delay to stabilize the UI
                     self.open_editor_timer = eTimer()
                     self.open_editor_timer.callback.append(self._open_editor_delayed)
-                    self.open_editor_timer.start(1000)  # 1 second delay
+                    self.open_editor_timer.start(1000, True)  # 1 secondo, single shot
 
                 else:
-                    if self.conversion_type == "tv_to_tv" and hasattr(self, 'last_conversion_stats'):
-                        self.show_conversion_stats("tv_to_tv", self.last_conversion_stats)
-                    elif self.conversion_type in ["m3u_to_tv", "json_to_tv"]:
-                        self.show_conversion_stats(self.conversion_type, stats_data)
+                    # Show normal statistics for TV conversion
+                    if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
+                        if hasattr(self, 'last_conversion_stats'):
+                            self.show_conversion_stats(self.conversion_type, self.last_conversion_stats)
+                        else:
+                            self.show_normal_conversion_success()
+                    else:
+                        # For other conversions, just show normal success
+                        self.show_normal_conversion_success()
 
-                    # Show success message
-                    self.show_normal_conversion_success()
+                # Auto-reload services for TV conversion
+                if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
+                    _reload_services_after_delay()
 
             else:
+                # Gestione errore
                 error_msg = result[1] if len(result) > 1 else _("Unknown error")
-                self.session.open(MessageBox, _("Conversion failed: {}").format(error_msg), MessageBox.TYPE_ERROR)
+                logger.error(f"❌ Conversion failed: {error_msg}")
+                self.session.open(
+                    MessageBox,
+                    _("Conversion failed: {}").format(error_msg),
+                    MessageBox.TYPE_ERROR,
+                    timeout=10
+                )
 
-            self["progress_text"].setText("")
+            # Final state
             self["status"].setText(_("Conversion completed"))
-            self["key_red"].setText(_("Open File"))
-            self["key_green"].setText(_("Convert"))
-            self["key_yellow"].setText(_("Match"))
-            self["key_blue"].setText(_("Tools"))
-            # attention this save epg on excel csv ;)
-            if success and config.plugins.m3uconverter.enable_debug.value:
-                # Auto-reload services for standard conversions
-                _reload_services_after_delay()
-
-                if hasattr(self, 'epg_mapper'):
-                    bouquet_name = "test"
-                    self.epg_mapper._save_quick_debug(self.m3u_channels_list, bouquet_name)
+            self.file_loaded = False  # Reset file state
 
         except Exception as e:
-            logger.error(f"Error in conversion_finished: {str(e)}")
+            logger.error(f"❌ Error in conversion_finished: {str(e)}")
             import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            self.session.open(MessageBox, _("Error processing conversion result"), MessageBox.TYPE_ERROR)
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            self.session.open(
+                MessageBox,
+                _("Error processing conversion result"),
+                MessageBox.TYPE_ERROR
+            )
             self._reset_conversion_ui()
 
     def show_normal_conversion_success(self):
@@ -7135,12 +7157,7 @@ class UniversalConverter(Screen):
         self["key_blue"].setText(_("Tools"))
         self["progress_source"].setValue(0)
         self["progress_text"].setText("")
-
-        # Reset progress indicators
-        if hasattr(self, 'progress_source'):
-            self["progress_source"].setValue(0)
-        if hasattr(self, 'progress_text'):
-            self["progress_text"].setText("")
+        self["status"].setText(_("Ready"))
 
     def _conversion_cancelled(self):
         """Handle conversion cancellation."""
