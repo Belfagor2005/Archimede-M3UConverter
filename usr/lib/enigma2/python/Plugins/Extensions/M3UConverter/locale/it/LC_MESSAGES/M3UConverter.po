@@ -3,8 +3,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: M3UConverter\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-03 13:01+0100\n"
-"PO-Revision-Date: 2025-11-03 13:01+0100\n"
+"POT-Creation-Date: 2025-11-03 13:31+0100\n"
+"PO-Revision-Date: 2025-11-03 13:31+0100\n"
 "Last-Translator: \n"
 "Language-Team: <ekekaz@gmail.com>\n"
 "Language: it\n"
@@ -103,7 +103,7 @@ msgstr "XSPF a ➔ M3U Playlist"
 msgid "Remove M3U Bouquets"
 msgstr "Rimuovere Bouquets M3U"
 
-#: plugin.py:3382 plugin_info.py:109
+#: plugin.py:3382 plugin_info.py:108
 msgid "Plugin Information"
 msgstr "Informazioni sul Plugin"
 
@@ -111,7 +111,7 @@ msgstr "Informazioni sul Plugin"
 msgid "We're ready: what do you want to do?"
 msgstr "Siamo pronti: cosa vuoi fare?"
 
-#: plugin.py:3399 plugin.py:7606 plugin.py:8875 plugin_info.py:112
+#: plugin.py:3399 plugin.py:7606 plugin.py:8875 plugin_info.py:111
 msgid "Close"
 msgstr "Esci"
 
@@ -1381,20 +1381,20 @@ msgstr "Convertitore Universale"
 msgid "Convert between M3U Enigma2 Bouquets Json"
 msgstr "Converti tra M3U Enigma2 Bouquets Json"
 
-#: plugin_info.py:111
+#: plugin_info.py:110
 #, python-format
 msgid "Archimede Universal Converter v.%s"
 msgstr "Archimede Universal Converter v.%s"
 
-#: plugin_info.py:113 plugin_info.py:159
+#: plugin_info.py:112 plugin_info.py:158
 msgid "Prev"
 msgstr "Precedente"
 
-#: plugin_info.py:114 plugin_info.py:164
+#: plugin_info.py:113 plugin_info.py:163
 msgid "Next"
 msgstr "Successivo"
 
-#: plugin_info.py:152
+#: plugin_info.py:151
 #, python-brace-format
 msgid "Archimede Universal Converter by Lululla v.{version} - {page}"
 msgstr "Archimede Universal Converter by Lululla v.{version} - {page}"

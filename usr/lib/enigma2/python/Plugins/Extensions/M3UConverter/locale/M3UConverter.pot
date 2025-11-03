@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: M3UConverter\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-03 13:01+0100\n"
+"POT-Creation-Date: 2025-11-03 13:30+0100\n"
 "PO-Revision-Date: 2024-08-31 20:59+0200\n"
 "Last-Translator: \n"
 "Language-Team: <ekekaz@gmail.com>\n"
@@ -102,7 +102,7 @@ msgstr ""
 msgid "Remove M3U Bouquets"
 msgstr ""
 
-#: plugin.py:3382 plugin_info.py:109
+#: plugin.py:3382 plugin_info.py:108
 msgid "Plugin Information"
 msgstr ""
 
@@ -110,7 +110,7 @@ msgstr ""
 msgid "We're ready: what do you want to do?"
 msgstr ""
 
-#: plugin.py:3399 plugin.py:7606 plugin.py:8875 plugin_info.py:112
+#: plugin.py:3399 plugin.py:7606 plugin.py:8875 plugin_info.py:111
 msgid "Close"
 msgstr ""
 
@@ -1312,20 +1312,20 @@ msgstr ""
 msgid "Convert between M3U Enigma2 Bouquets Json"
 msgstr ""
 
-#: plugin_info.py:111
+#: plugin_info.py:110
 #, python-format
 msgid "Archimede Universal Converter v.%s"
 msgstr ""
 
-#: plugin_info.py:113 plugin_info.py:159
+#: plugin_info.py:112 plugin_info.py:158
 msgid "Prev"
 msgstr ""
 
-#: plugin_info.py:114 plugin_info.py:164
+#: plugin_info.py:113 plugin_info.py:163
 msgid "Next"
 msgstr ""
 
-#: plugin_info.py:152
+#: plugin_info.py:151
 #, python-brace-format
 msgid "Archimede Universal Converter by Lululla v.{version} - {page}"
 msgstr ""
