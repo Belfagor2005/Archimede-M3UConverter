@@ -4,8 +4,8 @@
 ##############################################################
 ##                  Configurazione Versione                 ##
 ##############################################################
-version='3.0'
-changelog='\nReorde all fiels - add to_to_tv'
+version='3.1'
+changelog='\nReorder all fiels - add to_to_tv'
 
 ##############################################################
 ##               Variabili Percorsi Temporanei              ##

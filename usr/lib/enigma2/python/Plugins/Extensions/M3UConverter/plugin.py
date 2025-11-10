@@ -122,7 +122,7 @@ try:
 
     makedirs(ARCHIMEDE_M3U_PATH, exist_ok=True)
     makedirs(DEBUG_DIR, exist_ok=True)
-    print(f"📁 Directories ready: {ARCHIMEDE_M3U_PATH}")    
+    print(f"📁 Directories ready: {ARCHIMEDE_M3U_PATH}")
 except Exception as e:
     print(f"Error creating directories: {e}")
 
@@ -6300,7 +6300,7 @@ class UniversalConverter(Screen):
 
                 logger.info(f"🔍 DEBUG: m3u_channels_list type: {type(self.m3u_channels_list)}")
                 logger.info(f"🔍 DEBUG: m3u_channels_list length: {len(self.m3u_channels_list)}")
-                
+
                 if self.m3u_channels_list:
                     logger.info(f"🔍 DEBUG: First item type: {type(self.m3u_channels_list[0])}")
                     logger.info(f"🔍 DEBUG: First item: {self.m3u_channels_list[0]}")
@@ -6310,15 +6310,15 @@ class UniversalConverter(Screen):
                 # Convert tuple data to dictionary format for EPG processing
                 processed_channels = []
                 epg_data = []
-                
+
                 for idx, channel in enumerate(self.m3u_channels_list):
                     logger.info(f"🔍 DEBUG: Processing channel {idx}, type: {type(channel)}")
-                    
+
                     if isinstance(channel, tuple) and len(channel) == 2:
                         # Convert (name, url) tuple to dictionary
                         name, url = channel
                         logger.info(f"🔍 DEBUG: Converting tuple - name: '{name}', url: '{url}'")
-                        
+
                         channel_dict = {
                             'name': name,
                             'url': url,
@@ -6329,20 +6329,20 @@ class UniversalConverter(Screen):
                         # Already in correct format - CERCHIAMO SIA 'name' CHE 'title'
                         channel_name = channel.get('name') or channel.get('title') or 'Unknown'
                         url = channel.get('url') or channel.get('uri') or ''
-                        
+
                         logger.info(f"🔍 DEBUG: Processing dict - found name: '{channel.get('name')}', title: '{channel.get('title')}', selected: '{channel_name}'")
-                        
+
                         channel_dict = {
                             'name': channel_name,
                             'url': url,
                             'original_name': channel_name
                         }
-                        
+
                         # Copia tutti gli altri campi utili
                         for key, value in channel.items():
                             if key not in ['name', 'title', 'url', 'uri']:
                                 channel_dict[key] = value
-                        
+
                         processed_channels.append(channel_dict)
                     else:
                         logger.warning(f"⚠️ Skipping invalid channel format: {type(channel)} - {channel}")
@@ -6363,10 +6363,10 @@ class UniversalConverter(Screen):
                     if not isinstance(channel, dict):
                         logger.error(f"❌ DEBUG: Channel {idx} is not a dict: {type(channel)}")
                         continue
-                        
+
                     name = channel.get('name', '')
                     url = channel.get('url', '')
-                    
+
                     if not name:
                         logger.warning(f"⚠️ DEBUG: Channel {idx} has empty name: {channel}")
                         # Skip channels without name
@@ -6994,6 +6994,22 @@ class UniversalConverter(Screen):
             if not timestamp:
                 timestamp = strftime("%Y-%m-%d %H:%M:%S")
 
+            conversion_type_mapping = {
+                "m3u_to_tv": "M3U to TV Channels",
+                "json_to_tv": "JSON to TV Channels",
+                "tv_to_m3u": "TV Channels to M3U",
+                "json_to_m3u": "JSON to M3U",
+                "xspf_to_m3u": "XSPF to M3U",
+                "m3u_to_json": "M3U to JSON",
+                "tv_to_json": "TV Channels to JSON"
+            }
+
+            # Use mapping, if not found use the original value
+            display_conversion_type = conversion_type_mapping.get(
+                conversion_type,
+                conversion_type.replace('_', ' ').title()
+            )
+
             # CORRECT COUNTERS - usa get() per accesso sicuro
             total_processed = stats_data.get('total_channels', 0)
             total_original = stats_data.get('total_original_channels', total_processed)
@@ -7107,7 +7123,7 @@ class UniversalConverter(Screen):
             # FINAL INFORMATION WITH TIMESTAMP
             stats_message.extend([
                 "",
-                _("⏱️ Conversion type: {}").format(conversion_type.replace('_', ' ').title()),
+                _("⏱️ Conversion type: {}").format(display_conversion_type),
                 _("🕒 Completed at: {}").format(timestamp),
                 _("✅ Status: Completed successfully")
             ])
