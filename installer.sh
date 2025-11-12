@@ -1,189 +1,190 @@
 #!/bin/bash
 ## setup command=wget -q --no-check-certificate https://raw.githubusercontent.com/Belfagor2005/Archimede-M3UConverter/main/installer.sh -O - | /bin/sh
 
-##############################################################
-##                  Configurazione Versione                 ##
-##############################################################
 version='3.1'
-changelog='\nReorder all fiels - add to_to_tv'
+changelog='\nReorder all files - add to_to_tv'
 
-##############################################################
-##               Variabili Percorsi Temporanei              ##
-##############################################################
-TMPPATH=/tmp/Archimede-M3UConverter-main
-FILEPATH=/tmp/main.tar.gz
+TMPPATH=/tmp/Archimede-M3UConverter-install
+FILEPATH=/tmp/Archimede-M3UConverter-main.tar.gz
 
-##############################################################
-##          Determinazione Percorso Installazione           ##
-##############################################################
+echo "Starting Archimede M3UConverter installation..."
+
+# Determine plugin path based on architecture
 if [ ! -d /usr/lib64 ]; then
     PLUGINPATH=/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter
 else
     PLUGINPATH=/usr/lib64/enigma2/python/Plugins/Extensions/M3UConverter
 fi
 
-##############################################################
-##              Controllo Tipo Sistema/Distro               ##
-##############################################################
-if [ -f /var/lib/dpkg/status ]; then
-    STATUS=/var/lib/dpkg/status
-    OSTYPE=DreamOs
-else
-    STATUS=/var/lib/opkg/status
-    OSTYPE=Dream
-fi
+# Cleanup function
+cleanup() {
+    echo "🧹 Cleaning up temporary files..."
+    [ -d "$TMPPATH" ] && rm -rf "$TMPPATH"
+    [ -f "$FILEPATH" ] && rm -f "$FILEPATH"
+}
 
-echo ""
-echo "##############################################################"
-echo "##           Inizio Installazione Archimede M3UConverter    ##"
-echo "##                     Versione $version                    ##"
-echo "##############################################################"
-echo ""
-
-##############################################################
-##            Controllo e Installazione Dipendenze          ##
-##############################################################
-
-# Controllo presenza wget
-if ! command -v wget >/dev/null 2>&1; then
-    echo "⚠ Installazione wget in corso..."
-    if [ "$OSTYPE" = "DreamOs" ]; then
-        apt-get update && apt-get install -y wget || { echo "Failed to install wget"; exit 1; }
+# Detect OS type
+detect_os() {
+    if [ -f /var/lib/dpkg/status ]; then
+        OSTYPE="DreamOs"
+        STATUS="/var/lib/dpkg/status"
+    elif [ -f /etc/opkg/opkg.conf ] || [ -f /var/lib/opkg/status ]; then
+        OSTYPE="OE"
+        STATUS="/var/lib/opkg/status"
     else
-        opkg update && opkg install wget || { echo "Failed to install wget"; exit 1; }
+        OSTYPE="Unknown"
+        STATUS=""
     fi
-else
-    echo "✔ wget è già installato"
-fi
+    echo "🔍 Detected OS type: $OSTYPE"
+}
 
-# Determinazione versione Python
-if python --version 2>&1 | grep -q '^Python 3\.'; then
-    echo "✔ Immagine Python3 rilevata"
-    PYTHON=PY3
-    Packagesix=python3-six
-    Packagerequests=python3-requests
-else
-    echo "✔ Immagine Python2 rilevata"
-    PYTHON=PY2
-    Packagerequests=python-requests
-fi
+detect_os
 
-# Installazione dipendenze Python
-echo ""
-echo "##############################################################"
-echo "##          Verifica Dipendenze Python                     ##"
-echo "##############################################################"
-
-if [ "$PYTHON" = "PY3" ] && ! grep -qs "Package: $Packagesix" "$STATUS"; then
-    echo "⚠ Installazione python3-six in corso..."
-    opkg update && opkg install python3-six || { echo "Failed to install python3-six"; exit 1; }
-fi
-
-if ! grep -qs "Package: $Packagerequests" "$STATUS"; then
-    echo "⚠ Installazione $Packagerequests in corso..."
-    if [ "$OSTYPE" = "DreamOs" ]; then
-        apt-get update && apt-get install -y "$Packagerequests" || { echo "Failed to install $Packagerequests"; exit 1; }
-    else
-        opkg update && opkg install "$Packagerequests" || { echo "Failed to install $Packagerequests"; exit 1; }
-    fi
-fi
-
-##############################################################
-##           Pulizia File e Cartelle Temporanee             ##
-##############################################################
-echo ""
-echo "##############################################################"
-echo "##           Pulizia File Temporanei                      ##"
-echo "##############################################################"
-
-[ -r "$TMPPATH" ] && rm -rf "$TMPPATH" > /dev/null 2>&1
-[ -r "$FILEPATH" ] && rm -f "$FILEPATH" > /dev/null 2>&1
-[ -r "$PLUGINPATH" ] && rm -rf "$PLUGINPATH" > /dev/null 2>&1
-
-##############################################################
-##            Download e Installazione Plugin               ##
-##############################################################
-echo ""
-echo "##############################################################"
-echo "##           Download Archimede M3UConverter               ##"
-echo "##############################################################"
-
+# Cleanup before starting
+cleanup
 mkdir -p "$TMPPATH"
-cd "$TMPPATH" || exit 1
 
-set -e
-if [ -f /var/lib/dpkg/status ]; then
-    echo "# Immagine OE2.5/2.6 rilevata #"
-else
-    echo "# Immagine OE2.0 rilevata #"
+# Install wget if missing
+if ! command -v wget >/dev/null 2>&1; then
+    echo "📥 Installing wget..."
+    case "$OSTYPE" in
+        "DreamOs")
+            apt-get update && apt-get install -y wget || { echo "❌ Failed to install wget"; exit 1; }
+            ;;
+        "OE")
+            opkg update && opkg install wget || { echo "❌ Failed to install wget"; exit 1; }
+            ;;
+        *)
+            echo "❌ Unsupported OS type. Cannot install wget."
+            exit 1
+            ;;
+    esac
 fi
 
-echo ""
-echo "⚠ Download plugin in corso..."
-wget --no-check-certificate -q 'https://github.com/Belfagor2005/Archimede-M3UConverter/archive/refs/heads/main.tar.gz' -O "$FILEPATH" || { echo "Download failed"; exit 1; }
-echo "✔ Download completato!"
-
-echo ""
-echo "⚠ Estrazione archivio in corso..."
-tar -xzf "$FILEPATH" -C /tmp/ || { echo "Extraction failed"; exit 1; }
-echo "✔ Estrazione completata!"
-
-echo ""
-echo "⚠ Installazione file in corso..."
-cp -rf /tmp/Archimede-M3UConverter-main/usr/ / || { echo "Copy failed"; exit 1; }
-set +e
-
-##############################################################
-##            Verifica Installazione Completata             ##
-##############################################################
-echo ""
-echo "##############################################################"
-echo "##           Verifica Installazione                       ##"
-echo "##############################################################"
-
-if [ -d "$PLUGINPATH" ]; then
-    echo "✔ Plugin installato correttamente in: $PLUGINPATH"
+# Detect Python version
+if python --version 2>&1 | grep -q '^Python 3\.'; then
+    echo "🐍 Python3 image detected"
+    PYTHON="PY3"
+    Packagesix="python3-six"
+    Packagerequests="python3-requests"
 else
-    echo "✖ Errore! Installazione fallita!"
-    rm -rf "$TMPPATH" "$FILEPATH" > /dev/null 2>&1
+    echo "🐍 Python2 image detected"
+    PYTHON="PY2"
+    Packagerequests="python-requests"
+    Packagesix="python-six"
+fi
+
+# Install required packages
+install_pkg() {
+    local pkg=$1
+    if [ -z "$STATUS" ] || ! grep -qs "Package: $pkg" "$STATUS" 2>/dev/null; then
+        echo "📦 Installing $pkg..."
+        case "$OSTYPE" in
+            "DreamOs")
+                apt-get update && apt-get install -y "$pkg" || { echo "⚠️ Could not install $pkg, continuing anyway..."; }
+                ;;
+            "OE")
+                opkg update && opkg install "$pkg" || { echo "⚠️ Could not install $pkg, continuing anyway..."; }
+                ;;
+            *)
+                echo "⚠️ Cannot install $pkg on unknown OS type, continuing..."
+                ;;
+        esac
+    else
+        echo "✅ $pkg already installed"
+    fi
+}
+
+# Install Python dependencies
+if [ "$PYTHON" = "PY3" ]; then
+    install_pkg "$Packagesix"
+fi
+install_pkg "$Packagerequests"
+
+# Download and extract
+echo "⬇️ Downloading Archimede M3UConverter..."
+wget --no-check-certificate 'https://github.com/Belfagor2005/Archimede-M3UConverter/archive/refs/heads/main.tar.gz' -O "$FILEPATH"
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to download Archimede M3UConverter package!"
+    cleanup
     exit 1
 fi
 
-##############################################################
-##               Pulizia Finale e Riavvio                   ##
-##############################################################
-echo ""
-echo "⚠ Pulizia file temporanei in corso..."
-rm -rf "$TMPPATH" "$FILEPATH" > /dev/null 2>&1
+echo "📦 Extracting package..."
+tar -xzf "$FILEPATH" -C "$TMPPATH"
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to extract Archimede M3UConverter package!"
+    cleanup
+    exit 1
+fi
+
+# Install plugin files
+echo "🔧 Installing plugin files..."
+mkdir -p "$PLUGINPATH"
+
+# Find the correct directory in the extracted structure
+if [ -d "$TMPPATH/Archimede-M3UConverter-main/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter" ]; then
+    cp -r "$TMPPATH/Archimede-M3UConverter-main/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter"/* "$PLUGINPATH/" 2>/dev/null
+    echo "✅ Copied from standard plugin directory"
+elif [ -d "$TMPPATH/Archimede-M3UConverter-main/usr/lib64/enigma2/python/Plugins/Extensions/M3UConverter" ]; then
+    cp -r "$TMPPATH/Archimede-M3UConverter-main/usr/lib64/enigma2/python/Plugins/Extensions/M3UConverter"/* "$PLUGINPATH/" 2>/dev/null
+    echo "✅ Copied from lib64 plugin directory"
+elif [ -d "$TMPPATH/Archimede-M3UConverter-main/usr" ]; then
+    # Copy entire usr tree
+    cp -r "$TMPPATH/Archimede-M3UConverter-main/usr"/* /usr/ 2>/dev/null
+    echo "✅ Copied entire usr structure"
+else
+    echo "❌ Could not find plugin files in extracted archive"
+    echo "📋 Available directories in tmp:"
+    find "$TMPPATH" -type d | head -10
+    cleanup
+    exit 1
+fi
+
 sync
 
-##############################################################
-##               Informazioni di Sistema                    ##
-##############################################################
+# Verify installation
+echo "🔍 Verifying installation..."
+if [ -d "$PLUGINPATH" ] && [ -n "$(ls -A "$PLUGINPATH" 2>/dev/null)" ]; then
+    echo "✅ Plugin directory found and not empty: $PLUGINPATH"
+    echo "📁 Contents:"
+    ls -la "$PLUGINPATH/" | head -10
+else
+    echo "❌ Plugin installation failed or directory is empty!"
+    cleanup
+    exit 1
+fi
+
+# Cleanup
+cleanup
+sync
+
+# System info
 FILE="/etc/image-version"
-box_type=$(head -n 1 /etc/hostname 2>/dev/null || echo "Sconosciuto")
-distro_value=$(grep '^distro=' "$FILE" 2>/dev/null | awk -F '=' '{print $2}' || echo "Sconosciuto")
-distro_version=$(grep '^version=' "$FILE" 2>/dev/null | awk -F '=' '{print $2}' || echo "Sconosciuto")
-python_vers=$(python --version 2>&1 || echo "Sconosciuto")
+box_type=$(head -n 1 /etc/hostname 2>/dev/null || echo "Unknown")
+distro_value=$(grep '^distro=' "$FILE" 2>/dev/null | awk -F '=' '{print $2}')
+distro_version=$(grep '^version=' "$FILE" 2>/dev/null | awk -F '=' '{print $2}')
+python_vers=$(python --version 2>&1)
 
-echo ""
-echo "##############################################################"
-echo "#           INSTALLATO CON SUCCESSO!                        #"
-echo "#                Sviluppato da LULULLA                      #"
-echo "#               https://corvoboys.org                       #"
-echo "##############################################################"
-echo "#           Il dispositivo verrà RIAVVIATO                  #"
-echo "##############################################################"
-echo "^^^^^^^^^^ Informazioni di debug:"
-echo "BOX MODEL: $box_type"
-echo "SISTEMA: $OSTYPE"
-echo "PYTHON: $python_vers"
-echo "NOME IMMAGINE: $distro_value"
-echo "VERSIONE IMMAGINE: $distro_version"
-echo "##############################################################"
+cat <<EOF
 
+#########################################################
+#               INSTALLED SUCCESSFULLY                  #
+#                developed by LULULLA                   #
+#               https://corvoboys.org                   #
+#########################################################
+#           your Device will RESTART Now                #
+#########################################################
+^^^^^^^^^^Debug information:
+BOX MODEL: $box_type
+OS SYSTEM: $OSTYPE
+PYTHON: $python_vers
+IMAGE NAME: ${distro_value:-Unknown}
+IMAGE VERSION: ${distro_version:-Unknown}
+PLUGIN VERSION: $version
+EOF
+
+echo "🔄 Restarting enigma2 in 5 seconds..."
 sleep 5
-echo ""
-echo "⚠ Riavvio in corso..."
 killall -9 enigma2
 exit 0
