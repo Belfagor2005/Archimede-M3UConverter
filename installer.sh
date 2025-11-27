@@ -2,7 +2,7 @@
 ## setup command=wget -q --no-check-certificate https://raw.githubusercontent.com/Belfagor2005/Archimede-M3UConverter/main/installer.sh -O - | /bin/sh
 
 version='3.1'
-changelog='\nReorder all files - add to_to_tv'
+changelog='Reorder all files - add to_to_tv'
 
 TMPPATH=/tmp/Archimede-M3UConverter-install
 FILEPATH=/tmp/Archimede-M3UConverter-main.tar.gz
@@ -18,7 +18,7 @@ fi
 
 # Cleanup function
 cleanup() {
-    echo "🧹 Cleaning up temporary files..."
+    echo "Cleaning up temporary files..."
     [ -d "$TMPPATH" ] && rm -rf "$TMPPATH"
     [ -f "$FILEPATH" ] && rm -f "$FILEPATH"
 }
@@ -35,7 +35,7 @@ detect_os() {
         OSTYPE="Unknown"
         STATUS=""
     fi
-    echo "🔍 Detected OS type: $OSTYPE"
+    echo "Detected OS type: $OSTYPE"
 }
 
 detect_os
@@ -46,16 +46,16 @@ mkdir -p "$TMPPATH"
 
 # Install wget if missing
 if ! command -v wget >/dev/null 2>&1; then
-    echo "📥 Installing wget..."
+    echo "Installing wget..."
     case "$OSTYPE" in
         "DreamOs")
-            apt-get update && apt-get install -y wget || { echo "❌ Failed to install wget"; exit 1; }
+            apt-get update && apt-get install -y wget || { echo "Failed to install wget"; exit 1; }
             ;;
         "OE")
-            opkg update && opkg install wget || { echo "❌ Failed to install wget"; exit 1; }
+            opkg update && opkg install wget || { echo "Failed to install wget"; exit 1; }
             ;;
         *)
-            echo "❌ Unsupported OS type. Cannot install wget."
+            echo "Unsupported OS type. Cannot install wget."
             exit 1
             ;;
     esac
@@ -63,12 +63,12 @@ fi
 
 # Detect Python version
 if python --version 2>&1 | grep -q '^Python 3\.'; then
-    echo "🐍 Python3 image detected"
+    echo "Python3 image detected"
     PYTHON="PY3"
     Packagesix="python3-six"
     Packagerequests="python3-requests"
 else
-    echo "🐍 Python2 image detected"
+    echo "Python2 image detected"
     PYTHON="PY2"
     Packagerequests="python-requests"
     Packagesix="python-six"
@@ -78,20 +78,20 @@ fi
 install_pkg() {
     local pkg=$1
     if [ -z "$STATUS" ] || ! grep -qs "Package: $pkg" "$STATUS" 2>/dev/null; then
-        echo "📦 Installing $pkg..."
+        echo "Installing $pkg..."
         case "$OSTYPE" in
             "DreamOs")
-                apt-get update && apt-get install -y "$pkg" || { echo "⚠️ Could not install $pkg, continuing anyway..."; }
+                apt-get update && apt-get install -y "$pkg" || { echo "Could not install $pkg, continuing anyway..."; }
                 ;;
             "OE")
-                opkg update && opkg install "$pkg" || { echo "⚠️ Could not install $pkg, continuing anyway..."; }
+                opkg update && opkg install "$pkg" || { echo "Could not install $pkg, continuing anyway..."; }
                 ;;
             *)
-                echo "⚠️ Cannot install $pkg on unknown OS type, continuing..."
+                echo "Cannot install $pkg on unknown OS type, continuing..."
                 ;;
         esac
     else
-        echo "✅ $pkg already installed"
+        echo "$pkg already installed"
     fi
 }
 
@@ -102,40 +102,40 @@ fi
 install_pkg "$Packagerequests"
 
 # Download and extract
-echo "⬇️ Downloading Archimede M3UConverter..."
+echo "Downloading Archimede M3UConverter..."
 wget --no-check-certificate 'https://github.com/Belfagor2005/Archimede-M3UConverter/archive/refs/heads/main.tar.gz' -O "$FILEPATH"
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to download Archimede M3UConverter package!"
+    echo "Failed to download Archimede M3UConverter package!"
     cleanup
     exit 1
 fi
 
-echo "📦 Extracting package..."
+echo "Extracting package..."
 tar -xzf "$FILEPATH" -C "$TMPPATH"
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to extract Archimede M3UConverter package!"
+    echo "Failed to extract Archimede M3UConverter package!"
     cleanup
     exit 1
 fi
 
 # Install plugin files
-echo "🔧 Installing plugin files..."
+echo "Installing plugin files..."
 mkdir -p "$PLUGINPATH"
 
 # Find the correct directory in the extracted structure
 if [ -d "$TMPPATH/Archimede-M3UConverter-main/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter" ]; then
     cp -r "$TMPPATH/Archimede-M3UConverter-main/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter"/* "$PLUGINPATH/" 2>/dev/null
-    echo "✅ Copied from standard plugin directory"
+    echo "Copied from standard plugin directory"
 elif [ -d "$TMPPATH/Archimede-M3UConverter-main/usr/lib64/enigma2/python/Plugins/Extensions/M3UConverter" ]; then
     cp -r "$TMPPATH/Archimede-M3UConverter-main/usr/lib64/enigma2/python/Plugins/Extensions/M3UConverter"/* "$PLUGINPATH/" 2>/dev/null
-    echo "✅ Copied from lib64 plugin directory"
+    echo "Copied from lib64 plugin directory"
 elif [ -d "$TMPPATH/Archimede-M3UConverter-main/usr" ]; then
     # Copy entire usr tree
     cp -r "$TMPPATH/Archimede-M3UConverter-main/usr"/* /usr/ 2>/dev/null
-    echo "✅ Copied entire usr structure"
+    echo "Copied entire usr structure"
 else
-    echo "❌ Could not find plugin files in extracted archive"
-    echo "📋 Available directories in tmp:"
+    echo "Could not find plugin files in extracted archive"
+    echo "Available directories in tmp:"
     find "$TMPPATH" -type d | head -10
     cleanup
     exit 1
@@ -144,13 +144,13 @@ fi
 sync
 
 # Verify installation
-echo "🔍 Verifying installation..."
+echo "Verifying installation..."
 if [ -d "$PLUGINPATH" ] && [ -n "$(ls -A "$PLUGINPATH" 2>/dev/null)" ]; then
-    echo "✅ Plugin directory found and not empty: $PLUGINPATH"
-    echo "📁 Contents:"
+    echo "Plugin directory found and not empty: $PLUGINPATH"
+    echo "Contents:"
     ls -la "$PLUGINPATH/" | head -10
 else
-    echo "❌ Plugin installation failed or directory is empty!"
+    echo "Plugin installation failed or directory is empty!"
     cleanup
     exit 1
 fi
@@ -175,7 +175,7 @@ cat <<EOF
 #########################################################
 #           your Device will RESTART Now                #
 #########################################################
-^^^^^^^^^^Debug information:
+Debug information:
 BOX MODEL: $box_type
 OS SYSTEM: $OSTYPE
 PYTHON: $python_vers
@@ -184,7 +184,7 @@ IMAGE VERSION: ${distro_version:-Unknown}
 PLUGIN VERSION: $version
 EOF
 
-echo "🔄 Restarting enigma2 in 5 seconds..."
+echo "Restarting enigma2 in 5 seconds..."
 sleep 5
 killall -9 enigma2
 exit 0
