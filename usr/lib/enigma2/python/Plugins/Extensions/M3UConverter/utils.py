@@ -25,7 +25,7 @@ __author__ = "Lululla"
 # 🧠 STANDARD LIBRARIES (Python built-ins)
 import unicodedata
 from re import IGNORECASE, sub
-from os import access, remove, W_OK
+from os import access, remove, W_OK, system
 from os.path import dirname, exists, isdir, join
 
 # 📺 ENIGMA2 CORE
