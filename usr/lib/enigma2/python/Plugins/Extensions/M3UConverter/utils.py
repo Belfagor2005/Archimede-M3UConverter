@@ -172,15 +172,16 @@ def create_bouquets_backup():
     if exists(src):
         copy2(src, dst)
 
-            
+
 def _reload_services_after_delay(delay=4000):
     """Reload Enigma2 bouquets and service lists"""
     try:
         def do_reload():
             try:
                 from enigma import eDVBDB
-                eDVBDB.getInstance().reloadServicelist()
-                eDVBDB.getInstance().reloadBouquets()
+                db = eDVBDB.getInstance()
+                db.reloadServicelist()
+                db.reloadBouquets()
             except Exception as e:
                 logger.error(f"Service reload error: {str(e)}")
 
@@ -190,7 +191,13 @@ def _reload_services_after_delay(delay=4000):
 
     except Exception as e:
         logger.error(f"Error setting up service reload: {str(e)}")
-
+        try:
+            system("wget -qO - http://127.0.0.1/web/servicelistreload > /dev/null 2>&1")
+            logger.info("Bouquets reloaded via web interface")
+            return True
+        except:
+            logger.error("All reload methods failed")
+            return False
 
 class M3UFileBrowser(Screen):
     """File browser screen for selecting M3U, TV, JSON, and XSPF files."""

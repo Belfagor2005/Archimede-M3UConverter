@@ -3937,7 +3937,6 @@ class UniversalConverter(Screen):
             """Callback when the manual editor closes - return to UniversalConverter"""
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("Manual editor closed, returning to UniversalConverter")
-
             try:
                 # Just show confirmation and log it
                 self["status"].setText(_("Manual editing completed - ready for conversion"))
@@ -3949,10 +3948,26 @@ class UniversalConverter(Screen):
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(f"Opening ManualMatchEditor from main for: {bouquet_name}")
 
+        # Convert tuple data to dictionary format if needed
+        processed_data = []
+        for channel in self.m3u_channels_list:
+            if isinstance(channel, tuple) and len(channel) >= 2:
+                # Convert (name, url) tuple to dictionary
+                processed_data.append({
+                    'name': channel[0],
+                    'url': channel[1],
+                    'original_name': channel[0],
+                    'match_type': 'tv_bouquet'
+                })
+            elif isinstance(channel, dict):
+                processed_data.append(channel)
+            else:
+                logger.warning(f"Skipping invalid channel format: {type(channel)}")
+
         self.session.openWithCallback(
             editor_closed,
             ManualMatchEditor,
-            self.m3u_channels_list,
+            processed_data,  # Use the processed data instead
             self.epg_mapper,
             bouquet_name
         )
@@ -4359,7 +4374,7 @@ class UniversalConverter(Screen):
             )
 
     def _reload_services(self):
-        """Reload Enigma2 services – IMPROVED VERSION."""
+        """Reload Enigma2 services."""
         try:
             self["status"].setText(_("Reloading services..."))
 
@@ -5227,6 +5242,8 @@ class UniversalConverter(Screen):
 
             ready_text = conversion_ready_texts.get(self.conversion_type, _("Ready to convert"))
             self["key_green"].setText(ready_text)
+
+            self["key_yellow"].setText(_("Match Editor"))
 
             if self.conversion_type in ["tv_to_tv", "m3u_to_tv", "json_to_tv"]:
                 self["key_yellow"].setText(_("Match Editor"))
@@ -6943,6 +6960,7 @@ class UniversalConverter(Screen):
 
             # Final state
             self["status"].setText(_("Conversion completed"))
+            self["key_yellow"].setText(_("Match Editor"))
             self.file_loaded = False  # Reset file state
 
         except Exception as e:
@@ -7140,7 +7158,7 @@ class UniversalConverter(Screen):
         )
 
     def _cancel_conversion_process(self):
-        """Cancel the ongoing conversion VERSION"""
+        """Cancel the ongoing conversion"""
         if self.is_converting:
             self.cancel_conversion = True
             self.is_converting = False  # IMMEDIATELY stop conversion state
@@ -7985,9 +8003,9 @@ class ManualMatchEditor(Screen):
                 try:
                     # Give the system more time to process the bouquet files
                     time.sleep(2)  # Wait 2 seconds before reload
-
                     db = eDVBDB.getInstance()
                     if db:
+                        db.reloadServicelist()
                         db.reloadBouquets()
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info("✅ Services successfully reloaded after manual edit")
@@ -8515,6 +8533,11 @@ class ManualMatchEditor(Screen):
         """Search matches in Rytec database"""
         matches = []
 
+        # FIX: Add safety check for epg_mapper
+        if not hasattr(self, 'epg_mapper') or not self.epg_mapper:
+            logger.error("❌ epg_mapper not available in search_rytec_matches")
+            return matches
+
         # Search by exact TVG ID first (highest priority)
         if tvg_id and tvg_id.lower() != 'none':
             rytec_id = self.epg_mapper._convert_to_rytec_format(tvg_id)
@@ -8530,17 +8553,21 @@ class ManualMatchEditor(Screen):
                     })
 
         # Search by name similarity in Rytec database
-        # for rytec_id, service_ref in list(self.epg_mapper.mapping.rytec['basic'].items())[:1000]:
         limit = config.plugins.m3uconverter.rytec_search_limit.value
-        for rytec_id, service_ref in list(self.epg_mapper.mapping.rytec['basic'].items())[:limit]:  # Limit search for performance
+        for rytec_id, service_ref in list(self.epg_mapper.mapping.rytec['basic'].items())[:limit]:
             if not service_ref:
                 continue
 
             # Calculate similarity with the clean name
             similarity = self.epg_mapper._calculate_similarity(clean_name, rytec_id.lower())
 
-            # Use similarity_threshold_rytec from epg_mapper
-            if similarity > self.epg_mapper.similarity_threshold_rytec:
+            # FIX: Add safety check before accessing similarity_threshold_rytec
+            if hasattr(self.epg_mapper, 'similarity_threshold_rytec'):
+                threshold = self.epg_mapper.similarity_threshold_rytec
+            else:
+                threshold = 0.7  # Default fallback
+
+            if similarity > threshold:
                 matches.append({
                     'type': 'rytec',
                     'sref': service_ref,
@@ -8961,7 +8988,7 @@ class ManualDatabaseEditor(Screen):
         self.onLayoutFinish.append(self.load_database)
 
     def load_database(self):
-        """Reload the database while preserving view and selection state - FIXED VERSION"""
+        """Reload the database while preserving view and selection state"""
         try:
             # Save the current state
             current_view_was_duplicates = self.showing_duplicates
@@ -9114,7 +9141,7 @@ class ManualDatabaseEditor(Screen):
             self.show_all_mappings()
 
     def toggle_selection_mode(self):
-        """Toggle selection mode on or off - FIXED VERSION"""
+        """Toggle selection mode on or off"""
         if self.selection_mode:
             # If already in selection mode, exit it
             self.exit_selection_mode()
@@ -9150,7 +9177,7 @@ class ManualDatabaseEditor(Screen):
                 self.show_all_mappings()
 
     def show_duplicates(self):
-        """Display only duplicate mappings with selection support - FIXED VERSION"""
+        """Display only duplicate mappings with selection support"""
         duplicates = self.find_duplicates()
         self.duplicates_data = []
         display_list = []
@@ -9231,7 +9258,7 @@ class ManualDatabaseEditor(Screen):
         self["status"].setText(status_text)
 
     def delete_selected(self):
-        """Delete selected mappings and remain in selection mode - IMPROVED VERSION"""
+        """Delete selected mappings and remain in selection mode"""
         if not self.selected_items:
             self.session.open(
                 MessageBox,
@@ -9288,7 +9315,7 @@ class ManualDatabaseEditor(Screen):
         self.session.openWithCallback(confirm_callback, MessageBox, message, MessageBox.TYPE_YESNO)
 
     def perform_bulk_delete(self):
-        """Actually delete the selected mappings - FIXED VERSION"""
+        """Actually delete the selected mappings"""
         try:
             # Load fresh data from file
             data = self.manual_db.load_database()
