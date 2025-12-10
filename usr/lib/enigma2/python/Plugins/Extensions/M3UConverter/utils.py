@@ -199,6 +199,7 @@ def _reload_services_after_delay(delay=4000):
             logger.error("All reload methods failed")
             return False
 
+
 class M3UFileBrowser(Screen):
     """File browser screen for selecting M3U, TV, JSON, and XSPF files."""
 
