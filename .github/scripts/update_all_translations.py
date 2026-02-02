@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 # ===== CONFIGURATION - CHANGE ONLY THESE 2 VALUES =====
-PLUGIN_NAME = os.environ.get('PLUGIN_NAME', 'M3UConverter')
+PLUGIN_NAME = os.environ.get('PLUGIN_NAME', 'RaiPlay')
 PLUGIN_ROOT = Path("usr/lib/enigma2/python/Plugins/Extensions")
 # CHANGE THIS: Path to your plugin directory (without plugin name)
 # ===== END CONFIGURATION =====
