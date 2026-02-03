@@ -100,7 +100,8 @@ try:
 except ImportError:
     LXML_AVAILABLE = False
     try:
-        subprocess.run(["pip3", "install", "lxml"], check=True, capture_output=True, text=True)
+        subprocess.run(["pip3", "install", "lxml"], check=True,
+                       capture_output=True, text=True)
         from lxml import etree
         LXML_AVAILABLE = True
     except Exception as e:
@@ -139,15 +140,17 @@ logger = get_logger(
 config.plugins.m3uconverter = ConfigSubsection()
 
 # File and Storage Settings
-default_dir = config.movielist.last_videodir.value if isdir(config.movielist.last_videodir.value) else default_movie_path()
-config.plugins.m3uconverter.lastdir = ConfigSelection(default=default_dir, choices=[])
-config.plugins.m3uconverter.large_file_threshold_mb = ConfigSelectionNumber(default=10, stepwidth=5, min=1, max=50)
+default_dir = config.movielist.last_videodir.value if isdir(
+    config.movielist.last_videodir.value) else default_movie_path()
+config.plugins.m3uconverter.lastdir = ConfigSelection(
+    default=default_dir, choices=[])
+config.plugins.m3uconverter.large_file_threshold_mb = ConfigSelectionNumber(
+    default=10, stepwidth=5, min=1, max=50)
 
 # Bouquet Settings
 config.plugins.m3uconverter.bouquet_mode = ConfigSelection(
-    default="single",
-    choices=[("single", _("Single Bouquet")), ("multi", _("Multiple Bouquets"))]
-)
+    default="single", choices=[
+        ("single", _("Single Bouquet")), ("multi", _("Multiple Bouquets"))])
 
 config.plugins.m3uconverter.bouquet_position = ConfigSelection(
     default="bottom",
@@ -209,9 +212,8 @@ config.plugins.m3uconverter.language = ConfigSelection({
 }, default="all")
 
 config.plugins.m3uconverter.epg_generation_mode = ConfigSelection(
-    default="epgshare",
-    choices=[("epgshare", _("EPGShare Mode")), ("standard", _("Standard Mode"))]
-)
+    default="epgshare", choices=[
+        ("epgshare", _("EPGShare Mode")), ("standard", _("Standard Mode"))])
 
 config.plugins.m3uconverter.epg_database_mode = ConfigSelection(
     default="dvb",
@@ -227,9 +229,12 @@ config.plugins.m3uconverter.epg_database_mode = ConfigSelection(
 config.plugins.m3uconverter.ignore_dvbt = ConfigYesNo(default=False)
 
 # Matching and Similarity Settings
-config.plugins.m3uconverter.similarity_threshold = ConfigSelectionNumber(default=70, stepwidth=10, min=20, max=100)
-config.plugins.m3uconverter.similarity_threshold_rytec = ConfigSelectionNumber(default=70, stepwidth=10, min=20, max=100)
-config.plugins.m3uconverter.similarity_threshold_dvb = ConfigSelectionNumber(default=70, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold = ConfigSelectionNumber(
+    default=70, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold_rytec = ConfigSelectionNumber(
+    default=70, stepwidth=10, min=20, max=100)
+config.plugins.m3uconverter.similarity_threshold_dvb = ConfigSelectionNumber(
+    default=70, stepwidth=10, min=20, max=100)
 
 # Manual Database Settings
 config.plugins.m3uconverter.use_manual_database = ConfigYesNo(default=True)
@@ -237,8 +242,10 @@ config.plugins.m3uconverter.manual_db_max_size = ConfigNumber(default=1000)
 config.plugins.m3uconverter.auto_open_editor = ConfigYesNo(default=False)
 
 # Manual Matches Settings Search Limits
-config.plugins.m3uconverter.rytec_search_limit = ConfigSelectionNumber(default=1000, stepwidth=500, min=500, max=20000)
-config.plugins.m3uconverter.dvb_search_limit = ConfigSelectionNumber(default=1000, stepwidth=500, min=500, max=20000)
+config.plugins.m3uconverter.rytec_search_limit = ConfigSelectionNumber(
+    default=1000, stepwidth=500, min=500, max=20000)
+config.plugins.m3uconverter.dvb_search_limit = ConfigSelectionNumber(
+    default=1000, stepwidth=500, min=500, max=20000)
 
 update_mounts_configuration()
 
@@ -249,6 +256,7 @@ aspect_manager = AspectManager()
 
 class EPGServiceMapper:
     """Service mapper for EPG data matching and conversion."""
+
     def __init__(self, prefer_satellite=True):
         self._match_cache = {}
         self._match_cache_hits = 0
@@ -293,25 +301,27 @@ class EPGServiceMapper:
         try:
             data = self.manual_db.load_database()
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"📁 Manual database accessible: {len(data.get('mappings', []))} mappings")
+                logger.info(
+                    f"📁 Manual database accessible: {len(data.get('mappings', []))} mappings")
         except Exception as e:
             logger.error(f"❌ Manual database not accessible: {str(e)}")
 
         self.database_mode = config.plugins.m3uconverter.epg_database_mode.value
-        self.log_file = join(ARCHIMEDE_CONVERTER_PATH, "core_converter_archimede_converter.log")
+        self.log_file = join(
+            ARCHIMEDE_CONVERTER_PATH,
+            "core_converter_archimede_converter.log")
 
         # Pre-compiled regex patterns
-        self._clean_pattern = compile(r'[^\w\s\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', IGNORECASE)
+        self._clean_pattern = compile(
+            r'[^\w\s\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', IGNORECASE)
         self._quality_pattern = compile(
             r'\b(4k|uhd|fhd|hd|sd|hq|uhq|sdq|hevc|h265|h264|h\.265|h\.264|full hd|ultra hd|high definition|standard definition|dolby|vision|atmos|avc|mpeg|webdl|webrip|hdtv)\b',
-            IGNORECASE
-        )
+            IGNORECASE)
 
         # Add a separate pattern to preserve the + patterns
         self._plus_pattern = compile(
             r'\+\d+\b|\+HD\b|\+4K\b|\+UHD\b|\+FHD\b|\+HEVC\b|\+H265\b|\+H264\b|\+DV\b|\+ATMOS\b',
-            IGNORECASE
-        )
+            IGNORECASE)
         self._stats_counters = {
             'rytec_matches': 0,
             'dvb_matches': 0,
@@ -330,7 +340,8 @@ class EPGServiceMapper:
     def initialize(self):
         """Initialize EPGServiceMapper with database mode control"""
         try:
-            logger.info(f"=== INITIALIZATION - DATABASE MODE: {self.database_mode} ===")
+            logger.info(
+                f"=== INITIALIZATION - DATABASE MODE: {self.database_mode} ===")
             if not hasattr(self, 'services'):
                 self.services = []
 
@@ -340,10 +351,13 @@ class EPGServiceMapper:
                     # Test database integrity
                     test_data = self.manual_db.load_database()
                     if not test_data or 'mappings' not in test_data:
-                        logger.warning("⚠️ Database corrupted, attempting repair...")
+                        logger.warning(
+                            "⚠️ Database corrupted, attempting repair...")
                         # This will trigger the enhanced JSON repair
                 except Exception as e:
-                    logger.error(f"❌ Database integrity check failed: {str(e)}")
+                    logger.error(
+                        f"❌ Database integrity check failed: {
+                            str(e)}")
 
             # 1. Load DVB if required (including DVB-T for full/dtt modes)
             if self.database_mode in ["both", "dvb", "full", "dtt"]:
@@ -351,7 +365,8 @@ class EPGServiceMapper:
                     logger.info("📥 Loading DVB databases...")
                 self._parse_lamedb()
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"✅ Lamedb loaded: {len(self.mapping.dvb)} channels")
+                    logger.info(
+                        f"✅ Lamedb loaded: {len(self.mapping.dvb)} channels")
                 self._parse_existing_bouquets()
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info("✅ Existing bouquets loaded")
@@ -376,7 +391,8 @@ class EPGServiceMapper:
                         rytec_count = len(self.mapping.rytec['basic'])
                         if rytec_count > 0:
                             if config.plugins.m3uconverter.enable_debug.value:
-                                logger.info(f"✅ Rytec database loaded: {rytec_count} channels")
+                                logger.info(
+                                    f"✅ Rytec database loaded: {rytec_count} channels")
                             rytec_loaded = True
                             break
 
@@ -385,12 +401,14 @@ class EPGServiceMapper:
             else:
                 logger.info("⏭️ Skipping Rytec database (mode: dvb only)")
 
-            # 3. Load EPGShare only if in Rytec or Both mode AND rytec not loaded
+            # 3. Load EPGShare only if in Rytec or Both mode AND rytec not
+            # loaded
             if not rytec_loaded and self.database_mode in ["both", "rytec"]:
                 if config.plugins.m3uconverter.epg_generation_mode.value == "epgshare":
                     language = config.plugins.m3uconverter.language.value
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"🌐 Downloading EPGShare data for language: {language}")
+                        logger.info(
+                            f"🌐 Downloading EPGShare data for language: {language}")
                     self._download_and_parse_epgshare(language)
 
             # 4. Fallback only if needed
@@ -398,13 +416,17 @@ class EPGServiceMapper:
                     len(self.mapping.rytec['basic']) == 0 and
                     len(self.mapping.dvb) == 0):
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.warning("⚠️ No databases loaded! Creating fallback...")
+                    logger.warning(
+                        "⚠️ No databases loaded! Creating fallback...")
                 self._create_fallback_mapping_from_dvb()
 
             # 5. Optimizations
             self._load_channel_mapping()
             if config.plugins.m3uconverter.ignore_dvbt.value:
-                self.services = [s for s in self.services if not self._is_dvb_t_service(s.get('sref', ''))]
+                self.services = [
+                    s for s in self.services if not self._is_dvb_t_service(
+                        s.get(
+                            'sref', ''))]
             self.optimize_matching()
 
             # 6. Final statistics
@@ -423,13 +445,17 @@ class EPGServiceMapper:
             logger.error(f"❌ Initialization failed: {str(e)}")
             return False
 
-    def _load_channel_mapping(self, mapping_path="/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/channel_mapping.conf"):
+    def _load_channel_mapping(
+            self,
+            mapping_path="/usr/lib/enigma2/python/Plugins/Extensions/M3UConverter/channel_mapping.conf"):
         self.channel_mapping = {}
         self.reverse_channel_mapping = {}  # Reverse map: channel ID -> satellite
 
         if not fileExists(mapping_path):
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.warning("Channel mapping file not found: %s", mapping_path)
+                logger.warning(
+                    "Channel mapping file not found: %s",
+                    mapping_path)
             return False
 
         try:
@@ -452,13 +478,16 @@ class EPGServiceMapper:
                     if current_satellite and line:
                         # Remove any comments after comma
                         channel_id = line.split(',')[0].strip()
-                        self.channel_mapping[current_satellite].append(channel_id)
+                        self.channel_mapping[current_satellite].append(
+                            channel_id)
 
                         # Add to reverse map
                         self.reverse_channel_mapping[channel_id] = current_satellite
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Loaded channel mapping for %d satellites with %d total channels",
-                            len(self.channel_mapping), len(self.reverse_channel_mapping))
+                logger.info(
+                    "Loaded channel mapping for %d satellites with %d total channels", len(
+                        self.channel_mapping), len(
+                        self.reverse_channel_mapping))
             return True
 
         except Exception as e:
@@ -479,14 +508,21 @@ class EPGServiceMapper:
 
         if old_similarity != self.similarity_threshold:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🔄 Similarity thresholds updated - Global: {self.similarity_threshold}, Rytec: {self.similarity_threshold_rytec}, DVB: {self.similarity_threshold_dvb}")
+                logger.info(
+                    f"🔄 Similarity thresholds updated - Global: {
+                        self.similarity_threshold}, Rytec: {
+                        self.similarity_threshold_rytec}, DVB: {
+                        self.similarity_threshold_dvb}")
 
         if old_mode != self.database_mode:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🔄 Database mode changed from {old_mode} to {self.database_mode} - resetting caches")
+                logger.info(
+                    f"🔄 Database mode changed from {old_mode} to {
+                        self.database_mode} - resetting caches")
             self.reset_caches(clear_match_cache=True)
 
-        logger.info(f"🔄 Config refreshed - Database mode: {self.database_mode}")
+        logger.info(
+            f"🔄 Config refreshed - Database mode: {self.database_mode}")
 
     def _optimize_memory_usage(self):
         """Periodic memory cleanup with LRU strategy"""
@@ -538,13 +574,16 @@ class EPGServiceMapper:
             if entries_with_times:
                 # Sort by timestamp (oldest first)
                 entries_with_times.sort(key=lambda x: x[1])
-                keys_to_remove = [key for key, timestamp in entries_with_times[:excess]]
+                keys_to_remove = [key for key,
+                                  timestamp in entries_with_times[:excess]]
 
                 for key in keys_to_remove:
                     del self._match_cache[key]
 
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"🧹 LRU Cleaned {len(keys_to_remove)} oldest entries from match cache")
+                    logger.debug(
+                        f"🧹 LRU Cleaned {
+                            len(keys_to_remove)} oldest entries from match cache")
 
     def _clean_epg_cache(self):
         """Clean EPG cache"""
@@ -565,7 +604,11 @@ class EPGServiceMapper:
         self._manual_cache.clear()
 
         # Reset statistics if they become too large
-        if hasattr(self, '_match_cache_hits') and hasattr(self, '_match_cache_misses'):
+        if hasattr(
+                self,
+                '_match_cache_hits') and hasattr(
+                self,
+                '_match_cache_misses'):
             if self._match_cache_hits > 1000000 or self._match_cache_misses > 1000000:
                 self._match_cache_hits = 0
                 self._match_cache_misses = 0
@@ -593,16 +636,20 @@ class EPGServiceMapper:
 
             # STEP 1: Preserva i pattern +1, +2, +HD, +4K, etc.
             plus_matches = self._plus_pattern.findall(cleaned)
-            # STEP 2: Use precompiled pattern to remove special characters, ma preserva +
+            # STEP 2: Use precompiled pattern to remove special characters, ma
+            # preserva +
             cleaned = sub(r'[^\w\s\+\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', ' ', cleaned)
-            # STEP 3: Remove quality indicators BUT preserve those that start with +
+            # STEP 3: Remove quality indicators BUT preserve those that start
+            # with +
             cleaned = self._quality_pattern.sub('', cleaned)
             # STEP 4: Convert to lowercase
             cleaned = cleaned.lower()
             # STEP 5: Remove parentheses and numbers in one go
-            cleaned = sub(r'\s*\(\d+\)\s*', '', cleaned)  # Remove (7), (6), etc.
+            # Remove (7), (6), etc.
+            cleaned = sub(r'\s*\(\d+\)\s*', '', cleaned)
             cleaned = sub(r'\s*\(backup\)\s*', '', cleaned, flags=IGNORECASE)
-            cleaned = sub(r'\s*\(.*?\)\s*', '', cleaned)  # Remove any parentheses content
+            # Remove any parentheses content
+            cleaned = sub(r'\s*\(.*?\)\s*', '', cleaned)
             # STEP 6: Remove dots
             cleaned = cleaned.replace('.', ' ')
             # STEP 7: RESTORE +1, +2, +HD patterns after cleaning
@@ -616,7 +663,8 @@ class EPGServiceMapper:
 
                 # Add preserved patterns
                 for pattern in unique_plus:
-                    # Check if the pattern is already present (it may have survived cleaning)
+                    # Check if the pattern is already present (it may have
+                    # survived cleaning)
                     if pattern not in cleaned:
                         cleaned += ' ' + pattern
 
@@ -631,10 +679,14 @@ class EPGServiceMapper:
         except Exception as e:
             logger.error(f"Error cleaning channel name '{name}': {str(e)}")
             # Fallback preserve i +
-            fallback = name.lower().replace(' ', '').replace('(', '').replace(')', '') if name else ""
+            fallback = name.lower().replace(
+                ' ', '').replace(
+                '(', '').replace(
+                ')', '') if name else ""
             return fallback
 
-    def _search_case_insensitive_matches(self, channel_name, clean_name, tvg_id):
+    def _search_case_insensitive_matches(
+            self, channel_name, clean_name, tvg_id):
         """Search for matches with case-insensitive and number variations"""
         matches = []
 
@@ -655,7 +707,8 @@ class EPGServiceMapper:
         if len(words) == 2:
             word1, word2 = words
             # If one word is numeric and the other is textual
-            if (word1.isdigit() and not word2.isdigit()) or (word2.isdigit() and not word1.isdigit()):
+            if (word1.isdigit() and not word2.isdigit()) or (
+                    word2.isdigit() and not word1.isdigit()):
                 if word1.isdigit():
                     number, text = word1, word2
                 else:
@@ -702,7 +755,8 @@ class EPGServiceMapper:
                     })
                 # Case-insensitive partial match
                 elif variant.lower() in rytec_id.lower():
-                    similarity = self._calculate_similarity(variant.lower(), rytec_id.lower())
+                    similarity = self._calculate_similarity(
+                        variant.lower(), rytec_id.lower())
                     if similarity > 0.7:
                         matches.append({
                             'type': 'rytec',
@@ -746,7 +800,8 @@ class EPGServiceMapper:
 
             # For satellite, ensure ONID and namespace are correct
             if namespace == '820000' and len(on_id) == 1:
-                # Probably a terrestrial reference erroneously marked as satellite
+                # Probably a terrestrial reference erroneously marked as
+                # satellite
                 parts[5] = '13E'  # Hotbird position
             elif namespace == '820000' and on_id == '1':
                 parts[5] = '13E'  # Correct ONID for Hotbird
@@ -758,18 +813,26 @@ class EPGServiceMapper:
         self.mapping.optimized.clear()
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Debug DVB mapping keys: {list(self.mapping.dvb.keys())[:10] if self.mapping.dvb else 'EMPTY'}")
+            logger.info(
+                f"Debug DVB mapping keys: {
+                    list(
+                        self.mapping.dvb.keys())[
+                        :10] if self.mapping.dvb else 'EMPTY'}")
             logger.info(f"Total DVB channels: {len(self.mapping.dvb)}")
 
         for name, services in self.mapping.dvb.items():
             if not services:
                 continue
 
-            bouquet_services = [s for s in services if s["source"] == "bouquet"]
+            bouquet_services = [
+                s for s in services if s["source"] == "bouquet"]
 
-            satellite_services = [s for s in services if s["type"] == "satellite" and s["source"] == "lamedb"]
+            satellite_services = [
+                s for s in services if s["type"] == "satellite" and s["source"] == "lamedb"]
 
-            other_services = [s for s in services if s not in bouquet_services + satellite_services]
+            other_services = [
+                s for s in services if s not in bouquet_services +
+                satellite_services]
 
             if bouquet_services:
                 main_service = bouquet_services[0]
@@ -786,7 +849,8 @@ class EPGServiceMapper:
                 self.mapping.optimized[clean_name] = main_service
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Optimized channel map built: {len(self.mapping.optimized)} entries")
+            logger.info(
+                f"Optimized channel map built: {len(self.mapping.optimized)} entries")
 
     def classify_service_type(self, service_ref=None):
         """Classify service type based on service reference."""
@@ -829,14 +893,17 @@ class EPGServiceMapper:
             # Handle DVB-T and DVB-C
             if service_type in ['terrestrial', 'cable']:
                 # Skip DVB-T if configured to ignore them
-                if config.plugins.m3uconverter.ignore_dvbt.value and self._is_dvb_t_service(service_ref):
+                if config.plugins.m3uconverter.ignore_dvbt.value and self._is_dvb_t_service(
+                        service_ref):
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"🔧 Skipping DVB-T service: {service.get('name', 'Unknown')}")
+                        logger.info(
+                            f"🔧 Skipping DVB-T service: {service.get('name', 'Unknown')}")
                     continue
                 # Keep DVB-C and non-ignored DVB-T
                 compatible_services.append(service)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"🔧 Keeping terrestrial/cable service: {service.get('name', 'Unknown')}")
+                    logger.info(
+                        f"🔧 Keeping terrestrial/cable service: {service.get('name', 'Unknown')}")
                 continue
 
             # KEEP IPTV
@@ -972,7 +1039,8 @@ class EPGServiceMapper:
                 # Check if it's a transponder file
                 if content.strip().startswith("p:") and "services" not in content:
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"Lamedb file {lamedb_path} appears to be a transponder list")
+                        logger.warning(
+                            f"Lamedb file {lamedb_path} appears to be a transponder list")
                     continue
 
                 # Identify the file format
@@ -983,27 +1051,34 @@ class EPGServiceMapper:
 
                 # Filter incompatible services
                 for name in list(self.mapping.dvb.keys()):
-                    compatible_services = self.filter_compatible_services(self.mapping.dvb[name])
+                    compatible_services = self.filter_compatible_services(
+                        self.mapping.dvb[name])
                     if compatible_services:
                         self.mapping.dvb[name] = compatible_services
                     else:
                         del self.mapping.dvb[name]
 
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info("Parsed {0} unique compatible DVB channel names from {1}".format(len(self.mapping.dvb), lamedb_path))
+                    logger.info("Parsed {0} unique compatible DVB channel names from {1}".format(
+                        len(self.mapping.dvb), lamedb_path))
                     # Debug found namespaces
                     namespaces = defaultdict(int)
                     for services in self.mapping.dvb.values():
                         for service in services:
                             if service["source"] == "lamedb5":
-                                namespaces[service.get("namespace", "unknown")] += 1
+                                namespaces[service.get(
+                                    "namespace", "unknown")] += 1
 
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info("Found namespaces: {0}".format(dict(namespaces)))
+                        logger.info(
+                            "Found namespaces: {0}".format(
+                                dict(namespaces)))
                 return True
 
             except Exception as e:
-                logger.error("Error parsing {0}: {1}".format(lamedb_path, str(e)))
+                logger.error(
+                    "Error parsing {0}: {1}".format(
+                        lamedb_path, str(e)))
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.error("Could not find or parse any lamedb file")
@@ -1058,7 +1133,8 @@ class EPGServiceMapper:
                             "namespace": namespace
                         })
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔍 PARSED: {total_count} services, {dvbt_count} DVB-T services")
+            logger.info(
+                f"🔍 PARSED: {total_count} services, {dvbt_count} DVB-T services")
 
     def _parse_legacy_lamedb_format(self, content):
         """Parse traditional lamedb file format."""
@@ -1079,8 +1155,7 @@ class EPGServiceMapper:
                         service_type = sref_parts[4]
 
                         service_ref = "1:0:{0}:{1}:{2}:{3}:820000:0:0:0:".format(
-                            service_type, service_id, ts_id, on_id
-                        )
+                            service_type, service_id, ts_id, on_id)
                         clean_name = self.clean_channel_name(channel_name)
                         self.mapping.dvb[clean_name].append({
                             "sref": service_ref,
@@ -1095,8 +1170,7 @@ class EPGServiceMapper:
         """Parse rytec.channels.xml using unified mapping."""
         rytec_paths = [
             "/etc/epgimport/rytec.channels.xml",
-            "/usr/lib/enigma2/python/Plugins/Extensions/EPGImport/rytec.channels.xml"
-        ]
+            "/usr/lib/enigma2/python/Plugins/Extensions/EPGImport/rytec.channels.xml"]
 
         if rytec_path and fileExists(rytec_path):
             final_path = rytec_path
@@ -1109,7 +1183,9 @@ class EPGServiceMapper:
 
         if not final_path:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.warning("Rytec file not found in any path: %s", rytec_paths)
+                logger.warning(
+                    "Rytec file not found in any path: %s",
+                    rytec_paths)
             return
 
         if not fileExists(final_path):
@@ -1127,7 +1203,9 @@ class EPGServiceMapper:
             pattern = r'(<!--\s*([^>]+)\s*-->)?\s*<channel id="([^"]+)">([^<]+)</channel>\s*(?:<!--\s*([^>]+)\s*-->)?'
             matches = findall(pattern, content)
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Found %d channel entries in rytec file", len(matches))
+                logger.info(
+                    "Found %d channel entries in rytec file",
+                    len(matches))
 
             with self._rytec_lock:
                 for match in matches:
@@ -1137,7 +1215,8 @@ class EPGServiceMapper:
                     # Extract the real channel name
                     channel_name = self._extract_real_channel_name(comment)
 
-                    normalized_ref = self.normalize_service_reference(service_ref, for_epg=True)
+                    normalized_ref = self.normalize_service_reference(
+                        service_ref, for_epg=True)
 
                     if self._is_service_compatible(normalized_ref):
                         # Extended database with all info
@@ -1153,11 +1232,14 @@ class EPGServiceMapper:
                         if channel_id not in self.mapping.rytec['basic']:
                             self.mapping.rytec['basic'][channel_id] = normalized_ref
 
-                        clean_base_id = self.clean_channel_name(channel_id.split('.')[0])
+                        clean_base_id = self.clean_channel_name(
+                            channel_id.split('.')[0])
                         self.mapping.rytec['clean'][clean_base_id] = normalized_ref
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Parsed %d Rytec channels with extended info", len(self.mapping.rytec['extended']))
+                logger.info(
+                    "Parsed %d Rytec channels with extended info", len(
+                        self.mapping.rytec['extended']))
 
         except Exception as e:
             logger.error("Error parsing rytec.channels.xml: %s", str(e))
@@ -1177,7 +1259,9 @@ class EPGServiceMapper:
             # Find all channel elements
             channels = root.findall('.//channel')
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Found {len(channels)} channel elements with lxml")
+                logger.info(
+                    f"Found {
+                        len(channels)} channel elements with lxml")
 
             added_count = 0
             for channel in channels:
@@ -1194,7 +1278,8 @@ class EPGServiceMapper:
                     display_name = display_name_elem.text.strip()
 
                     # Add to mapping
-                    clean_name = self.clean_channel_name(display_name, preserve_variants=True)
+                    clean_name = self.clean_channel_name(
+                        display_name, preserve_variants=True)
                     self.mapping.rytec['extended'][channel_id] = [{
                         'channel_name': display_name,
                         'sref': None,
@@ -1225,7 +1310,9 @@ class EPGServiceMapper:
 
             channels = root.findall('.//channel')
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Found {len(channels)} channel elements with ElementTree")
+                logger.info(
+                    f"Found {
+                        len(channels)} channel elements with ElementTree")
 
             added_count = 0
             for channel in channels:
@@ -1239,9 +1326,11 @@ class EPGServiceMapper:
                         continue
 
                     display_name = display_name_elem.text.strip()
-                    clean_name = self.clean_channel_name(display_name, preserve_variants=True)
+                    clean_name = self.clean_channel_name(
+                        display_name, preserve_variants=True)
 
-                    service_ref = self._generate_dvb_service_ref(display_name, channel_id)
+                    service_ref = self._generate_dvb_service_ref(
+                        display_name, channel_id)
 
                     self.mapping.rytec['extended'][channel_id].append({
                         'channel_name': display_name,
@@ -1259,7 +1348,8 @@ class EPGServiceMapper:
                     continue
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Added {added_count} channels with ElementTree parsing")
+                logger.info(
+                    f"Added {added_count} channels with ElementTree parsing")
             return added_count > 0
 
         except Exception as e:
@@ -1278,11 +1368,13 @@ class EPGServiceMapper:
                     if 'FROM BOUQUET "' in line:
                         match = search(r'FROM BOUQUET "([^"]+)"', line)
                         if match:
-                            bouquet_files.append(join(bouquet_dir, match.group(1)))
+                            bouquet_files.append(
+                                join(bouquet_dir, match.group(1)))
 
         # Add all userbouquet files
         for filename in listdir(bouquet_dir):
-            if filename.startswith('userbouquet.') and filename.endswith('.tv'):
+            if filename.startswith(
+                    'userbouquet.') and filename.endswith('.tv'):
                 bouquet_files.append(join(bouquet_dir, filename))
 
         # Parse each bouquet
@@ -1298,10 +1390,13 @@ class EPGServiceMapper:
                     matches = findall(service_pattern, content)
 
                     for service_ref in matches:
-                        if not service_ref.startswith('4097:'):  # Ignore IPTV services
+                        if not service_ref.startswith(
+                                '4097:'):  # Ignore IPTV services
                             desc_pattern = r'#DESCRIPTION (.+)\n'
-                            desc_match = search(desc_pattern, content[content.find(service_ref):])
-                            channel_name = desc_match.group(1).strip() if desc_match else "Unknown"
+                            desc_match = search(
+                                desc_pattern, content[content.find(service_ref):])
+                            channel_name = desc_match.group(
+                                1).strip() if desc_match else "Unknown"
 
                             clean_name = self.clean_channel_name(channel_name)
 
@@ -1384,7 +1479,8 @@ class EPGServiceMapper:
             match_cache_size = len(self._match_cache)
             self._match_cache.clear()
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Match cache cleared: {match_cache_size} entries removed")
+                logger.info(
+                    f"Match cache cleared: {match_cache_size} entries removed")
 
     def _clear_epgshare_entries(self):
         """Clear all EPGShare entries."""
@@ -1416,13 +1512,15 @@ class EPGServiceMapper:
                 service for service in self.mapping.dvb[channel_name]
                 if not service.get('sref', '').split(':')[6] == 'EEEE'
             ]
-            removed_count += (len(self.mapping.dvb[channel_name]) - len(filtered_services))
+            removed_count += (len(self.mapping.dvb[channel_name]
+                                  ) - len(filtered_services))
             if filtered_services:
                 self.mapping.dvb[channel_name] = filtered_services
             else:
                 del self.mapping.dvb[channel_name]
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔧 Removed {removed_count} DVB-T (EEEE) services (mode: {self.database_mode})")
+            logger.info(
+                f"🔧 Removed {removed_count} DVB-T (EEEE) services (mode: {self.database_mode})")
         return removed_count
 
     def _enhanced_search_short_names(self, clean_name, original_name):
@@ -1430,7 +1528,8 @@ class EPGServiceMapper:
         matches = []
 
         # Use the dedicated function for case-insensitive matching
-        case_insensitive_matches = self._search_case_insensitive_matches(original_name, clean_name, "")
+        case_insensitive_matches = self._search_case_insensitive_matches(
+            original_name, clean_name, "")
         matches.extend(case_insensitive_matches)
 
         # Create different name variants including all case combinations
@@ -1450,7 +1549,8 @@ class EPGServiceMapper:
         if len(words) == 2:
             word1, word2 = words
             # If one word is numeric and the other textual
-            if (word1.isdigit() and not word2.isdigit()) or (word2.isdigit() and not word1.isdigit()):
+            if (word1.isdigit() and not word2.isdigit()) or (
+                    word2.isdigit() and not word1.isdigit()):
                 if word1.isdigit():
                     number, text = word1, word2
                 else:
@@ -1497,7 +1597,8 @@ class EPGServiceMapper:
                     })
                 # Case-insensitive partial match
                 elif variant.lower() in rytec_id.lower():
-                    similarity = self._calculate_similarity(variant.lower(), rytec_id.lower())
+                    similarity = self._calculate_similarity(
+                        variant.lower(), rytec_id.lower())
                     if similarity > 0.7:
                         matches.append({
                             'type': 'rytec',
@@ -1515,7 +1616,8 @@ class EPGServiceMapper:
             # Case-insensitive exact match
             if clean_name.lower() == db_name.lower():
                 for service in services:
-                    service_type = 'dvbt' if self._is_dvb_t_service(service['sref']) else 'dvb'
+                    service_type = 'dvbt' if self._is_dvb_t_service(
+                        service['sref']) else 'dvb'
                     matches.append({
                         'type': service_type,
                         'sref': service['sref'],
@@ -1525,10 +1627,12 @@ class EPGServiceMapper:
                     })
             # Case-insensitive partial match
             elif clean_name.lower() in db_name.lower():
-                similarity = self._calculate_similarity(clean_name.lower(), db_name.lower())
+                similarity = self._calculate_similarity(
+                    clean_name.lower(), db_name.lower())
                 if similarity > 0.7:
                     for service in services:
-                        service_type = 'dvbt' if self._is_dvb_t_service(service['sref']) else 'dvb'
+                        service_type = 'dvbt' if self._is_dvb_t_service(
+                            service['sref']) else 'dvb'
                         matches.append({
                             'type': service_type,
                             'sref': service['sref'],
@@ -1577,10 +1681,12 @@ class EPGServiceMapper:
     def match_with_manual_database(self, channel_name, clean_name):
         """Wrapper for manual database matching"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"🎯 MANUAL DB CALLED: '{channel_name}' -> '{clean_name}'")
+            logger.debug(
+                f"🎯 MANUAL DB CALLED: '{channel_name}' -> '{clean_name}'")
 
         if hasattr(self, 'manual_db') and self.manual_db:
-            result = self.manual_db.find_mapping(channel_name, clean_name=clean_name)
+            result = self.manual_db.find_mapping(
+                channel_name, clean_name=clean_name)
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(f"🎯 MANUAL DB RESULT: {result is not None}")
@@ -1597,10 +1703,16 @@ class EPGServiceMapper:
 
         return None, None
 
-    def _find_best_service_match(self, clean_name, tvg_id=None, original_name="", channel_url=None):
+    def _find_best_service_match(
+            self,
+            clean_name,
+            tvg_id=None,
+            original_name="",
+            channel_url=None):
         """Universal matching with IMPROVED handling"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔍 MATCH: '{original_name}' -> tvg_id: '{tvg_id}' -> clean: '{clean_name}'")
+            logger.info(
+                f"🔍 MATCH: '{original_name}' -> tvg_id: '{tvg_id}' -> clean: '{clean_name}'")
 
         # Initialize statistics if not already set
         if not hasattr(self, '_stats_counters'):
@@ -1615,7 +1727,8 @@ class EPGServiceMapper:
         cache_key = f"{clean_name}_{tvg_id}"
 
         # 1. FIRST: Manual Database (highest priority) - SOLO QUESTA!
-        service_ref, match_type = self.match_with_manual_database(original_name, clean_name)
+        service_ref, match_type = self.match_with_manual_database(
+            original_name, clean_name)
         if service_ref:
             # Save to cache
             self._add_to_cache(cache_key, service_ref, match_type)
@@ -1626,21 +1739,30 @@ class EPGServiceMapper:
             self._match_cache_hits += 1
             cached = self._match_cache[cache_key]
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"✅ CACHE HIT: {cache_key} -> {cached['match_type']}")
+                logger.debug(
+                    f"✅ CACHE HIT: {cache_key} -> {cached['match_type']}")
             return cached['sref'], cached['match_type']
 
         # 3. ENHANCED: Special handling for short names and numbered channels
         if len(clean_name) <= 5 or any(char.isdigit() for char in clean_name):
             # Try enhanced search first for short names
-            enhanced_matches = self._enhanced_search_short_names(clean_name, original_name)
+            enhanced_matches = self._enhanced_search_short_names(
+                clean_name, original_name)
 
             # Also search with case-insensitive matching
-            case_insensitive_matches = self._search_case_insensitive_matches(clean_name, clean_name, tvg_id)
+            case_insensitive_matches = self._search_case_insensitive_matches(
+                clean_name, clean_name, tvg_id)
             enhanced_matches.extend(case_insensitive_matches)
 
             if enhanced_matches:
                 # Use the best enhanced match
-                best_enhanced = max(enhanced_matches, key=lambda x: (x.get('priority', 0), x['similarity']))
+                best_enhanced = max(
+                    enhanced_matches,
+                    key=lambda x: (
+                        x.get(
+                            'priority',
+                            0),
+                        x['similarity']))
                 service_ref = best_enhanced['sref']
                 match_type = f"{best_enhanced['type']}_enhanced"
 
@@ -1658,14 +1780,18 @@ class EPGServiceMapper:
                 return service_ref, match_type
 
         # 4. ENHANCED RYTEC SEARCH - Multiple format variants
-        if self.database_mode in ["full", "both", "rytec"] and tvg_id and tvg_id.lower() != "none":
+        if self.database_mode in [
+            "full",
+            "both",
+                "rytec"] and tvg_id and tvg_id.lower() != "none":
             # Try multiple Rytec ID formats
             rytec_variants = self._generate_rytec_variants(tvg_id, clean_name)
 
             for variant in rytec_variants:
                 if variant in self.mapping.rytec['basic']:
                     service_ref = self.mapping.rytec['basic'][variant]
-                    if service_ref and self._is_service_compatible(service_ref):
+                    if service_ref and self._is_service_compatible(
+                            service_ref):
                         match_type = 'rytec_exact'
                         break  # Use first valid match
 
@@ -1674,14 +1800,16 @@ class EPGServiceMapper:
                 self.database_mode in ["full", "both", "rytec"] and
                 clean_name and len(clean_name) >= 2):
 
-            rytec_matches = self._enhanced_rytec_name_search(clean_name, original_name)
+            rytec_matches = self._enhanced_rytec_name_search(
+                clean_name, original_name)
             if rytec_matches:
                 best_match = max(rytec_matches, key=lambda x: x['similarity'])
                 if best_match['similarity'] > self.similarity_threshold_rytec:
                     service_ref = best_match['sref']
                     match_type = 'rytec_name'
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"✅ Rytec name match: {original_name} -> {best_match['name']}")
+                        logger.debug(
+                            f"✅ Rytec name match: {original_name} -> {best_match['name']}")
 
         # 5. RYTEC KEYWORD SEARCH - Use configurable similarity threshold
         if (not service_ref and
@@ -1691,14 +1819,16 @@ class EPGServiceMapper:
             keyword_matches = self._find_rytec_ids_by_keyword(clean_name)
             if keyword_matches:
                 # Take the match with the highest similarity
-                best_keyword_match = max(keyword_matches, key=lambda x: x['similarity'])
+                best_keyword_match = max(
+                    keyword_matches, key=lambda x: x['similarity'])
 
                 # Use the specific Rytec threshold from config
                 if best_keyword_match['similarity'] > self.similarity_threshold_rytec:
                     service_ref = best_keyword_match['sref']
                     match_type = 'rytec_keyword'
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"✅ Rytec keyword match: {original_name} -> {best_keyword_match['name']}")
+                        logger.debug(
+                            f"✅ Rytec keyword match: {original_name} -> {best_keyword_match['name']}")
 
         # 6. DVB SEARCH - Use configurable similarity threshold
         if not service_ref and self.database_mode in ["full", "both", "dvb"]:
@@ -1847,7 +1977,7 @@ class EPGServiceMapper:
                 return epg_match.group(1).strip()
 
             return None
-        except:
+        except BaseException:
             return None
 
     def _convert_to_rytec_format(self, tvg_id):
@@ -1878,7 +2008,8 @@ class EPGServiceMapper:
                 base_name = tvg_id[:-len(suffix)]
 
                 # Generate all possible Rytec name variations
-                variations = self._generate_rytec_variations(base_name, country_code)
+                variations = self._generate_rytec_variations(
+                    base_name, country_code)
 
                 # Try to find a valid match in Rytec mappings
                 for variation in variations:
@@ -1914,11 +2045,15 @@ class EPGServiceMapper:
         epg_filename = f"{bouquet_name}.channels.xml"
         epg_path = join(epgimport_path, epg_filename)
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Generating EPG channels file with {len(epg_data)} entries")
+            logger.info(
+                f"Generating EPG channels file with {
+                    len(epg_data)} entries")
 
         try:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"EPG_DATA DEBUG: {len(epg_data)} entries received")
+                logger.info(
+                    f"EPG_DATA DEBUG: {
+                        len(epg_data)} entries received")
             if epg_data:
                 logger.info(f"First entry: {epg_data[0]}")
 
@@ -1935,16 +2070,19 @@ class EPGServiceMapper:
                 # DEBUG: log every 10 processed channels
                 if processed_count % 10 == 0:
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"Processing channel {processed_count}: {channel_name} -> {match_type}")
+                        logger.debug(
+                            f"Processing channel {processed_count}: {channel_name} -> {match_type}")
 
                 # Ensure service_ref is not empty
                 if not service_ref:
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"Skipping channel without service_ref: {channel_name}")
+                        logger.warning(
+                            f"Skipping channel without service_ref: {channel_name}")
                     continue
 
                 # Use the correct EPG ID method
-                channel_id = self._get_correct_epg_id(channel_name, tvg_id, service_ref)
+                channel_id = self._get_correct_epg_id(
+                    channel_name, tvg_id, service_ref)
 
                 # Count match_type correctly
                 if 'rytec' in match_type:
@@ -1966,7 +2104,9 @@ class EPGServiceMapper:
             if not channel_entries:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.error("NO CHANNEL ENTRIES TO WRITE!")
-                    logger.error(f"EPG data had {len(epg_data)} entries but 0 were processed")
+                    logger.error(
+                        f"EPG data had {
+                            len(epg_data)} entries but 0 were processed")
                 return False
 
             # SINGLE WRITE
@@ -1979,9 +2119,22 @@ class EPGServiceMapper:
             # VERIFY: Check that the file has been written
             file_size = getsize(epg_path) if exists(epg_path) else 0
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"EPG file written: {epg_path} ({file_size} bytes, {len(channel_entries)} entries)")
-                logger.info(f"Optimized EPG channels file created: {len(channel_entries)} entries")
-                logger.info(f"EPG Match stats - Rytec: {cache_stats.get('rytec', 0)}, DVB-S: {cache_stats.get('dvb', 0)}, DVB-T: {cache_stats.get('dvbt', 0)}, Fallback: {cache_stats.get('fallback', 0)}")
+                logger.info(
+                    f"EPG file written: {epg_path} ({file_size} bytes, {
+                        len(channel_entries)} entries)")
+                logger.info(
+                    f"Optimized EPG channels file created: {
+                        len(channel_entries)} entries")
+                logger.info(
+                    f"EPG Match stats - Rytec: {
+                        cache_stats.get(
+                            'rytec', 0)}, DVB-S: {
+                        cache_stats.get(
+                            'dvb', 0)}, DVB-T: {
+                        cache_stats.get(
+                            'dvbt', 0)}, Fallback: {
+                                cache_stats.get(
+                                    'fallback', 0)}")
                 logger.info("========= debug_epg_mapping =========")
             return True
 
@@ -2010,17 +2163,22 @@ class EPGServiceMapper:
                 try:
                     with open(sources_path, 'r', encoding='utf-8') as f:
                         content = f.read()
-                except:
+                except BaseException:
                     content = '<?xml version="1.0" encoding="utf-8"?>\n<sources>\n</sources>'
             else:
                 content = '<?xml version="1.0" encoding="utf-8"?>\n<sources>\n</sources>'
 
             # Check if this bouquet already exists in sources
-            existing_pattern = rf'<source type="gen_xmltv"[^>]*channels="{escape(bouquet_name)}\.channels\.xml"[^>]*>'
+            existing_pattern = rf'<source type="gen_xmltv"[^>]*channels="{
+                escape(bouquet_name)}\.channels\.xml"[^>]*>'
             if search(existing_pattern, content):
                 # Remove existing entry to update it
-                content = sub(rf'<source type="gen_xmltv"[^>]*channels="{escape(bouquet_name)}\.channels\.xml"[^>]*>.*?</source>',
-                              '', content, flags=DOTALL)
+                content = sub(
+                    rf'<source type="gen_xmltv"[^>]*channels="{
+                        escape(bouquet_name)}\.channels\.xml"[^>]*>.*?</source>',
+                    '',
+                    content,
+                    flags=DOTALL)
 
             # Create the new source entry
             new_source = f'    <source type="gen_xmltv" nocheck="1" channels="{bouquet_name}.channels.xml">\n'
@@ -2036,8 +2194,9 @@ class EPGServiceMapper:
                 # Add to existing sourcecat
                 existing_content = sourcecat_match.group(1)
                 updated_content = existing_content + '\n' + new_source
-                content = content.replace(sourcecat_match.group(0),
-                                          f'<sourcecat sourcecatname="Archimede Converter">{updated_content}</sourcecat>')
+                content = content.replace(
+                    sourcecat_match.group(0),
+                    f'<sourcecat sourcecatname="Archimede Converter">{updated_content}</sourcecat>')
             else:
                 # Create new sourcecat
                 new_sourcecat = '  <sourcecat sourcecatname="Archimede Converter">\n'
@@ -2046,7 +2205,8 @@ class EPGServiceMapper:
 
                 # Insert before closing </sources> tag
                 if '</sources>' in content:
-                    content = content.replace('</sources>', new_sourcecat + '</sources>')
+                    content = content.replace(
+                        '</sources>', new_sourcecat + '</sources>')
                 else:
                     content += new_sourcecat
 
@@ -2126,7 +2286,8 @@ class EPGServiceMapper:
     def _generate_hybrid_sref(self, dvb_sref, url=None, for_epg=False):
         """Generate correct hybrid service reference"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔧 _generate_hybrid_sref: dvb_sref={dvb_sref}, for_epg={for_epg}")
+            logger.info(
+                f"🔧 _generate_hybrid_sref: dvb_sref={dvb_sref}, for_epg={for_epg}")
 
         # IF it's for EPG, RETURN the ORIGINAL DVB reference
         if for_epg and dvb_sref and dvb_sref.startswith('1:'):
@@ -2136,7 +2297,8 @@ class EPGServiceMapper:
                 parts[6] = '820000'  # Satellite
                 corrected_sref = ':'.join(parts)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"🔧 DVB NAMESPACE FIXED for EPG: {dvb_sref} -> {corrected_sref}")
+                    logger.info(
+                        f"🔧 DVB NAMESPACE FIXED for EPG: {dvb_sref} -> {corrected_sref}")
                 return corrected_sref
             return dvb_sref  # ⬅️ IMPORTANT: Return the DVB reference for EPG
 
@@ -2153,7 +2315,8 @@ class EPGServiceMapper:
 
                     dvb_reference = f"1:0:{service_type}:{service_id}:{ts_id}:{on_id}:{namespace}:0:0:0:"
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"🔧 IPTV->DVB: {dvb_sref} -> {dvb_reference}")
+                        logger.info(
+                            f"🔧 IPTV->DVB: {dvb_sref} -> {dvb_reference}")
                     return dvb_reference
             else:
                 return dvb_sref
@@ -2163,11 +2326,13 @@ class EPGServiceMapper:
             if for_epg:
                 # Fix namespace if necessary
                 parts = dvb_sref.split(':')
-                if len(parts) >= 11 and (parts[6] == '0' or parts[6] == 'EEEE'):
+                if len(parts) >= 11 and (
+                        parts[6] == '0' or parts[6] == 'EEEE'):
                     parts[6] = '820000'  # Satellite
                     corrected_sref = ':'.join(parts)
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"🔧 DVB NAMESPACE: {dvb_sref} -> {corrected_sref}")
+                        logger.info(
+                            f"🔧 DVB NAMESPACE: {dvb_sref} -> {corrected_sref}")
                     return corrected_sref
                 return dvb_sref
             else:
@@ -2183,10 +2348,13 @@ class EPGServiceMapper:
                     base_sref = f"4097:0:{service_type}:{service_id}:{ts_id}:{on_id}:{namespace}:0:0:0:"
 
                     if url:
-                        encoded_url = url.replace(':', '%3a').replace(' ', '%20')
+                        encoded_url = url.replace(
+                            ':', '%3a').replace(
+                            ' ', '%20')
                         iptv_sref = base_sref + encoded_url
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info(f"🔧 DVB->IPTV: {dvb_sref} -> {iptv_sref}")
+                            logger.info(
+                                f"🔧 DVB->IPTV: {dvb_sref} -> {iptv_sref}")
                         return iptv_sref
 
         # CASE 3: Fallback
@@ -2237,7 +2405,8 @@ class EPGServiceMapper:
         """Generate a valid DVB-style service reference for EPGShare channels."""
         try:
             # Use the hash of channel_id to create a consistent service_id
-            channel_hash = hashlib.md5(channel_id.encode('utf-8')).hexdigest()[:8]
+            channel_hash = hashlib.md5(
+                channel_id.encode('utf-8')).hexdigest()[:8]
             service_id = int(channel_hash, 16) % 65536
 
             # Build a standard DVB service reference for EPG use
@@ -2316,7 +2485,8 @@ class EPGServiceMapper:
             return SequenceMatcher(None, name1_clean, name2_clean).ratio()
         except ImportError:
             common_chars = set(name1_clean) & set(name2_clean)
-            return len(common_chars) / max(len(set(name1_clean)), len(set(name2_clean)))
+            return len(common_chars) / \
+                max(len(set(name1_clean)), len(set(name2_clean)))
 
     def _get_source_type(self, comment):
         """Determine source type with greater precision."""
@@ -2341,7 +2511,12 @@ class EPGServiceMapper:
             if pos_key in comment_lower:
                 return f'satellite_{pos_name}'
 
-        if any(x in comment_lower for x in ['iptv', 'http', 'https', 'stream']):
+        if any(
+            x in comment_lower for x in [
+                'iptv',
+                'http',
+                'https',
+                'stream']):
             return 'iptv'
         elif any(x in comment_lower for x in ['terrestre', 'dvb-t', 'tnt', 'antenna']):
             return 'terrestrial'
@@ -2379,7 +2554,10 @@ class EPGServiceMapper:
             total_match_requests = self._match_cache_hits + self._match_cache_misses
 
             if total_match_requests > 0:
-                match_hit_rate = (self._match_cache_hits / total_match_requests * 100)
+                match_hit_rate = (
+                    self._match_cache_hits /
+                    total_match_requests *
+                    100)
                 # Prevent unrealistic values (should be between 0-100)
                 match_hit_rate = max(0, min(100, match_hit_rate))
             else:
@@ -2460,15 +2638,22 @@ class EPGServiceMapper:
                           self._stats_counters.get('manual_db_matches', 0))
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"🔢 COUNTER VERIFICATION: Total expected: {total_expected}")
+            logger.debug(
+                f"🔢 COUNTER VERIFICATION: Total expected: {total_expected}")
 
         # Calculate total match requests
         total_match_requests = self._match_cache_hits + self._match_cache_misses
-        match_hit_rate = (self._match_cache_hits / total_match_requests * 100) if total_match_requests > 0 else 0
+        match_hit_rate = (
+            self._match_cache_hits /
+            total_match_requests *
+            100) if total_match_requests > 0 else 0
 
         # Calculate EPG cache statistics
         total_epg_requests = self.epg_cache_hits + self.epg_cache_misses
-        epg_hit_rate = (self.epg_cache_hits / total_epg_requests * 100) if total_epg_requests > 0 else 0
+        epg_hit_rate = (
+            self.epg_cache_hits /
+            total_epg_requests *
+            100) if total_epg_requests > 0 else 0
 
         # Cache analysis
         cache_analysis = {
@@ -2519,7 +2704,11 @@ class EPGServiceMapper:
                          fallback_matches + manual_db_matches)
 
         # Calculate REAL EPG matches (excluding fallback)
-        real_epg_matches = (rytec_matches + dvb_matches + dvbt_matches + manual_db_matches)
+        real_epg_matches = (
+            rytec_matches +
+            dvb_matches +
+            dvbt_matches +
+            manual_db_matches)
 
         # Calculate percentages safely
         if total_matches > 0:
@@ -2535,7 +2724,8 @@ class EPGServiceMapper:
 
         # Calculate effective EPG matches based on database mode
         if self.database_mode == "full":
-            effective_epg_matches = rytec_matches + dvb_matches + dvbt_matches + manual_db_matches
+            effective_epg_matches = rytec_matches + \
+                dvb_matches + dvbt_matches + manual_db_matches
         elif self.database_mode == "both":
             effective_epg_matches = rytec_matches + dvb_matches + manual_db_matches
         elif self.database_mode == "dvb":
@@ -2547,7 +2737,10 @@ class EPGServiceMapper:
         else:
             effective_epg_matches = manual_db_matches
 
-        effective_coverage = (effective_epg_matches / total_matches * 100) if total_matches > 0 else 0
+        effective_coverage = (
+            effective_epg_matches /
+            total_matches *
+            100) if total_matches > 0 else 0
 
         # Enabled flags
         rytec_enabled = self.database_mode in ["full", "both", "rytec"]
@@ -2777,15 +2970,16 @@ class EPGServiceMapper:
             from io import BytesIO
             headers = {
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-                "Accept": "application/xml, */*"
-            }
+                "Accept": "application/xml, */*"}
 
             # Download the file
-            response = requests.get(url, headers=headers, timeout=30, verify=False)
+            response = requests.get(
+                url, headers=headers, timeout=30, verify=False)
             response.raise_for_status()
 
             # Check if it's a gzipped file
-            if url.endswith('.gz') or response.headers.get('content-type') == 'application/gzip':
+            if url.endswith('.gz') or response.headers.get(
+                    'content-type') == 'application/gzip':
                 # Decompress gzip file
                 with gzip.GzipFile(fileobj=BytesIO(response.content)) as gz_file:
                     decompressed_content = gz_file.read()
@@ -2794,7 +2988,8 @@ class EPGServiceMapper:
                 with open(output_path, 'wb') as f:
                     f.write(decompressed_content)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"Downloaded and decompressed EPG file to {output_path}")
+                    logger.info(
+                        f"Downloaded and decompressed EPG file to {output_path}")
 
             else:
                 # Write directly if not compressed
@@ -2833,18 +3028,21 @@ class EPGServiceMapper:
                 # Verify results
                 epgshare_count = 0
                 with self._rytec_lock:
-                    for channel_id, variants in self.mapping.rytec['extended'].items():
+                    for channel_id, variants in self.mapping.rytec['extended'].items(
+                    ):
                         for variant in variants:
                             if variant.get('source_type') == 'epgshare':
                                 epgshare_count += 1
                                 break
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"EPGShare parsing completed: {epgshare_count} channels")
+                    logger.info(
+                        f"EPGShare parsing completed: {epgshare_count} channels")
 
                 if epgshare_count > 0:
                     return True
                 else:
-                    logger.error("Parsing succeeded but no channels were added!")
+                    logger.error(
+                        "Parsing succeeded but no channels were added!")
                     return False
             else:
                 logger.error("EPGShare parsing failed")
@@ -2864,9 +3062,11 @@ class EPGServiceMapper:
             for clean_name, services in self.mapping.dvb.items():
                 if services and count < 1000:  # Limit to 1000 channels
                     service = services[0]
-                    if service['sref'] and self._is_service_compatible(service['sref']):
+                    if service['sref'] and self._is_service_compatible(
+                            service['sref']):
                         # Generate Rytec-style ID
-                        channel_id = self._generate_rytec_style_id(clean_name, service['sref'])
+                        channel_id = self._generate_rytec_style_id(
+                            clean_name, service['sref'])
 
                         self.mapping.rytec['extended'][channel_id].append({
                             'sref': service['sref'],
@@ -2890,7 +3090,8 @@ class EPGServiceMapper:
                 try:
                     mappings_to_save = []
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info("Background auto-save: Collecting mappings...")
+                        logger.info(
+                            "Background auto-save: Collecting mappings...")
 
                     for channel in conversion_data:
                         match_type = channel.get('match_type', '')
@@ -2924,9 +3125,11 @@ class EPGServiceMapper:
 
                     # SAVE EVERYTHING IN A SINGLE OPERATION
                     if mappings_to_save:
-                        success = self._save_auto_mappings_batch(mappings_to_save)
+                        success = self._save_auto_mappings_batch(
+                            mappings_to_save)
                         if success:
-                            logger.info(f"💾 AUTO-SAVE BATCH: {len(mappings_to_save)} mappings saved")
+                            logger.info(
+                                f"💾 AUTO-SAVE BATCH: {len(mappings_to_save)} mappings saved")
                         else:
                             logger.error("❌ Auto-save batch failed")
                     else:
@@ -2957,7 +3160,10 @@ class EPGServiceMapper:
             current_mappings = data.get('mappings', [])
 
             # Create a dictionary for fast lookup
-            mapping_dict = {m.get('clean_name', '').lower(): m for m in current_mappings}
+            mapping_dict = {
+                m.get(
+                    'clean_name',
+                    '').lower(): m for m in current_mappings}
 
             # Add/update new mappings
             for new_mapping in mappings_to_save:
@@ -2976,7 +3182,9 @@ class EPGServiceMapper:
             success = self.manual_db.save_database(data)
 
             if success:
-                logger.info(f"✅ Batch save successful: {len(mappings_to_save)} mappings")
+                logger.info(
+                    f"✅ Batch save successful: {
+                        len(mappings_to_save)} mappings")
             else:
                 logger.error("❌ Batch save failed")
 
@@ -3020,12 +3228,14 @@ class EPGServiceMapper:
             timestamp = strftime("%Y%m%d_%H%M%S")
             import random
             unique_id = random.randint(1000, 9999)
-            debug_file_tab = join(DEBUG_DIR, f"{timestamp}_{unique_id}_{bouquet_name}_quick_tab.csv")
+            debug_file_tab = join(
+                DEBUG_DIR, f"{timestamp}_{unique_id}_{bouquet_name}_quick_tab.csv")
 
             # 2. Also create a TAB-friendly version
             with open(debug_file_tab, 'w', encoding='utf-8') as f:
                 separator = ';'  # Excel-friendly delimiter
-                f.write(f"Channel{separator}Original_Name{separator}TVG_ID{separator}Clean_Name{separator}Match_Type{separator}Has_EPG{separator}Service_Ref{separator}URL_Start\n")
+                f.write(
+                    f"Channel{separator}Original_Name{separator}TVG_ID{separator}Clean_Name{separator}Match_Type{separator}Has_EPG{separator}Service_Ref{separator}URL_Start\n")
 
                 for channel in normalized_data:
                     # CORREZIONE: Gestire sia dizionari che tuple
@@ -3034,18 +3244,23 @@ class EPGServiceMapper:
                         name = channel.get('name', 'Unknown')[:50]
                         original_name = channel.get('original_name', name)
                         tvg_id = channel.get('tvg_id', '')
-                        clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                        clean_name = self.clean_channel_name(name) if hasattr(
+                            self, 'clean_channel_name') else name
                         match_type = channel.get('match_type', '')
-                        has_epg = 'YES' if any(x in match_type for x in ['rytec', 'dvb', 'dvbt']) else 'NO'
+                        has_epg = 'YES' if any(
+                            x in match_type for x in [
+                                'rytec', 'dvb', 'dvbt']) else 'NO'
                         service_ref = channel.get('sref', '')[:50]
                         url = channel.get('url', '')[:30]
 
                     elif isinstance(channel, (tuple, list)) and len(channel) >= 2:
                         # Caso tuple (TV bouquets) - formato (nome, url)
-                        name = str(channel[0])[:50] if len(channel) > 0 else 'Unknown'
+                        name = str(channel[0])[:50] if len(
+                            channel) > 0 else 'Unknown'
                         original_name = name
                         tvg_id = ''
-                        clean_name = self.clean_channel_name(name) if hasattr(self, 'clean_channel_name') else name
+                        clean_name = self.clean_channel_name(name) if hasattr(
+                            self, 'clean_channel_name') else name
                         match_type = 'tv_bouquet'
                         has_epg = 'NO'  # I bouquet TV di solito non hanno EPG integrato
                         service_ref = ''
@@ -3062,7 +3277,8 @@ class EPGServiceMapper:
                         service_ref = ''
                         url = ''
 
-                    f.write(f"{name}{separator}{original_name}{separator}{tvg_id}{separator}{clean_name}{separator}{match_type}{separator}{has_epg}{separator}{service_ref}{separator}{url}\n")
+                    f.write(
+                        f"{name}{separator}{original_name}{separator}{tvg_id}{separator}{clean_name}{separator}{match_type}{separator}{has_epg}{separator}{service_ref}{separator}{url}\n")
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(f"📁 Debug CSV saved: {debug_file_tab}")
@@ -3070,7 +3286,9 @@ class EPGServiceMapper:
         except Exception as e:
             logger.error(f"❌ Quick debug saving error: {str(e)}")
 
-    def _save_complete_cache_analysis(self, output_dir=join(LOG_DIR, "epg_analysis")):
+    def _save_complete_cache_analysis(
+        self, output_dir=join(
+            LOG_DIR, "epg_analysis")):
         """Save complete cache and database analysis"""
         try:
             if not exists(output_dir):
@@ -3128,7 +3346,8 @@ class EPGServiceMapper:
                     fallback_matches = content.count('iptv_fallback')
 
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"Rytec matches: {rytec_matches}, DVB matches: {dvb_matches}, Fallback: {fallback_matches}")
+                        logger.info(
+                            f"Rytec matches: {rytec_matches}, DVB matches: {dvb_matches}, Fallback: {fallback_matches}")
 
             except Exception as e:
                 logger.error(f"Error reading channels.xml: {str(e)}")
@@ -3140,14 +3359,21 @@ class EPGServiceMapper:
                     content = f.read()
                     has_bouquet = bouquet_name in content
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"Bouquet present in sources: {has_bouquet}")
+                        logger.info(
+                            f"Bouquet present in sources: {has_bouquet}")
 
             except Exception as e:
                 logger.error(f"Error reading sources.xml: {str(e)}")
 
         return channels_exists and sources_exists and channel_count > 0
 
-    def _debug_matching_process(self, original_name, clean_name, tvg_id, result, match_type):
+    def _debug_matching_process(
+            self,
+            original_name,
+            clean_name,
+            tvg_id,
+            result,
+            match_type):
         """Debug dettagliato del processo di matching."""
         if not config.plugins.m3uconverter.enable_debug.value:
             return
@@ -3155,7 +3381,12 @@ class EPGServiceMapper:
         logger.debug(f"=== MATCHING DEBUG for: {original_name} ===")
         logger.debug(f"Clean name: {clean_name}")
         logger.debug(f"TVG ID: {tvg_id}")
-        logger.debug(f"Final EPG ID: {self._get_correct_epg_id(original_name, tvg_id, result)}")
+        logger.debug(
+            f"Final EPG ID: {
+                self._get_correct_epg_id(
+                    original_name,
+                    tvg_id,
+                    result)}")
         logger.debug(f"Result: {result}")
         logger.debug(f"Match type: {match_type}")
 
@@ -3186,7 +3417,8 @@ class EPGServiceMapper:
 
             # SAVE ONLY IF THERE ARE CHANGES, AND DO IT ONCE
             if cleaned_db > 0:
-                self.manual_db.save_database(data)  # The manager will handle backup intelligently
+                # The manager will handle backup intelligently
+                self.manual_db.save_database(data)
 
             # 3. Clean conversion_data if it exists
             cleaned_conv = 0
@@ -3198,7 +3430,8 @@ class EPGServiceMapper:
                         channel['match_type'] = new_type
                         cleaned_conv += 1
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🧹 GLOBAL CLEAN: cache={cleaned_cache}, db={cleaned_db}, conv={cleaned_conv}")
+                logger.info(
+                    f"🧹 GLOBAL CLEAN: cache={cleaned_cache}, db={cleaned_db}, conv={cleaned_conv}")
 
             return True
 
@@ -3212,8 +3445,16 @@ class EPGServiceMapper:
             return 'auto'
 
         # Keep it if already simple
-        if match_type in ['manual_rytec', 'manual_dvb', 'manual_dvbt', 'manual_db',
-                          'rytec_exact', 'rytec_conv', 'dvb_s', 'dvb_t', 'iptv_fallback']:
+        if match_type in [
+            'manual_rytec',
+            'manual_dvb',
+            'manual_dvbt',
+            'manual_db',
+            'rytec_exact',
+            'rytec_conv',
+            'dvb_s',
+            'dvb_t',
+                'iptv_fallback']:
             return match_type
 
         # Otherwise, normalize it
@@ -3260,7 +3501,8 @@ class EPGServiceMapper:
                         pass
 
             if cleaned_count > 0:
-                logger.info(f"🧹 Cleaned {cleaned_count} debug files older than 1 day.")
+                logger.info(
+                    f"🧹 Cleaned {cleaned_count} debug files older than 1 day.")
             else:
                 logger.debug("No old debug files found to clean.")
 
@@ -3271,7 +3513,9 @@ class EPGServiceMapper:
         """Completely clear the log file before new conversion"""
         try:
             if exists(self.log_file):
-                file_size = getsize(self.log_file) if exists(self.log_file) else 0
+                file_size = getsize(
+                    self.log_file) if exists(
+                    self.log_file) else 0
                 if file_size > 1024 * 1024:
                     with open(self.log_file, 'w', encoding='utf-8') as f:
                         f.write('')
@@ -3294,7 +3538,9 @@ class EPGServiceMapper:
                     try:
                         remove(old_file)
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.debug(f"🧹 Removed old debug: {basename(old_file)}")
+                            logger.debug(
+                                f"🧹 Removed old debug: {
+                                    basename(old_file)}")
                     except Exception as e:
                         logger.debug(f"Could not remove {old_file}: {e}")
 
@@ -3387,7 +3633,8 @@ class ConversionSelector(Screen):
             (_("Plugin Information"), "plugin_info", None)
         ]
 
-        self["list"] = MenuList([(option[0], option[1]) for option in self.menu_options])
+        self["list"] = MenuList([(option[0], option[1])
+                                for option in self.menu_options])
         self["Title"] = Label(PLUGIN_TITLE)
         self["info"] = Label('')
         self["text"] = Label('')
@@ -3451,9 +3698,15 @@ class ConversionSelector(Screen):
             from Plugins.Extensions.EPGImport.plugin import EPGImportConfig
             self.session.open(EPGImportConfig)
         except ImportError:
-            self.session.open(MessageBox, _("EPGImport plugin not found"), MessageBox.TYPE_ERROR)
+            self.session.open(
+                MessageBox,
+                _("EPGImport plugin not found"),
+                MessageBox.TYPE_ERROR)
 
-    def _purge_m3u_bouquets(self, directory="/etc/enigma2", pattern="_m3ubouquet.tv"):
+    def _purge_m3u_bouquets(
+            self,
+            directory="/etc/enigma2",
+            pattern="_m3ubouquet.tv"):
         """Remove all bouquet files with dynamic EPG cleanup."""
         create_bouquets_backup()
         removed_files = []
@@ -3465,7 +3718,9 @@ class ConversionSelector(Screen):
                     remove(file_path)
                     removed_files.append(filename)
 
-                    bouquet_name = filename.replace('userbouquet.', '').replace('.tv', '')
+                    bouquet_name = filename.replace(
+                        'userbouquet.', '').replace(
+                        '.tv', '')
                     self._remove_epg_files(bouquet_name)
                     self._remove_epg_bouquet_source(bouquet_name)
 
@@ -3530,14 +3785,20 @@ class ConversionSelector(Screen):
 
             def should_keep_source(match):
                 bouquet_name = match.group(1)
-                channels_file = join(epgimport_path, f"{bouquet_name}.channels.xml")
+                channels_file = join(
+                    epgimport_path, f"{bouquet_name}.channels.xml")
                 return fileExists(channels_file)
 
             # Remove only sources for bouquets that no longer exist
-            new_content = sub(pattern, lambda m: m.group(0) if should_keep_source(m) else '', content, flags=DOTALL)
+            new_content = sub(
+                pattern,
+                lambda m: m.group(0) if should_keep_source(m) else '',
+                content,
+                flags=DOTALL)
 
             # Remove empty sourcecat entries
-            new_content = sub(r'<sourcecat[^>]*>\s*</sourcecat>', '', new_content)
+            new_content = sub(
+                r'<sourcecat[^>]*>\s*</sourcecat>', '', new_content)
 
             # Check if the file has any meaningful content left
             stripped_content = new_content.strip()
@@ -3570,17 +3831,27 @@ class ConversionSelector(Screen):
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info("Removed EPG channels file: %s", channels_file)
             except Exception as e:
-                logger.error("Error removing EPG channels file %s: %s", channels_file, str(e))
+                logger.error(
+                    "Error removing EPG channels file %s: %s",
+                    channels_file,
+                    str(e))
 
         # Remove any .tv.epg.imported file (cache file)
-        epg_imported_file = join(epgimport_path, f"{bouquet_name}.tv.epg.imported")
+        epg_imported_file = join(
+            epgimport_path,
+            f"{bouquet_name}.tv.epg.imported")
         if fileExists(epg_imported_file):
             try:
                 remove(epg_imported_file)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info("Removed EPG cache file: %s", epg_imported_file)
+                    logger.info(
+                        "Removed EPG cache file: %s",
+                        epg_imported_file)
             except Exception as e:
-                logger.error("Error removing EPG cache file %s: %s", epg_imported_file, str(e))
+                logger.error(
+                    "Error removing EPG cache file %s: %s",
+                    epg_imported_file,
+                    str(e))
 
     def _remove_epg_bouquet_source(self, bouquet_name):
         """Remove a bouquet from EPG sources."""
@@ -3595,7 +3866,8 @@ class ConversionSelector(Screen):
                 content = f.read()
 
             # Remove source for this bouquet
-            pattern = rf'<source type="gen_xmltv"[^>]*channels="{escape(bouquet_name)}\.channels\.xml"[^>]*>.*?</source>'
+            pattern = rf'<source type="gen_xmltv"[^>]*channels="{
+                escape(bouquet_name)}\.channels\.xml"[^>]*>.*?</source>'
             new_content = sub(pattern, '', content, flags=DOTALL)
 
             # If no more bouquets, remove the entire sourcecat
@@ -3607,7 +3879,8 @@ class ConversionSelector(Screen):
                 sources_content = sourcecat_match.group(1)
                 if not search(r'<source type="gen_xmltv"', sources_content):
                     # No sources left, remove entire sourcecat
-                    new_content = sub(sourcecat_pattern, '', new_content, flags=DOTALL)
+                    new_content = sub(
+                        sourcecat_pattern, '', new_content, flags=DOTALL)
 
             with open(sources_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
@@ -3702,7 +3975,12 @@ class UniversalConverter(Screen):
             <widget source="key_blue" render="Label" position="797,660" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
         </screen>"""
 
-    def __init__(self, session, conversion_type=None, selected_file=None, auto_start=False):
+    def __init__(
+            self,
+            session,
+            conversion_type=None,
+            selected_file=None,
+            auto_start=False):
         Screen.__init__(self, session)
         self.session = session
         self.conversion_type = conversion_type
@@ -3753,13 +4031,18 @@ class UniversalConverter(Screen):
             "cancel": self._close_screen,
             "stop": self._stop_media_player
         }, -1)
-        self["status"].setText(_("Ready: Select the file from the %s you configured in settings.") % self.full_path)
+        self["status"].setText(
+            _("Ready: Select the file from the %s you configured in settings.") %
+            self.full_path)
 
         if self.conversion_type == "tv_to_m3u":
             self._initialize_tv_converter()
 
         if self.selected_file:
-            self["status"].setText(_("File loaded: {}").format(basename(self.selected_file)))
+            self["status"].setText(
+                _("File loaded: {}").format(
+                    basename(
+                        self.selected_file)))
             self.file_loaded = True
         else:
             self["status"].setText(_("Press RED to select file"))
@@ -3788,7 +4071,8 @@ class UniversalConverter(Screen):
             # 1. First local databases (essential)
             self.epg_mapper._parse_lamedb()
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ Lamedb loaded: {len(self.epg_mapper.mapping.dvb)} channels")
+                logger.info(
+                    f"✅ Lamedb loaded: {len(self.epg_mapper.mapping.dvb)} channels")
 
             self.epg_mapper._parse_existing_bouquets()
             if config.plugins.m3uconverter.enable_debug.value:
@@ -3812,10 +4096,12 @@ class UniversalConverter(Screen):
                     rytec_count = len(self.epg_mapper.mapping.rytec['basic'])
                     if rytec_count > 0:
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info(f"✅ Rytec database loaded: {rytec_count} channels")
+                            logger.info(
+                                f"✅ Rytec database loaded: {rytec_count} channels")
                         break
                     else:
-                        logger.error(f"❌ Rytec file exists but 0 channels loaded from: {rytec_path}")
+                        logger.error(
+                            f"❌ Rytec file exists but 0 channels loaded from: {rytec_path}")
                 else:
                     logger.warning(f"📁 File not found: {rytec_path}")
             # 3. Channel mapping and optimizations
@@ -3832,7 +4118,8 @@ class UniversalConverter(Screen):
             final_rytec = len(self.epg_mapper.mapping.rytec.get('basic', {}))
             final_dvb = len(self.epg_mapper.mapping.dvb)
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🎯 FINAL DATABASE STATUS: Rytec={final_rytec}, DVB={final_dvb}")
+                logger.info(
+                    f"🎯 FINAL DATABASE STATUS: Rytec={final_rytec}, DVB={final_dvb}")
 
             return self.epg_mapper
 
@@ -3886,7 +4173,10 @@ class UniversalConverter(Screen):
             return
 
         if not hasattr(self, 'selected_file') or not self.selected_file:
-            self.session.open(MessageBox, _("No file selected for conversion"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("No file selected for conversion"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Update UI based on conversion type
@@ -3920,13 +4210,21 @@ class UniversalConverter(Screen):
         elif self.conversion_type == "xspf_to_m3u":
             self._convert_xspf_to_m3u()
         else:
-            self.session.open(MessageBox, _("Unsupported conversion type"), MessageBox.TYPE_ERROR)
+            self.session.open(
+                MessageBox,
+                _("Unsupported conversion type"),
+                MessageBox.TYPE_ERROR)
 
     def _open_manual_match_editor(self):
         """Open manual editor from main screen - RETURN TO UniversalConverter"""
 
-        if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
-            self.session.open(MessageBox, _("No conversion data available."), MessageBox.TYPE_WARNING)
+        if not hasattr(
+                self,
+                'm3u_channels_list') or not self.m3u_channels_list:
+            self.session.open(
+                MessageBox,
+                _("No conversion data available."),
+                MessageBox.TYPE_WARNING)
             return
 
         bouquet_name = ""
@@ -3936,17 +4234,21 @@ class UniversalConverter(Screen):
         def editor_closed(result=None):
             """Callback when the manual editor closes - return to UniversalConverter"""
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Manual editor closed, returning to UniversalConverter")
+                logger.info(
+                    "Manual editor closed, returning to UniversalConverter")
             try:
                 # Just show confirmation and log it
-                self["status"].setText(_("Manual editing completed - ready for conversion"))
+                self["status"].setText(
+                    _("Manual editing completed - ready for conversion"))
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info("✅ Returned to UniversalConverter successfully")
+                    logger.info(
+                        "✅ Returned to UniversalConverter successfully")
             except Exception as e:
                 logger.error(f"Error updating after editor close: {str(e)}")
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Opening ManualMatchEditor from main for: {bouquet_name}")
+            logger.info(
+                f"Opening ManualMatchEditor from main for: {bouquet_name}")
 
         # Convert tuple data to dictionary format if needed
         processed_data = []
@@ -3962,7 +4264,9 @@ class UniversalConverter(Screen):
             elif isinstance(channel, dict):
                 processed_data.append(channel)
             else:
-                logger.warning(f"Skipping invalid channel format: {type(channel)}")
+                logger.warning(
+                    f"Skipping invalid channel format: {
+                        type(channel)}")
 
         self.session.openWithCallback(
             editor_closed,
@@ -4043,7 +4347,8 @@ class UniversalConverter(Screen):
             self.onShown.remove(self._start_conversion_after_display)
             if self.auto_start and self.selected_file:
                 self.start_timer = eTimer()
-                self.start_timer.callback.append(self._delayed_conversion_start)
+                self.start_timer.callback.append(
+                    self._delayed_conversion_start)
                 self.start_timer.start(2000)  # 2 second delay
         except Exception:
             pass
@@ -4071,7 +4376,11 @@ class UniversalConverter(Screen):
 
         except Exception as e:
             logger.error(f"TV path error: {str(e)}")
-            self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR, timeout=6)
+            self.session.open(
+                MessageBox,
+                str(e),
+                MessageBox.TYPE_ERROR,
+                timeout=6)
 
     def _show_enhanced_tools_menu(self):
         """Show enhanced tools menu with various utilities."""
@@ -4196,8 +4505,7 @@ class UniversalConverter(Screen):
                     MessageBox,
                     _("No conversion statistics available.\nRun a conversion first to see statistics."),
                     MessageBox.TYPE_INFO,
-                    timeout=6
-                )
+                    timeout=6)
                 return
 
             if total_matches == 0:
@@ -4207,7 +4515,10 @@ class UniversalConverter(Screen):
                     _("No conversion statistics available."),
                     _("Run a conversion first to see statistics.")
                 ]
-                self.session.open(MessageBox, "\n".join(message_lines), MessageBox.TYPE_INFO)
+                self.session.open(
+                    MessageBox,
+                    "\n".join(message_lines),
+                    MessageBox.TYPE_INFO)
                 return
 
             # Calculate meaningful statistics
@@ -4218,11 +4529,16 @@ class UniversalConverter(Screen):
             manual_db_matches = stats.get('manual_db_matches', 0)
 
             # Calculate percentages
-            rytec_percent = (rytec_matches / total_matches) * 100 if total_matches > 0 else 0
-            dvb_percent = (dvb_matches / total_matches) * 100 if total_matches > 0 else 0
-            dvbt_percent = (dvbt_matches / total_matches) * 100 if total_matches > 0 else 0
-            fallback_percent = (fallback_matches / total_matches) * 100 if total_matches > 0 else 0
-            manual_percent = (manual_db_matches / total_matches) * 100 if total_matches > 0 else 0
+            rytec_percent = (rytec_matches / total_matches) * \
+                100 if total_matches > 0 else 0
+            dvb_percent = (dvb_matches / total_matches) * \
+                100 if total_matches > 0 else 0
+            dvbt_percent = (dvbt_matches / total_matches) * \
+                100 if total_matches > 0 else 0
+            fallback_percent = (
+                fallback_matches / total_matches) * 100 if total_matches > 0 else 0
+            manual_percent = (manual_db_matches / total_matches) * \
+                100 if total_matches > 0 else 0
             epg_coverage = 100 - fallback_percent
 
             message_lines = [
@@ -4249,7 +4565,8 @@ class UniversalConverter(Screen):
                 if isinstance(cache_hit_rate, str) and '%' in cache_hit_rate:
                     cache_hit_rate_value = cache_hit_rate.replace('%', '')
                 else:
-                    cache_hit_rate_value = (cache_hits / total_requests) * 100 if total_requests > 0 else 0
+                    cache_hit_rate_value = (
+                        cache_hits / total_requests) * 100 if total_requests > 0 else 0
 
                 message_lines.extend([
                     "",
@@ -4334,8 +4651,7 @@ class UniversalConverter(Screen):
                     MessageBox,
                     _("EPG cache cleared! {} entries removed").format(match_cache_size),
                     MessageBox.TYPE_INFO,
-                    timeout=6
-                )
+                    timeout=6)
 
             except Exception as e:
                 logger.error(f"Error clearing EPG cache: {e}")
@@ -4389,8 +4705,7 @@ class UniversalConverter(Screen):
                     MessageBox,
                     _("Service reload command sent successfully.\nBouquets should appear shortly."),
                     MessageBox.TYPE_INFO,
-                    timeout=5
-                )
+                    timeout=5)
 
             # Run reload in a separate thread
             thread = threading.Thread(target=delayed_reload, daemon=True)
@@ -4409,7 +4724,9 @@ class UniversalConverter(Screen):
     def _open_manual_match_editor_from_tools(self):
         """Open manual editor from Tools menu - RETURN TO Tools"""
 
-        if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
+        if not hasattr(
+                self,
+                'm3u_channels_list') or not self.m3u_channels_list:
 
             def error_callback(result=None):
                 self._show_enhanced_tools_menu()
@@ -4433,7 +4750,8 @@ class UniversalConverter(Screen):
             self._show_enhanced_tools_menu()
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Opening ManualMatchEditor from tools for: {bouquet_name}")
+            logger.info(
+                f"Opening ManualMatchEditor from tools for: {bouquet_name}")
 
         self.session.openWithCallback(
             editor_closed,
@@ -4446,7 +4764,11 @@ class UniversalConverter(Screen):
     def _view_manual_database(self):
         """Show all manual corrections with option to EDIT or DELETE"""
         try:
-            if not hasattr(self, 'epg_mapper') or not hasattr(self.epg_mapper, 'manual_db'):
+            if not hasattr(
+                    self,
+                    'epg_mapper') or not hasattr(
+                    self.epg_mapper,
+                    'manual_db'):
                 self.session.openWithCallback(
                     self._create_tools_callback(),
                     MessageBox,
@@ -4476,7 +4798,8 @@ class UniversalConverter(Screen):
                 match_type = mapping.get('match_type', '')
                 usage_count = mapping.get('usage_count', 0)
 
-                display_text = f"{i + 1}. {channel_name} [{match_type}] (Used: {usage_count}x)"
+                display_text = f"{
+                    i + 1}. {channel_name} [{match_type}] (Used: {usage_count}x)"
                 items.append((display_text, mapping))
 
             def choice_callback(selected_item):
@@ -4606,10 +4929,14 @@ class UniversalConverter(Screen):
                 try:
                     remove(oldest_export)
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"🧹 Removed old export: {basename(oldest_export)}")
+                        logger.info(
+                            f"🧹 Removed old export: {
+                                basename(oldest_export)}")
                     old_exports.pop(0)
                 except Exception as e:
-                    logger.error(f"❌ Error removing export {oldest_export}: {str(e)}")
+                    logger.error(
+                        f"❌ Error removing export {oldest_export}: {
+                            str(e)}")
                     break
 
             timestamp = strftime("%Y%m%d_%H%M%S")
@@ -4687,19 +5014,22 @@ class UniversalConverter(Screen):
                         MessageBox,
                         _("No database files found in:\n{}").format(base_import_path),
                         MessageBox.TYPE_INFO,
-                        timeout=6
-                    )
+                        timeout=6)
                     return
 
                 # Remove duplicates and sort by date
                 found_files = list(set(found_files))
-                found_files.sort(key=lambda x: getmtime(x) if exists(x) else 0, reverse=True)
+                found_files.sort(key=lambda x: getmtime(
+                    x) if exists(x) else 0, reverse=True)
 
                 # Create file list for selection
                 file_items = []
                 for file_path in found_files:
                     filename = basename(file_path)
-                    file_time = strftime("%Y-%m-%d %H:%M", time.localtime(getmtime(file_path)))
+                    file_time = strftime(
+                        "%Y-%m-%d %H:%M",
+                        time.localtime(
+                            getmtime(file_path)))
 
                     # Determine file type
                     file_type = "DB"
@@ -4714,7 +5044,7 @@ class UniversalConverter(Screen):
                         with open(file_path, 'r', encoding='utf-8') as f:
                             data = json.load(f)
                             mapping_count = str(len(data.get('mappings', [])))
-                    except:
+                    except BaseException:
                         pass
 
                     display_text = f"{filename} [{file_type}] ({mapping_count} maps, {file_time})"
@@ -4732,11 +5062,8 @@ class UniversalConverter(Screen):
                     self._perform_database_import(file_path)
 
                 self.session.openWithCallback(
-                    file_selected,
-                    ChoiceBox,
-                    title=_("Select file to import from {}").format(basename(base_import_path)),
-                    list=file_items
-                )
+                    file_selected, ChoiceBox, title=_("Select file to import from {}").format(
+                        basename(base_import_path)), list=file_items)
 
             location_items = [(desc, path) for path, desc in import_locations]
             location_items.append((_("🔙 Back to Tools"), "back"))
@@ -4795,7 +5122,8 @@ class UniversalConverter(Screen):
                 self.close()
 
                 self.final_return_timer = eTimer()
-                self.final_return_timer.callback.append(self._open_conversion_selector_from_editor)
+                self.final_return_timer.callback.append(
+                    self._open_conversion_selector_from_editor)
                 self.final_return_timer.start(50, True)
 
             except Exception as e:
@@ -4808,7 +5136,9 @@ class UniversalConverter(Screen):
                 self.final_return_timer.stop()
             self.session.open(ConversionSelector)
         except Exception as e:
-            logger.error(f"Error opening ConversionSelector from editor: {str(e)}")
+            logger.error(
+                f"Error opening ConversionSelector from editor: {
+                    str(e)}")
 
     def _open_mapping_editor(self, mapping):
         """Open ManualMatchEditor for a specific mapping"""
@@ -4847,7 +5177,8 @@ class UniversalConverter(Screen):
         """Delete a specific manual mapping and return to list"""
         try:
             channel_name = mapping.get('channel_name', 'Unknown')
-            message = _("Delete manual correction for:\n{}\n\nThis action cannot be undone.").format(channel_name)
+            message = _("Delete manual correction for:\n{}\n\nThis action cannot be undone.").format(
+                channel_name)
 
             def confirm_callback(result):
                 if result:
@@ -4903,7 +5234,9 @@ class UniversalConverter(Screen):
                     json.dump(data, f, indent=2, ensure_ascii=False)
 
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"✅ Deleted manual mapping: {mapping_to_delete.get('channel_name')}")
+                    logger.info(
+                        f"✅ Deleted manual mapping: {
+                            mapping_to_delete.get('channel_name')}")
                 return True
 
             return False
@@ -4946,7 +5279,8 @@ class UniversalConverter(Screen):
                 import_data = json.load(f)
 
             # Validate structure
-            if not isinstance(import_data, dict) or 'mappings' not in import_data:
+            if not isinstance(import_data,
+                              dict) or 'mappings' not in import_data:
                 self.session.openWithCallback(
                     lambda result=None: self._show_enhanced_tools_menu(),
                     MessageBox,
@@ -4963,7 +5297,8 @@ class UniversalConverter(Screen):
                 import_mappings = import_data.get('mappings', [])
                 current_mappings = current_data.get('mappings', [])
 
-                self._show_import_options(import_path, import_mappings, current_mappings)
+                self._show_import_options(
+                    import_path, import_mappings, current_mappings)
             else:
                 self.session.openWithCallback(
                     lambda result=None: self._show_enhanced_tools_menu(),
@@ -5001,15 +5336,22 @@ class UniversalConverter(Screen):
                 action = _("replaced")
             else:  # merge
                 # Merge mappings (avoid duplicates by clean_name)
-                existing_clean_names = {m.get('clean_name', '') for m in current_mappings}
-                new_mappings = [m for m in import_mappings if m.get('clean_name', '') not in existing_clean_names]
+                existing_clean_names = {
+                    m.get(
+                        'clean_name',
+                        '') for m in current_mappings}
+                new_mappings = [
+                    m for m in import_mappings if m.get(
+                        'clean_name',
+                        '') not in existing_clean_names]
                 final_mappings = current_mappings + new_mappings
                 action = _("merged")
 
             # Update database
             current_data['mappings'] = final_mappings
             current_data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
-            current_data['import_source'] = basename(self.epg_mapper.manual_db.db_path)
+            current_data['import_source'] = basename(
+                self.epg_mapper.manual_db.db_path)
             current_data['import_date'] = strftime("%Y-%m-%d %H:%M:%S")
 
             # Use save_database that manages backups intelligently
@@ -5048,12 +5390,22 @@ class UniversalConverter(Screen):
                 MessageBox.TYPE_ERROR
             )
 
-    def _show_import_preview(self, current_mappings, import_mappings, import_path):
+    def _show_import_preview(
+            self,
+            current_mappings,
+            import_mappings,
+            import_path):
         """Show preview of what will be imported"""
         try:
-            current_names = {m.get('channel_name', '') for m in current_mappings}
-            new_mappings = [m for m in import_mappings if m.get('channel_name', '') not in current_names]
-            duplicate_mappings = [m for m in import_mappings if m.get('channel_name', '') in current_names]
+            current_names = {m.get('channel_name', '')
+                             for m in current_mappings}
+            new_mappings = [
+                m for m in import_mappings if m.get(
+                    'channel_name',
+                    '') not in current_names]
+            duplicate_mappings = [
+                m for m in import_mappings if m.get(
+                    'channel_name', '') in current_names]
 
             preview_lines = [
                 _("📊 IMPORT PREVIEW"),
@@ -5070,7 +5422,13 @@ class UniversalConverter(Screen):
 
             # Show first 5 new mappings
             for i, mapping in enumerate(new_mappings[:5]):
-                preview_lines.append(f"  {i + 1}. {mapping.get('channel_name', 'Unknown')}")
+                preview_lines.append(
+                    f"  {
+                        i +
+                        1}. {
+                        mapping.get(
+                            'channel_name',
+                            'Unknown')}")
 
             if len(new_mappings) > 5:
                 preview_lines.append(f"  ... and {len(new_mappings) - 5} more")
@@ -5082,13 +5440,23 @@ class UniversalConverter(Screen):
 
             # Show first 5 duplicates
             for i, mapping in enumerate(duplicate_mappings[:5]):
-                preview_lines.append(f"  {i + 1}. {mapping.get('channel_name', 'Unknown')}")
+                preview_lines.append(
+                    f"  {
+                        i +
+                        1}. {
+                        mapping.get(
+                            'channel_name',
+                            'Unknown')}")
 
             if len(duplicate_mappings) > 5:
-                preview_lines.append(f"  ... and {len(duplicate_mappings) - 5} more")
+                preview_lines.append(
+                    f"  ... and {
+                        len(duplicate_mappings) -
+                        5} more")
 
             def preview_closed(result=None):
-                self._show_import_options(import_path, import_mappings, current_mappings)
+                self._show_import_options(
+                    import_path, import_mappings, current_mappings)
 
             self.session.openWithCallback(
                 preview_closed,
@@ -5101,7 +5469,11 @@ class UniversalConverter(Screen):
             logger.error(f"Error showing import preview: {str(e)}")
             self._show_enhanced_tools_menu()
 
-    def _show_import_options(self, import_path, import_mappings, current_mappings):
+    def _show_import_options(
+            self,
+            import_path,
+            import_mappings,
+            current_mappings):
         """Show import options (replace/merge/preview)"""
         options = [
             (_("🔄 Replace All ({} mappings)").format(len(import_mappings)), "replace"),
@@ -5120,14 +5492,16 @@ class UniversalConverter(Screen):
             elif choice[1] == "merge":
                 self._finalize_import(import_path, "merge")
             elif choice[1] == "preview":
-                self._show_import_preview(current_mappings, import_mappings, import_path)
+                self._show_import_preview(
+                    current_mappings, import_mappings, import_path)
 
         self.session.openWithCallback(
             import_option_selected,
             ChoiceBox,
-            title=_("Import {} mappings from {}").format(len(import_mappings), basename(import_path)),
-            list=options
-        )
+            title=_("Import {} mappings from {}").format(
+                len(import_mappings),
+                basename(import_path)),
+            list=options)
 
     def _format_file_size(self, size_bytes):
         """Format file size to human readable format."""
@@ -5146,7 +5520,8 @@ class UniversalConverter(Screen):
 
     def _handle_file_selection(self, selected_file=None):
         """Handle file selection with robust error handling."""
-        if not selected_file or not isinstance(selected_file, (str, list, tuple)):
+        if not selected_file or not isinstance(
+                selected_file, (str, list, tuple)):
             self["status"].setText(_("Invalid selection"))
             return
 
@@ -5186,13 +5561,15 @@ class UniversalConverter(Screen):
                 logger.debug(f"Processing file: {selected_path}")
 
             # Process file based on conversion type
-            path = selected_file[0] if isinstance(selected_file, (list, tuple)) else selected_file
+            path = selected_file[0] if isinstance(
+                selected_file, (list, tuple)) else selected_file
             self.selected_file = normpath(str(path))
 
             try:
                 # AGGIUNTA CRUCIALE: Gestione esplicita per tv_to_tv
                 if self.conversion_type == "tv_to_tv":
-                    self._parse_tv_file(selected_path)  # Questo è il metodo mancante!
+                    # Questo è il metodo mancante!
+                    self._parse_tv_file(selected_path)
                 elif self.conversion_type == "m3u_to_tv":
                     self._parse_m3u_file(selected_path)
                 elif self.conversion_type == "tv_to_m3u":
@@ -5207,7 +5584,8 @@ class UniversalConverter(Screen):
                 # Update state
                 self.file_loaded = True
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"File loaded successfully, channels: {len(self.m3u_channels_list)}")
+                    logger.debug(
+                        f"File loaded successfully, channels: {len(self.m3u_channels_list)}")
 
             except Exception as e:
                 logger.error(f"Processing failed: {str(e)}")
@@ -5227,7 +5605,9 @@ class UniversalConverter(Screen):
 
     def _update_ui_success(self, channel_count):
         """Update UI only if necessary."""
-        if not hasattr(self, '_last_channel_count') or self._last_channel_count != channel_count:
+        if not hasattr(
+                self,
+                '_last_channel_count') or self._last_channel_count != channel_count:
             self._last_channel_count = channel_count
 
             conversion_ready_texts = {
@@ -5240,7 +5620,8 @@ class UniversalConverter(Screen):
                 "m3u_to_json": _("Convert M3U to JSON")
             }
 
-            ready_text = conversion_ready_texts.get(self.conversion_type, _("Ready to convert"))
+            ready_text = conversion_ready_texts.get(
+                self.conversion_type, _("Ready to convert"))
             self["key_green"].setText(ready_text)
 
             self["key_yellow"].setText(_("Match Editor"))
@@ -5250,7 +5631,9 @@ class UniversalConverter(Screen):
             else:
                 self["key_yellow"].setText("")
 
-            self["status"].setText(_("Loaded first %d channels. Press Green to convert.") % channel_count)
+            self["status"].setText(
+                _("Loaded first %d channels. Press Green to convert.") %
+                channel_count)
 
     def _process_url(self, url):
         """Process URLs correctly - handle already encoded URLs."""
@@ -5270,7 +5653,8 @@ class UniversalConverter(Screen):
         url = url.replace(" ", "%20")
 
         if url != original_url:
-            logger.debug(f"🔗 URL encoded: {original_url[:20]}... -> {url[:20]}...")
+            logger.debug(
+                f"🔗 URL encoded: {original_url[:20]}... -> {url[:20]}...")
 
         if config.plugins.m3uconverter.hls_convert.value:
             if any(url.lower().endswith(ext) for ext in ('.m3u8', '.stream')):
@@ -5281,7 +5665,8 @@ class UniversalConverter(Screen):
     def write_group_bouquet(self, group, channels):
         """Use CoreConverter for bouquet writing"""
         safe_name = self.core_converter.get_safe_filename(group)
-        return self.core_converter.write_group_bouquet(safe_name, channels, self.epg_mapper)
+        return self.core_converter.write_group_bouquet(
+            safe_name, channels, self.epg_mapper)
 
     def remove_suffixes(self, name):
         """Use CoreConverter for suffix removal"""
@@ -5310,8 +5695,9 @@ class UniversalConverter(Screen):
         else:                     # Small files but above threshold
             max_channels = 5000
 
-        self["status"].setText(_("Large file detected: {:.1f}MB. Processing first {} channels...").format(
-            file_size_mb, max_channels))
+        self["status"].setText(
+            _("Large file detected: {:.1f}MB. Processing first {} channels...").format(
+                file_size_mb, max_channels))
 
         entries = []
         count = 0
@@ -5326,11 +5712,13 @@ class UniversalConverter(Screen):
 
                     if count >= max_channels:
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info(f"Reached maximum channel limit: {max_channels}")
+                            logger.info(
+                                f"Reached maximum channel limit: {max_channels}")
                         break
 
                     if line.startswith('#EXTINF:'):
-                        current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
+                        current_params = {
+                            'f_type': 'inf', 'title': '', 'uri': ''}
                         parts = line[8:].split(',', 1)
                         if len(parts) > 1:
                             current_params['title'] = parts[1].strip()
@@ -5350,8 +5738,9 @@ class UniversalConverter(Screen):
                             current_params = {}
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("Large file processing completed: {} channels from {:.1f}MB file".format(
-                    len(entries), file_size_mb))
+                logger.info(
+                    "Large file processing completed: {} channels from {:.1f}MB file".format(
+                        len(entries), file_size_mb))
 
         except Exception as e:
             logger.error(f"Large file processing error: {str(e)}")
@@ -5370,9 +5759,11 @@ class UniversalConverter(Screen):
 
             # Use appropriate parsing method based on file size
             if file_size > threshold_bytes:  # > configured MB
-                self.m3u_channels_list = self.handle_very_large_file(file_to_parse)
+                self.m3u_channels_list = self.handle_very_large_file(
+                    file_to_parse)
             elif file_size > 1 * 1024 * 1024:  # > 1MB
-                self.m3u_channels_list = self._parse_m3u_incremental(file_to_parse)
+                self.m3u_channels_list = self._parse_m3u_incremental(
+                    file_to_parse)
             else:
                 with open(file_to_parse, 'r', encoding='utf-8', errors='replace') as f:
                     data = f.read()
@@ -5399,18 +5790,24 @@ class UniversalConverter(Screen):
 
             # Update UI
             display_list = []
-            for idx, channel in enumerate(self.m3u_channels_list[:100]):  # Show only first 100
+            for idx, channel in enumerate(
+                    self.m3u_channels_list[:100]):  # Show only first 100
                 name = sub(r'\[.*?\]', '', channel['name']).strip()
                 group = channel.get('group', 'Default')
                 group = clean_group_name(group)
-                display_text = f"{idx + 1:03d}. {group + ' - ' if group else ''}{name}"
+                display_text = f"{
+                    idx +
+                    1:03d}. {
+                    group +
+                    ' - ' if group else ''}{name}"
                 display_list.append(display_text)
 
             self["list"].setList(display_list)
             self.file_loaded = True
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ FINAL COUNT: {len(self.m3u_channels_list)} channels ready for conversion")
+                logger.info(
+                    f"✅ FINAL COUNT: {len(self.m3u_channels_list)} channels ready for conversion")
             self._update_ui_success(len(self.m3u_channels_list))
 
         except Exception as e:
@@ -5448,7 +5845,8 @@ class UniversalConverter(Screen):
                     attributes_part = extinf_content[:last_comma_index].strip()
                     title_part = extinf_content[last_comma_index + 1:].strip()
                     current_params['title'] = title_part
-                    attr_matches = findall(r'(\S+?)="([^"]*)"', attributes_part)
+                    attr_matches = findall(
+                        r'(\S+?)="([^"]*)"', attributes_part)
                     for key, value in attr_matches:
                         attributes[key.lower()] = value
 
@@ -5461,7 +5859,12 @@ class UniversalConverter(Screen):
                 else:
                     current_params['title'] = extinf_content
 
-                common_attributes = ['tvg-id', 'tvg-name', 'tvg-logo', 'group-title', 'tvg-language']
+                common_attributes = [
+                    'tvg-id',
+                    'tvg-name',
+                    'tvg-logo',
+                    'group-title',
+                    'tvg-language']
                 for attr in common_attributes:
                     if attr in attributes:
                         current_params[attr] = attributes[attr]
@@ -5486,7 +5889,8 @@ class UniversalConverter(Screen):
                     if current_params.get('title'):
                         for key in list(current_params.keys()):
                             if isinstance(current_params[key], list):
-                                current_params[key] = str(current_params[key][0]) if current_params[key] else ''
+                                current_params[key] = str(
+                                    current_params[key][0]) if current_params[key] else ''
 
                         entries.append(current_params.copy())
                     current_params = {}
@@ -5531,25 +5935,30 @@ class UniversalConverter(Screen):
                             eTimer().start(5, True)
 
                         if line.startswith('#EXTINF:'):
-                            current_params = {'f_type': 'inf', 'title': '', 'uri': ''}
+                            current_params = {
+                                'f_type': 'inf', 'title': '', 'uri': ''}
                             extinf_content = line[8:].strip()
 
                             if ',' in extinf_content:
                                 last_comma_index = extinf_content.rfind(',')
-                                attributes_part = extinf_content[:last_comma_index].strip()
+                                attributes_part = extinf_content[:last_comma_index].strip(
+                                )
                                 title_part = extinf_content[last_comma_index + 1:].strip()
 
                                 current_params['title'] = title_part
 
                                 # Parse attributes
-                                attr_matches = findall(r'(\S+?)="([^"]*)"', attributes_part)
+                                attr_matches = findall(
+                                    r'(\S+?)="([^"]*)"', attributes_part)
                                 for key, value in attr_matches:
                                     current_params[key.lower()] = value
 
                                 # Get duration
-                                duration_match = search(r'^(-?\d+)', attributes_part)
+                                duration_match = search(
+                                    r'^(-?\d+)', attributes_part)
                                 if duration_match:
-                                    current_params['length'] = duration_match.group(1)
+                                    current_params['length'] = duration_match.group(
+                                        1)
                             else:
                                 current_params['title'] = extinf_content
 
@@ -5589,7 +5998,8 @@ class UniversalConverter(Screen):
                 for service, name in matches:
                     # URL decoding and filtering HTTP/HTTPS/HLS streams
                     url = unquote(service.strip())
-                    if any(url.startswith(proto) for proto in ('http://', 'https://', 'hls://')):
+                    if any(url.startswith(proto)
+                           for proto in ('http://', 'https://', 'hls://')):
                         # Store as tuple for TV bouquets (name, url)
                         channel_data = (name.strip(), url)
                         channels.append(channel_data)
@@ -5605,7 +6015,9 @@ class UniversalConverter(Screen):
             self.file_loaded = True
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ TV file parsed successfully: {len(channels)} channels found")
+                logger.info(
+                    f"✅ TV file parsed successfully: {
+                        len(channels)} channels found")
                 logger.info(f"📺 Sample channels: {channels[:3]}")
 
             self._update_ui_success(len(self.m3u_channels_list))
@@ -5659,7 +6071,8 @@ class UniversalConverter(Screen):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.debug("Found channels in 'data' key")
                 else:
-                    # If no specific key found, try to use all values that are lists
+                    # If no specific key found, try to use all values that are
+                    # lists
                     for key, value in data.items():
                         if isinstance(value, list):
                             channels = value
@@ -5685,11 +6098,11 @@ class UniversalConverter(Screen):
                     continue
 
                 # Extract channel information with flexible field names
-                name = (channel.get('name') or channel.get('title') or
-                        channel.get('channel') or channel.get('channel_name') or 'Unknown')
+                name = (channel.get('name') or channel.get('title') or channel.get(
+                    'channel') or channel.get('channel_name') or 'Unknown')
 
-                url = (channel.get('url') or channel.get('link') or channel.get('stream') or
-                       channel.get('source') or channel.get('address') or '')
+                url = (channel.get('url') or channel.get('link') or channel.get(
+                    'stream') or channel.get('source') or channel.get('address') or '')
 
                 # Decode URL if it's encoded (check for % encoding)
                 if url and '%' in url:
@@ -5700,8 +6113,8 @@ class UniversalConverter(Screen):
                     except Exception as e:
                         logger.error(f"Error decoding URL: {str(e)}")
 
-                group = (channel.get('group') or channel.get('category') or
-                         channel.get('group-title') or channel.get('group_title') or '')
+                group = (channel.get('group') or channel.get('category') or channel.get(
+                    'group-title') or channel.get('group_title') or '')
 
                 logo = (channel.get('logo') or channel.get('icon') or
                         channel.get('tvg-logo') or channel.get('tvg_logo') or '')
@@ -5709,19 +6122,29 @@ class UniversalConverter(Screen):
                 tvg_id = (channel.get('tvg-ID') or channel.get('tvg_id') or
                           channel.get('id') or channel.get('channel_id') or '')
 
-                tvg_name = channel.get('tvg-name') or channel.get('tvg_name') or name
+                tvg_name = channel.get(
+                    'tvg-name') or channel.get('tvg_name') or name
 
                 # Check if URL is valid after decoding
                 is_valid_url = False
                 if url:
                     # Check for various URL protocols
-                    url_protocols = ('http://', 'https://', 'rtsp://', 'rtmp://', 'udp://', 'rtp://')
-                    is_valid_url = any(url.startswith(proto) for proto in url_protocols)
+                    url_protocols = (
+                        'http://',
+                        'https://',
+                        'rtsp://',
+                        'rtmp://',
+                        'udp://',
+                        'rtp://')
+                    is_valid_url = any(url.startswith(proto)
+                                       for proto in url_protocols)
 
-                    # Also check for encoded URLs that might become valid after decoding
+                    # Also check for encoded URLs that might become valid after
+                    # decoding
                     if not is_valid_url and '%' in url:
                         decoded_url = unquote(url)
-                        is_valid_url = any(decoded_url.startswith(proto) for proto in url_protocols)
+                        is_valid_url = any(
+                            decoded_url.startswith(proto) for proto in url_protocols)
                         if is_valid_url:
                             url = decoded_url
 
@@ -5743,7 +6166,8 @@ class UniversalConverter(Screen):
                         logger.debug(f"Added channel: {name} - {url}")
                 else:
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"Skipping channel without valid URL: {name} - URL: {url}")
+                        logger.warning(
+                            f"Skipping channel without valid URL: {name} - URL: {url}")
 
             # Update UI based on conversion type
             display_list = []
@@ -5760,10 +6184,13 @@ class UniversalConverter(Screen):
 
             # Log results for debugging
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"Found {len(self.m3u_channels_list)} channels in JSON file")
+                logger.debug(
+                    f"Found {len(self.m3u_channels_list)} channels in JSON file")
             if len(self.m3u_channels_list) > 0:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"Sample channel: {self.m3u_channels_list[0]}")
+                    logger.debug(
+                        f"Sample channel: {
+                            self.m3u_channels_list[0]}")
 
         except Exception as e:
             logger.error(f"Error parsing JSON: {str(e)}")
@@ -5771,23 +6198,33 @@ class UniversalConverter(Screen):
             self.m3u_channels_list = []
             self.session.open(
                 MessageBox,
-                _("Error parsing JSON file. Please check the format.\n\nError: %s") % str(e),
+                _("Error parsing JSON file. Please check the format.\n\nError: %s") %
+                str(e),
                 MessageBox.TYPE_ERROR,
-                timeout=6
-            )
+                timeout=6)
 
     def _real_conversion_task(self, m3u_path=None, progress_callback=None):
         """Optimized conversion with batch processing"""
         # DEBUG: Check the status of the epg_mapper
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔍 EPG_MAPPER STATUS: exists={hasattr(self, 'epg_mapper')}, value={self.epg_mapper if hasattr(self, 'epg_mapper') else 'NO ATTR'}")
+            logger.info(
+                f"🔍 EPG_MAPPER STATUS: exists={
+                    hasattr(
+                        self,
+                        'epg_mapper')}, value={
+                    self.epg_mapper if hasattr(
+                        self,
+                        'epg_mapper') else 'NO ATTR'}")
 
         # DEBUG: Detailed channel analysis
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info("🔍 CHANNEL ANALYSIS START")
-            for i, ch in enumerate(self.m3u_channels_list[:10]):  # First 10 channels
-                logger.info(f"   {i}: '{ch.get('name', 'Unknown')}' -> URL: {ch.get('url', 'NO URL')}")
-            logger.info(f"📊 TOTAL CHANNELS TO PROCESS: {len(self.m3u_channels_list)}")
+            for i, ch in enumerate(
+                    self.m3u_channels_list[:10]):  # First 10 channels
+                logger.info(
+                    f"   {i}: '{ch.get('name', 'Unknown')}' -> URL: {ch.get('url', 'NO URL')}")
+            logger.info(
+                f"📊 TOTAL CHANNELS TO PROCESS: {len(self.m3u_channels_list)}")
 
         if self.cancel_conversion:
             if config.plugins.m3uconverter.enable_debug.value:
@@ -5797,7 +6234,8 @@ class UniversalConverter(Screen):
         # RESET STATISTICS ONLY FOR NEW CONVERSION - don't reset cache
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             # Reset only statistics, not cache
-            self.epg_mapper.reset_caches(clear_match_cache=False, reset_stats=True)
+            self.epg_mapper.reset_caches(
+                clear_match_cache=False, reset_stats=True)
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("🔄 Statistics reset for new conversion")
 
@@ -5821,7 +6259,8 @@ class UniversalConverter(Screen):
         # RYTEC DATABASE CHECK
         rytec_count = len(self.epg_mapper.mapping.rytec.get('basic', {}))
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔍 RYTEC DATABASE STATUS: {rytec_count} channels loaded")
+            logger.info(
+                f"🔍 RYTEC DATABASE STATUS: {rytec_count} channels loaded")
 
         # Preload caches for performance
         if rytec_count == 0:
@@ -5843,7 +6282,8 @@ class UniversalConverter(Screen):
             # Extract EPG URL from M3U file
             epg_url = None
             try:
-                epg_url = self.epg_mapper._extract_epg_url_from_m3u(file_to_parse)
+                epg_url = self.epg_mapper._extract_epg_url_from_m3u(
+                    file_to_parse)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"Extracted EPG URL: {epg_url}")
             except Exception as e:
@@ -5861,7 +6301,8 @@ class UniversalConverter(Screen):
                 # Use the correct field mapping for M3U files
                 normalized_list = []
                 for ch in self.m3u_channels_list:
-                    # Map M3U attributes to consistent names - FIXED to use 'title' and 'uri'
+                    # Map M3U attributes to consistent names - FIXED to use
+                    # 'title' and 'uri'
                     if ch.get('uri'):
                         normalized_list.append({
                             'name': ch.get('title', ''),
@@ -5922,14 +6363,20 @@ class UniversalConverter(Screen):
             }
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"Starting optimized conversion with {total_valid} valid channels (originally {total_original}) in batches of {batch_size}")
+                logger.debug(
+                    f"Starting optimized conversion with {total_valid} valid channels (originally {total_original}) in batches of {batch_size}")
 
             # USE ONLY VALID CHANNELS - FIXED COUNTING
             for batch_start in range(0, total_valid, batch_size):
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"=== STARTING BATCH {batch_start // batch_size + 1} ===")
+                    logger.debug(
+                        f"=== STARTING BATCH {
+                            batch_start //
+                            batch_size +
+                            1} ===")
                 if self.cancel_conversion:
-                    logger.info("🛑 Conversion cancelled during batch processing")
+                    logger.info(
+                        "🛑 Conversion cancelled during batch processing")
                     return (False, "Conversion cancelled during processing")
 
                 batch_end = min(batch_start + batch_size, total_valid)
@@ -5939,10 +6386,13 @@ class UniversalConverter(Screen):
                 for idx, channel in enumerate(batch_channels):
                     if self.cancel_conversion:
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info("🛑 Conversion cancelled during channel processing")
-                        return (False, "Conversion cancelled during channel processing")
+                            logger.info(
+                                "🛑 Conversion cancelled during channel processing")
+                        return (
+                            False, "Conversion cancelled during channel processing")
 
-                    # CORRECT: processed_count starts from batch_start + current index
+                    # CORRECT: processed_count starts from batch_start +
+                    # current index
                     processed_count = batch_start + idx + 1
 
                     # Get channel info
@@ -5952,37 +6402,48 @@ class UniversalConverter(Screen):
                     original_name = name
 
                     # USE CONSISTENT MATCHING APPROACH
-                    clean_name = self.epg_mapper.clean_channel_name(name, preserve_variants=False)
+                    clean_name = self.epg_mapper.clean_channel_name(
+                        name, preserve_variants=False)
 
-                    # ENHANCED: Special handling for short names and numbered channels
-                    if len(clean_name) <= 5 or any(char.isdigit() for char in clean_name):
+                    # ENHANCED: Special handling for short names and numbered
+                    # channels
+                    if len(clean_name) <= 5 or any(char.isdigit()
+                                                   for char in clean_name):
                         # Try enhanced search first for short names
-                        enhanced_matches = self.epg_mapper._enhanced_search_short_names(clean_name, original_name)
+                        enhanced_matches = self.epg_mapper._enhanced_search_short_names(
+                            clean_name, original_name)
                         if enhanced_matches:
                             # Use the best enhanced match
-                            best_enhanced = max(enhanced_matches, key=lambda x: (x.get('priority', 0), x['similarity']))
+                            best_enhanced = max(
+                                enhanced_matches,
+                                key=lambda x: (
+                                    x.get(
+                                        'priority',
+                                        0),
+                                    x['similarity']))
                             service_ref = best_enhanced['sref']
                             match_type = f"{best_enhanced['type']}_enhanced"
                         else:
                             # Fall back to normal matching
                             service_ref, match_type = self.epg_mapper._find_best_service_match(
-                                clean_name, tvg_id, original_name, channel['url']
-                            )
+                                clean_name, tvg_id, original_name, channel['url'])
                     else:
                         # Normal matching for longer names
                         service_ref, match_type = self.epg_mapper._find_best_service_match(
-                            clean_name, tvg_id, original_name, channel['url']
-                        )
+                            clean_name, tvg_id, original_name, channel['url'])
 
                     # DETAILED DEBUG
                     if config.plugins.m3uconverter.enable_debug.value and idx < 10:  # Only first 10 channels
-                        self.epg_mapper._debug_matching_process(original_name, clean_name, tvg_id, service_ref, match_type)
+                        self.epg_mapper._debug_matching_process(
+                            original_name, clean_name, tvg_id, service_ref, match_type)
 
                     # DEBUG: Check that service_ref is not None
                     if service_ref is None and config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"❌ service_ref is None for: '{original_name}', match_type: {match_type}")
+                        logger.warning(
+                            f"❌ service_ref is None for: '{original_name}', match_type: {match_type}")
 
-                    bouquet_sref = self.epg_mapper._generate_hybrid_sref(service_ref, url, for_epg=False)
+                    bouquet_sref = self.epg_mapper._generate_hybrid_sref(
+                        service_ref, url, for_epg=False)
                     channel['original_service_ref'] = service_ref
                     channel['sref'] = bouquet_sref
                     channel['match_type'] = match_type
@@ -6020,20 +6481,27 @@ class UniversalConverter(Screen):
                     # processed_count
                     if processed_count % 50 == 0:
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.debug(f"Progress counts: Rytec={stats['rytec_matches']}, DVB={stats['dvb_matches']}, Consistent={stats['consistent_fallback']}, Fallback={stats['fallback_matches']}")
+                            logger.debug(
+                                f"Progress counts: Rytec={
+                                    stats['rytec_matches']}, DVB={
+                                    stats['dvb_matches']}, Consistent={
+                                    stats['consistent_fallback']}, Fallback={
+                                    stats['fallback_matches']}")
 
                     # Grouping
                     if config.plugins.m3uconverter.bouquet_mode.value == "single":
                         group = "All Channels"
                     else:
-                        group = clean_group_name(channel.get('group', 'Default'))
+                        group = clean_group_name(
+                            channel.get('group', 'Default'))
 
                     groups.setdefault(group, []).append(channel)
 
                     # processed_count E total_valid
                     if processed_count % 10 == 0:
                         progress = int((processed_count / total_valid) * 100)
-                        progress_message = _(f"Converting: {processed_count}/{total_valid} ({progress}%)")
+                        progress_message = _(
+                            f"Converting: {processed_count}/{total_valid} ({progress}%)")
                         self.update_progress(processed_count, progress_message)
 
                     # processed_count
@@ -6058,7 +6526,8 @@ class UniversalConverter(Screen):
                 for group_channels in groups.values():
                     all_channels.extend(group_channels)
 
-                bouquet_name = self.get_safe_filename(basename(file_to_parse).split('.')[0])
+                bouquet_name = self.get_safe_filename(
+                    basename(file_to_parse).split('.')[0])
                 if self.write_group_bouquet(bouquet_name, all_channels):
                     bouquet_names.append(bouquet_name)
             else:
@@ -6071,28 +6540,36 @@ class UniversalConverter(Screen):
             if bouquet_names:
                 self.update_main_bouquet(bouquet_names)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"Main bouquet updated with {len(bouquet_names)} bouquets")
+                    logger.info(
+                        f"Main bouquet updated with {
+                            len(bouquet_names)} bouquets")
 
             # Phase 3: Optimized EPG generation
             if config.plugins.m3uconverter.epg_enabled.value and epg_data:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"EPG enabled, generating optimized files for {len(epg_data)} channels")
+                    logger.info(
+                        f"EPG enabled, generating optimized files for {
+                            len(epg_data)} channels")
 
                 bouquet_name_for_epg = bouquet_names[0] if bouquet_names else "default_bouquet"
 
                 # USE OPTIMIZED EPG GENERATION
-                epg_success = self.epg_mapper._generate_epg_channels_file(epg_data, bouquet_name_for_epg)
+                epg_success = self.epg_mapper._generate_epg_channels_file(
+                    epg_data, bouquet_name_for_epg)
 
                 if epg_success:
                     # Generate sources file
-                    sources_success = self.epg_mapper._generate_epgshare_sources_file(bouquet_name_for_epg, epg_url)
+                    sources_success = self.epg_mapper._generate_epgshare_sources_file(
+                        bouquet_name_for_epg, epg_url)
 
                     if sources_success:
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info("Optimized EPG generation completed successfully")
+                            logger.info(
+                                "Optimized EPG generation completed successfully")
 
                             # Verification
-                            self.epg_mapper._debug_verify_epg_files(bouquet_name_for_epg)
+                            self.epg_mapper._debug_verify_epg_files(
+                                bouquet_name_for_epg)
                     else:
                         logger.warning("EPG sources generation failed")
                 else:
@@ -6100,46 +6577,65 @@ class UniversalConverter(Screen):
 
             # SAVE GOOD MATCHES
             if False and config.plugins.m3uconverter.use_manual_database.value:  # ← DISABLED
-                auto_saved_count = self.epg_mapper._save_good_matches(self.m3u_channels_list)
+                auto_saved_count = self.epg_mapper._save_good_matches(
+                    self.m3u_channels_list)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"💾 AUTO-SAVE RESULTS: {auto_saved_count} matches saved to manual database")
+                    logger.info(
+                        f"💾 AUTO-SAVE RESULTS: {auto_saved_count} matches saved to manual database")
 
             # Analyze data cache
             if config.plugins.m3uconverter.enable_debug.value:
                 self.epg_mapper._save_complete_cache_analysis()
 
             # Performance stats: Count only REAL EPG matches (Rytec + DVB)
-            rytec_matches = self.epg_mapper._stats_counters.get('rytec_matches', 0)
+            rytec_matches = self.epg_mapper._stats_counters.get(
+                'rytec_matches', 0)
             dvb_matches = self.epg_mapper._stats_counters.get('dvb_matches', 0)
-            dvbt_matches = self.epg_mapper._stats_counters.get('dvbt_matches', 0)
-            fallback_matches = self.epg_mapper._stats_counters.get('fallback_matches', 0)
-            manual_db_matches = self.epg_mapper._stats_counters.get('manual_db_matches', 0)
-            consistent_fallback = self.epg_mapper._stats_counters.get('consistent_fallback', 0)
+            dvbt_matches = self.epg_mapper._stats_counters.get(
+                'dvbt_matches', 0)
+            fallback_matches = self.epg_mapper._stats_counters.get(
+                'fallback_matches', 0)
+            manual_db_matches = self.epg_mapper._stats_counters.get(
+                'manual_db_matches', 0)
+            consistent_fallback = self.epg_mapper._stats_counters.get(
+                'consistent_fallback', 0)
 
             # Calculate the CORRECT total - should equal total_valid
-            total_calculated = (rytec_matches + dvb_matches + dvbt_matches +
-                                fallback_matches + manual_db_matches + consistent_fallback)
+            total_calculated = (
+                rytec_matches +
+                dvb_matches +
+                dvbt_matches +
+                fallback_matches +
+                manual_db_matches +
+                consistent_fallback)
 
             # VERIFICATION: Log detailed counts for debugging
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("🔍 FINAL COUNT VERIFICATION:")
                 logger.info(f"   Total valid channels: {total_valid}")
                 logger.info(f"   Total calculated matches: {total_calculated}")
-                logger.info(f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
-                logger.info(f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
+                logger.info(
+                    f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
+                logger.info(
+                    f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
 
             # Check consistency - use the REAL processed count (total_valid)
             if total_calculated != total_valid:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.warning(f"⚠️ COUNT MISMATCH: Calculated {total_calculated} vs Processed {total_valid}")
+                    logger.warning(
+                        f"⚠️ COUNT MISMATCH: Calculated {total_calculated} vs Processed {total_valid}")
 
                 # Force consistency by adjusting fallback count
                 calculated_without_fallback = total_calculated - fallback_matches
-                fallback_matches = max(0, total_valid - calculated_without_fallback)
+                fallback_matches = max(
+                    0, total_valid - calculated_without_fallback)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"🔧 ADJUSTED: Fallback now {fallback_matches}, Total now {calculated_without_fallback + fallback_matches}")
+                    logger.info(
+                        f"🔧 ADJUSTED: Fallback now {fallback_matches}, Total now {
+                            calculated_without_fallback + fallback_matches}")
             else:
-                logger.info("✅ Count verification PASSED - all channels accounted for")
+                logger.info(
+                    "✅ Count verification PASSED - all channels accounted for")
 
             # Real EPG: only Rytec + DVB + DVB-T + Manual DB (exclude fallback)
             real_epg_matches = rytec_matches + dvb_matches + dvbt_matches + manual_db_matches
@@ -6176,7 +6672,10 @@ class UniversalConverter(Screen):
 
         # Double-check we're not already converting
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Clear log before starting conversion
@@ -6191,7 +6690,8 @@ class UniversalConverter(Screen):
                     return (False, "Conversion cancelled before start")
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return self.core_converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
+                return self.core_converter.safe_conversion(
+                    self._real_conversion_task, self.selected_file, None)
             except Exception as e:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.error(f"Conversion task failed: {str(e)}")
@@ -6210,12 +6710,16 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper.optimize_memory_timer.start(30000)
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _convert_tv_to_m3u(self):
         """Convert TV bouquet to M3U format."""
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Global cleanup before conversion
@@ -6234,10 +6738,12 @@ class UniversalConverter(Screen):
 
                     f.write('#EXTM3U\n')
                     f.write('#EXTENC: UTF-8\n')
-                    f.write(f'#EXTARCHIMEDE: Generated by Archimede Converter {CURRENT_VERSION}\n')
+                    f.write(
+                        f'#EXTARCHIMEDE: Generated by Archimede Converter {CURRENT_VERSION}\n')
 
                     for idx, (name, url) in enumerate(self.m3u_channels_list):
-                        f.write(f'#EXTINF:-1 tvg-id="{name}" tvg-name="{name}",{name}\n')
+                        f.write(
+                            f'#EXTINF:-1 tvg-id="{name}" tvg-name="{name}",{name}\n')
                         f.write(f'{url}\n')
 
                         if idx % 10 == 0:
@@ -6284,12 +6790,16 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper.optimize_memory_timer.start(30000)
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _convert_tv_to_tv(self):
         """Convert TV bouquet to optimized TV bouquet format"""
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Global cleanup before conversion
@@ -6297,14 +6807,24 @@ class UniversalConverter(Screen):
             self.epg_mapper._cleanup_all_match_types()
             self.epg_mapper._cleanup_log_file()
 
-        if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
-            self.session.open(MessageBox, _("No channels loaded. Please select a valid TV bouquet file."), MessageBox.TYPE_ERROR)
+        if not hasattr(
+                self,
+                'm3u_channels_list') or not self.m3u_channels_list:
+            self.session.open(
+                MessageBox,
+                _("No channels loaded. Please select a valid TV bouquet file."),
+                MessageBox.TYPE_ERROR)
             return
 
         logger.info(f"🎯 Selected file: {self.selected_file}")
 
         # Extract bouquet name correctly
-        bouquet_name = basename(self.selected_file).replace('userbouquet.', '').replace('.tv', '')
+        bouquet_name = basename(
+            self.selected_file).replace(
+            'userbouquet.',
+            '').replace(
+            '.tv',
+            '')
         safe_name = self.get_safe_filename(bouquet_name)
 
         logger.info(f"🎯 Bouquet name: {bouquet_name}")
@@ -6315,26 +6835,40 @@ class UniversalConverter(Screen):
                 if not self.m3u_channels_list:
                     return (False, "No channels to convert")
 
-                logger.info(f"🔍 DEBUG: m3u_channels_list type: {type(self.m3u_channels_list)}")
-                logger.info(f"🔍 DEBUG: m3u_channels_list length: {len(self.m3u_channels_list)}")
+                logger.info(
+                    f"🔍 DEBUG: m3u_channels_list type: {
+                        type(
+                            self.m3u_channels_list)}")
+                logger.info(
+                    f"🔍 DEBUG: m3u_channels_list length: {len(self.m3u_channels_list)}")
 
                 if self.m3u_channels_list:
-                    logger.info(f"🔍 DEBUG: First item type: {type(self.m3u_channels_list[0])}")
-                    logger.info(f"🔍 DEBUG: First item: {self.m3u_channels_list[0]}")
+                    logger.info(
+                        f"🔍 DEBUG: First item type: {
+                            type(
+                                self.m3u_channels_list[0])}")
+                    logger.info(
+                        f"🔍 DEBUG: First item: {
+                            self.m3u_channels_list[0]}")
                     if isinstance(self.m3u_channels_list[0], dict):
-                        logger.info(f"🔍 DEBUG: First item keys: {self.m3u_channels_list[0].keys()}")
+                        logger.info(
+                            f"🔍 DEBUG: First item keys: {
+                                self.m3u_channels_list[0].keys()}")
 
                 # Convert tuple data to dictionary format for EPG processing
                 processed_channels = []
                 epg_data = []
 
                 for idx, channel in enumerate(self.m3u_channels_list):
-                    logger.info(f"🔍 DEBUG: Processing channel {idx}, type: {type(channel)}")
+                    logger.info(
+                        f"🔍 DEBUG: Processing channel {idx}, type: {
+                            type(channel)}")
 
                     if isinstance(channel, tuple) and len(channel) == 2:
                         # Convert (name, url) tuple to dictionary
                         name, url = channel
-                        logger.info(f"🔍 DEBUG: Converting tuple - name: '{name}', url: '{url}'")
+                        logger.info(
+                            f"🔍 DEBUG: Converting tuple - name: '{name}', url: '{url}'")
 
                         channel_dict = {
                             'name': name,
@@ -6343,11 +6877,16 @@ class UniversalConverter(Screen):
                         }
                         processed_channels.append(channel_dict)
                     elif isinstance(channel, dict):
-                        # Already in correct format - CERCHIAMO SIA 'name' CHE 'title'
-                        channel_name = channel.get('name') or channel.get('title') or 'Unknown'
+                        # Already in correct format - CERCHIAMO SIA 'name' CHE
+                        # 'title'
+                        channel_name = channel.get(
+                            'name') or channel.get('title') or 'Unknown'
                         url = channel.get('url') or channel.get('uri') or ''
 
-                        logger.info(f"🔍 DEBUG: Processing dict - found name: '{channel.get('name')}', title: '{channel.get('title')}', selected: '{channel_name}'")
+                        logger.info(
+                            f"🔍 DEBUG: Processing dict - found name: '{
+                                channel.get('name')}', title: '{
+                                channel.get('title')}', selected: '{channel_name}'")
 
                         channel_dict = {
                             'name': channel_name,
@@ -6362,13 +6901,17 @@ class UniversalConverter(Screen):
 
                         processed_channels.append(channel_dict)
                     else:
-                        logger.warning(f"⚠️ Skipping invalid channel format: {type(channel)} - {channel}")
+                        logger.warning(
+                            f"⚠️ Skipping invalid channel format: {
+                                type(channel)} - {channel}")
                         continue
 
                 if not processed_channels:
                     return (False, "No valid channels processed")
 
-                logger.info(f"✅ DEBUG: Successfully processed {len(processed_channels)} channels")
+                logger.info(
+                    f"✅ DEBUG: Successfully processed {
+                        len(processed_channels)} channels")
 
                 # Process channels with EPG matching
                 optimized_channels = []
@@ -6378,14 +6921,17 @@ class UniversalConverter(Screen):
 
                     # DEBUG: Check channel structure before processing
                     if not isinstance(channel, dict):
-                        logger.error(f"❌ DEBUG: Channel {idx} is not a dict: {type(channel)}")
+                        logger.error(
+                            f"❌ DEBUG: Channel {idx} is not a dict: {
+                                type(channel)}")
                         continue
 
                     name = channel.get('name', '')
                     url = channel.get('url', '')
 
                     if not name:
-                        logger.warning(f"⚠️ DEBUG: Channel {idx} has empty name: {channel}")
+                        logger.warning(
+                            f"⚠️ DEBUG: Channel {idx} has empty name: {channel}")
                         # Skip channels without name
                         continue
 
@@ -6394,15 +6940,17 @@ class UniversalConverter(Screen):
                     # Find better EPG match if available
                     clean_name = self.epg_mapper.clean_channel_name(name)
                     service_ref, match_type = self.epg_mapper._find_best_service_match(
-                        clean_name, "", name, url
-                    )
+                        clean_name, "", name, url)
 
-                    # Use existing URL but with better service reference if found
+                    # Use existing URL but with better service reference if
+                    # found
                     if service_ref and service_ref.startswith('1:0:'):
-                        bouquet_sref = self.epg_mapper._generate_hybrid_sref(service_ref, url, for_epg=False)
+                        bouquet_sref = self.epg_mapper._generate_hybrid_sref(
+                            service_ref, url, for_epg=False)
                         epg_sref = service_ref  # Per EPG usa il riferimento DVB originale
                     else:
-                        bouquet_sref = self.epg_mapper._generate_service_reference(url)
+                        bouquet_sref = self.epg_mapper._generate_service_reference(
+                            url)
                         epg_sref = bouquet_sref  # Fallback a IPTV
 
                     optimized_channel = {
@@ -6431,8 +6979,9 @@ class UniversalConverter(Screen):
                         progress = (idx + 1) / len(processed_channels) * 100
                         self.update_progress(
                             idx + 1,
-                            _("Converting: {} ({}%)").format(name, int(progress))
-                        )
+                            _("Converting: {} ({}%)").format(
+                                name,
+                                int(progress)))
 
                 # Write optimized bouquet
                 if optimized_channels:
@@ -6442,21 +6991,27 @@ class UniversalConverter(Screen):
 
                         # Generate EPG files if enabled
                         if config.plugins.m3uconverter.epg_enabled.value and epg_data:
-                            logger.info(f"🎯 Generating EPG for TV-to-TV conversion: {len(epg_data)} channels")
+                            logger.info(
+                                f"🎯 Generating EPG for TV-to-TV conversion: {len(epg_data)} channels")
 
                             # Generate channels.xml
-                            epg_success = self.epg_mapper._generate_epg_channels_file(epg_data, safe_name)
+                            epg_success = self.epg_mapper._generate_epg_channels_file(
+                                epg_data, safe_name)
 
                             if epg_success:
                                 # Generate sources.xml
-                                sources_success = self.epg_mapper._generate_epgshare_sources_file(safe_name)
+                                sources_success = self.epg_mapper._generate_epgshare_sources_file(
+                                    safe_name)
 
                                 if sources_success:
-                                    logger.info("✅ EPG files generated successfully for TV-to-TV conversion")
+                                    logger.info(
+                                        "✅ EPG files generated successfully for TV-to-TV conversion")
                                 else:
-                                    logger.warning("⚠️ Failed to generate EPG sources for TV-to-TV conversion")
+                                    logger.warning(
+                                        "⚠️ Failed to generate EPG sources for TV-to-TV conversion")
                             else:
-                                logger.warning("⚠️ Failed to generate EPG channels for TV-to-TV conversion")
+                                logger.warning(
+                                    "⚠️ Failed to generate EPG channels for TV-to-TV conversion")
 
                         # Store processed channels for potential manual editing
                         self.m3u_channels_list = optimized_channels
@@ -6499,12 +7054,16 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper.optimize_memory_timer.start(30000)
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _convert_json_to_m3u(self):
         """Convert JSON playlist to M3U format."""
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Global cleanup before starting conversion
@@ -6532,7 +7091,8 @@ class UniversalConverter(Screen):
                 with open(output_file, 'w', encoding='utf-8') as f:
                     f.write('#EXTM3U\n')
                     f.write('#EXTENC: UTF-8\n')
-                    f.write(f'#EXTARCHIMEDE: Generated by Archimede Converter {CURRENT_VERSION}\n')
+                    f.write(
+                        f'#EXTARCHIMEDE: Generated by Archimede Converter {CURRENT_VERSION}\n')
 
                     for idx, channel in enumerate(self.m3u_channels_list):
                         if not channel.get('url'):
@@ -6587,12 +7147,16 @@ class UniversalConverter(Screen):
         self["key_green"].setText("")
         self["key_blue"].setText(_("Cancel"))
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _convert_m3u_to_json(self):
         """Convert M3U playlist to JSON format."""
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Global cleanup before conversion
@@ -6616,7 +7180,8 @@ class UniversalConverter(Screen):
                     for ch in self.m3u_channels_list:
                         if ch.get('uri'):
                             normalized_list.append({
-                                'name': ch.get('title', ''),            # title → name
+                                # title → name
+                                'name': ch.get('title', ''),
                                 'url': ch.get('uri', ''),
                                 'group': ch.get('group-title', ''),
                                 'tvg_id': ch.get('tvg-id', ''),
@@ -6649,7 +7214,9 @@ class UniversalConverter(Screen):
                     )
 
                     # Copy all normalized attributes
-                    channel_data = {key: value for key, value in channel.items()}
+                    channel_data = {
+                        key: value for key,
+                        value in channel.items()}
                     json_data["playlist"].append(channel_data)
 
                 # Generate output filename
@@ -6674,12 +7241,16 @@ class UniversalConverter(Screen):
         self["key_green"].setText("")
         self["key_blue"].setText(_("Cancel"))
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _convert_json_to_tv(self):
         """Convert JSON to TV bouquet format."""
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Global cleanup before conversion
@@ -6687,13 +7258,17 @@ class UniversalConverter(Screen):
             self.epg_mapper._cleanup_all_match_types()
             self.epg_mapper._cleanup_log_file()
 
-        # If the channel list hasn't been loaded yet, parse it from the selected file
+        # If the channel list hasn't been loaded yet, parse it from the
+        # selected file
         if not self.m3u_channels_list:
             self._parse_json_file(self.selected_file)
 
         # If still empty, show error
         if not self.m3u_channels_list:
-            self.session.open(MessageBox, _("No valid channels found in the JSON file"), MessageBox.TYPE_ERROR)
+            self.session.open(
+                MessageBox,
+                _("No valid channels found in the JSON file"),
+                MessageBox.TYPE_ERROR)
             return
 
         def conversion_task():
@@ -6704,7 +7279,8 @@ class UniversalConverter(Screen):
                     return (False, "Conversion cancelled before start")
                 if hasattr(self, 'epg_mapper') and self.epg_mapper:
                     self.epg_mapper._refresh_config()
-                return self.core_converter.safe_conversion(self._real_conversion_task, self.selected_file, None)
+                return self.core_converter.safe_conversion(
+                    self._real_conversion_task, self.selected_file, None)
             except Exception as e:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.error(f"Conversion task failed: {str(e)}")
@@ -6723,12 +7299,16 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper.optimize_memory_timer.start(30000)
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _convert_xspf_to_m3u(self):
         """Convert XSPF to M3U format."""
         if self.is_converting:
-            self.session.open(MessageBox, _("Conversion already in progress"), MessageBox.TYPE_WARNING)
+            self.session.open(
+                MessageBox,
+                _("Conversion already in progress"),
+                MessageBox.TYPE_WARNING)
             return
 
         # Global cleanup before conversion
@@ -6749,7 +7329,8 @@ class UniversalConverter(Screen):
                 with open(output_file, 'w', encoding='utf-8') as f:
                     f.write('#EXTM3U\n')
                     f.write('#EXTENC: UTF-8\n')
-                    f.write(f'#EXTARCHIMEDE: Generated by Archimede Converter {CURRENT_VERSION}\n')
+                    f.write(
+                        f'#EXTARCHIMEDE: Generated by Archimede Converter {CURRENT_VERSION}\n')
 
                     for track in root.findall('.//ns:track', ns):
                         title = track.find('ns:title', ns)
@@ -6768,9 +7349,7 @@ class UniversalConverter(Screen):
                                     track + 1,
                                     _("Converting: {title} ({percent}%)").format(
                                         title=title,
-                                        percent=int(progress)
-                                    )
-                                )
+                                        percent=int(progress)))
 
                 track_count = len(tracks)
 
@@ -6805,7 +7384,8 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.epg_mapper.optimize_memory_timer.start(30000)
 
-        threads.deferToThread(conversion_task).addBoth(self.conversion_finished)
+        threads.deferToThread(conversion_task).addBoth(
+            self.conversion_finished)
 
     def _open_editor_delayed(self):
         """Opens the manual editor after a short delay."""
@@ -6813,7 +7393,9 @@ class UniversalConverter(Screen):
             if hasattr(self, 'open_editor_timer'):
                 self.open_editor_timer.stop()
 
-            if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
+            if not hasattr(
+                    self,
+                    'm3u_channels_list') or not self.m3u_channels_list:
                 logger.error("❌ No channel data available for the editor")
                 return
 
@@ -6833,7 +7415,8 @@ class UniversalConverter(Screen):
                 # Show updated statistics after editing
                 if hasattr(self, 'last_conversion_stats'):
                     updated_stats = self.calculate_updated_stats()
-                    self.show_conversion_stats(self.conversion_type, updated_stats)
+                    self.show_conversion_stats(
+                        self.conversion_type, updated_stats)
 
                 # Automatically reload services if configured
                 _reload_services_after_delay()
@@ -6852,7 +7435,8 @@ class UniversalConverter(Screen):
         except Exception as e:
             logger.error(f"❌ Error opening manual editor: {str(e)}")
             if hasattr(self, 'last_conversion_stats'):
-                self.show_conversion_stats(self.conversion_type, self.last_conversion_stats)
+                self.show_conversion_stats(
+                    self.conversion_type, self.last_conversion_stats)
 
     def _editor_closed_callback(self, result=None):
         """Callback when the manual editor is closed"""
@@ -6897,22 +7481,36 @@ class UniversalConverter(Screen):
                 self.preserve_conversion_stats()
 
                 # Collect conversion statistics only for TV conversion
-                if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
+                if self.conversion_type in [
+                        "m3u_to_tv", "json_to_tv", "tv_to_tv"]:
                     if hasattr(self, 'epg_mapper') and self.epg_mapper:
                         cache_stats = self.epg_mapper._get_cache_statistics()
 
                         total_processed = cache_stats.get('total_matches', 0)
-                        effective_coverage = cache_stats.get('effective_coverage', 0)
+                        effective_coverage = cache_stats.get(
+                            'effective_coverage', 0)
 
                         stats_data = {
                             'total_channels': total_processed,
-                            'effective_epg_matches': int(total_processed * effective_coverage / 100),
-                            'effective_coverage': f"{effective_coverage:.1f}%",
-                            'rytec_matches': cache_stats.get('rytec_matches', 0),
-                            'dvb_matches': cache_stats.get('dvb_matches', 0),
-                            'dvbt_matches': cache_stats.get('dvbt_matches', 0),
-                            'fallback_matches': cache_stats.get('fallback_matches', 0),
-                            'manual_db_matches': cache_stats.get('manual_db_matches', 0),
+                            'effective_epg_matches': int(
+                                total_processed * effective_coverage / 100),
+                            'effective_coverage': f"{
+                                effective_coverage:.1f}%",
+                            'rytec_matches': cache_stats.get(
+                                'rytec_matches',
+                                0),
+                            'dvb_matches': cache_stats.get(
+                                'dvb_matches',
+                                0),
+                            'dvbt_matches': cache_stats.get(
+                                'dvbt_matches',
+                                0),
+                            'fallback_matches': cache_stats.get(
+                                'fallback_matches',
+                                0),
+                            'manual_db_matches': cache_stats.get(
+                                'manual_db_matches',
+                                0),
                         }
 
                         self.last_conversion_stats = stats_data
@@ -6929,14 +7527,18 @@ class UniversalConverter(Screen):
 
                     # Small delay to stabilize the UI
                     self.open_editor_timer = eTimer()
-                    self.open_editor_timer.callback.append(self._open_editor_delayed)
-                    self.open_editor_timer.start(1000, True)  # 1 secondo, single shot
+                    self.open_editor_timer.callback.append(
+                        self._open_editor_delayed)
+                    self.open_editor_timer.start(
+                        1000, True)  # 1 secondo, single shot
 
                 else:
                     # Show normal statistics for TV conversion
-                    if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
+                    if self.conversion_type in [
+                            "m3u_to_tv", "json_to_tv", "tv_to_tv"]:
                         if hasattr(self, 'last_conversion_stats'):
-                            self.show_conversion_stats(self.conversion_type, self.last_conversion_stats)
+                            self.show_conversion_stats(
+                                self.conversion_type, self.last_conversion_stats)
                         else:
                             self.show_normal_conversion_success()
                     else:
@@ -6944,12 +7546,14 @@ class UniversalConverter(Screen):
                         self.show_normal_conversion_success()
 
                 # Auto-reload services for TV conversion
-                if self.conversion_type in ["m3u_to_tv", "json_to_tv", "tv_to_tv"]:
+                if self.conversion_type in [
+                        "m3u_to_tv", "json_to_tv", "tv_to_tv"]:
                     _reload_services_after_delay()
 
             else:
                 # Gestione errore
-                error_msg = result[1] if len(result) > 1 else _("Unknown error")
+                error_msg = result[1] if len(
+                    result) > 1 else _("Unknown error")
                 logger.error(f"❌ Conversion failed: {error_msg}")
                 self.session.open(
                     MessageBox,
@@ -6978,7 +7582,8 @@ class UniversalConverter(Screen):
         """Show success message for normal conversion"""
         try:
             if hasattr(self, 'selected_file') and self.selected_file:
-                bouquet_name = self.get_safe_filename(basename(self.selected_file))
+                bouquet_name = self.get_safe_filename(
+                    basename(self.selected_file))
                 safe_name = self.get_safe_filename(bouquet_name)
                 display_name = self.remove_suffixes(safe_name)
             else:
@@ -6992,7 +7597,11 @@ class UniversalConverter(Screen):
                 "📍 Location: /etc/enigma2/userbouquet.*.tv\n\n"
                 "Press OK to continue"
             ).format(display_name, timestamp)
-            self.session.open(MessageBox, message, MessageBox.TYPE_INFO, timeout=6)
+            self.session.open(
+                MessageBox,
+                message,
+                MessageBox.TYPE_INFO,
+                timeout=6)
 
         except Exception as e:
             logger.error(f"Error showing success message: {str(e)}")
@@ -7002,7 +7611,11 @@ class UniversalConverter(Screen):
         if hasattr(self, 'epg_mapper') and self.epg_mapper:
             self.last_cache_stats = self.epg_mapper._get_cache_statistics()
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"💾 Statistics preserved: {self.last_cache_stats.get('total_matches', 0)} total matches")
+                logger.info(
+                    f"💾 Statistics preserved: {
+                        self.last_cache_stats.get(
+                            'total_matches',
+                            0)} total matches")
 
     def show_conversion_stats(self, conversion_type, stats_data):
         """Show ACCURATE conversion statistics."""
@@ -7030,23 +7643,36 @@ class UniversalConverter(Screen):
 
             # CORRECT COUNTERS - usa get() per accesso sicuro
             total_processed = stats_data.get('total_channels', 0)
-            total_original = stats_data.get('total_original_channels', total_processed)
+            total_original = stats_data.get(
+                'total_original_channels', total_processed)
             effective_epg_matches = stats_data.get('effective_epg_matches', 0)
             effective_coverage = stats_data.get('effective_coverage', '0%')
 
-            stats_message.append(_("📊 Total channels in file: {}").format(total_original))
-            stats_message.append(_("✅ Valid channels processed: {}").format(total_processed))
+            stats_message.append(
+                _("📊 Total channels in file: {}").format(total_original))
+            stats_message.append(
+                _("✅ Valid channels processed: {}").format(total_processed))
 
             if total_original != total_processed:
-                stats_message.append(_("🚫 Skipped channels: {}").format(total_original - total_processed))
+                stats_message.append(
+                    _("🚫 Skipped channels: {}").format(
+                        total_original - total_processed))
 
-            stats_message.append(_("🎯 Effective EPG matches: {}").format(effective_epg_matches))
-            stats_message.append(_("📈 EFFECTIVE EPG coverage: {}").format(effective_coverage))
+            stats_message.append(
+                _("🎯 Effective EPG matches: {}").format(effective_epg_matches))
+            stats_message.append(
+                _("📈 EFFECTIVE EPG coverage: {}").format(effective_coverage))
 
             # Add edit information if available
             if stats_data.get('status') == 'edited':
-                stats_message.append(_("✏️ Manual edits applied: {}").format(stats_data.get('manual_matches', 0)))
-                stats_message.append(_("🕒 Edited at: {}").format(stats_data.get('edit_timestamp', '')))
+                stats_message.append(
+                    _("✏️ Manual edits applied: {}").format(
+                        stats_data.get(
+                            'manual_matches', 0)))
+                stats_message.append(
+                    _("🕒 Edited at: {}").format(
+                        stats_data.get(
+                            'edit_timestamp', '')))
                 stats_message.append("")
 
             # Add database mode info
@@ -7058,7 +7684,10 @@ class UniversalConverter(Screen):
                 "full": _("DVB + Rytec + DTT (Full)"),
                 "dtt": _("Only DTT")
             }
-            stats_message.append(_("🗄️ Database mode: {}").format(mode_display.get(db_mode, db_mode)))
+            stats_message.append(
+                _("🗄️ Database mode: {}").format(
+                    mode_display.get(
+                        db_mode, db_mode)))
             stats_message.append("")
 
             # Conversion-type specific statistics
@@ -7108,8 +7737,12 @@ class UniversalConverter(Screen):
                 cache_stats = stats_data.get('cache_stats', {})
                 if cache_stats:
                     cache_stats = stats_data.get('cache_stats', {})
-                    match_hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('match_hit_rate', 'N/A'))
-                    match_cache_size = cache_stats.get('match_cache_size', cache_stats.get('match_cache_size', 0))
+                    match_hit_rate = cache_stats.get(
+                        'match_hit_rate', cache_stats.get(
+                            'match_hit_rate', 'N/A'))
+                    match_cache_size = cache_stats.get(
+                        'match_cache_size', cache_stats.get(
+                            'match_cache_size', 0))
                     rytec_channels = cache_stats.get('rytec_channels', 0)
                     dvb_channels = cache_stats.get('loaded_dvb_channels', 0)
                     stats_message.extend([
@@ -7165,14 +7798,19 @@ class UniversalConverter(Screen):
             self["key_blue"].setText(_("Cancelling..."))
             self["key_green"].setText(_("Stopped"))
             self["status"].setText(_("Cancelling conversion..."))
-            logger.info("🛑 Conversion cancellation requested - forcing immediate stop")
+            logger.info(
+                "🛑 Conversion cancellation requested - forcing immediate stop")
 
             # Force UI update
             self["progress_source"].setValue(0)
             self["progress_text"].setText("")
 
             # Show immediate feedback
-            self.session.open(MessageBox, _("Conversion cancelled"), MessageBox.TYPE_INFO, timeout=6)
+            self.session.open(
+                MessageBox,
+                _("Conversion cancelled"),
+                MessageBox.TYPE_INFO,
+                timeout=6)
 
             # Reset UI state
             self._reset_conversion_ui()
@@ -7200,7 +7838,11 @@ class UniversalConverter(Screen):
         self["key_red"].setText(_("Open File"))
         self["key_green"].setText(_("Convert"))
         self["key_blue"].setText(_("Tools"))
-        self.session.open(MessageBox, _("Conversion cancelled"), MessageBox.TYPE_INFO, timeout=6)
+        self.session.open(
+            MessageBox,
+            _("Conversion cancelled"),
+            MessageBox.TYPE_INFO,
+            timeout=6)
 
     def _conversion_error(self, error_msg):
         """Handle conversion error."""
@@ -7209,7 +7851,12 @@ class UniversalConverter(Screen):
         self["key_red"].setText(_("Open File"))
         self["key_green"].setText(_("Convert"))
         self["key_blue"].setText(_("Tools"))
-        self.session.open(MessageBox, _("Conversion error: %s") % error_msg, MessageBox.TYPE_ERROR, timeout=6)
+        self.session.open(
+            MessageBox,
+            _("Conversion error: %s") %
+            error_msg,
+            MessageBox.TYPE_ERROR,
+            timeout=6)
 
     def update_progress(self, value, text):
         """Update the progress bar safely."""
@@ -7221,7 +7868,8 @@ class UniversalConverter(Screen):
     def _update_progress_ui(self, value, text):
         """Update progress UI."""
         try:
-            total_items = len(self.m3u_channels_list) if self.m3u_channels_list else 100
+            total_items = len(
+                self.m3u_channels_list) if self.m3u_channels_list else 100
             self.progress_source.setRange(total_items)
             self.progress_source.setValue(value)
             self["progress_text"].setText(str(text))
@@ -7293,8 +7941,13 @@ class UniversalConverter(Screen):
 
     def open_editor_after_conversion(self):
         """Open the manual editor after conversion with the current data"""
-        if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
-            self.session.open(MessageBox, _("No conversion data available. Please run a conversion first."), MessageBox.TYPE_WARNING)
+        if not hasattr(
+                self,
+                'm3u_channels_list') or not self.m3u_channels_list:
+            self.session.open(
+                MessageBox,
+                _("No conversion data available. Please run a conversion first."),
+                MessageBox.TYPE_WARNING)
             return
 
         bouquet_name = ""
@@ -7315,11 +7968,15 @@ class UniversalConverter(Screen):
     def show_editor_statistics(self, result=None):
         """Show statistics after editor closes - then stay in UniversalConverter"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug("🔒 UniversalConverter: Editor closed, showing statistics")
+            logger.debug(
+                "🔒 UniversalConverter: Editor closed, showing statistics")
 
-        if not self or not hasattr(self, 'session') or hasattr(self, '_showing_stats'):
+        if not self or not hasattr(
+                self, 'session') or hasattr(
+                self, '_showing_stats'):
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug("Statistics already showing or screen not available")
+                logger.debug(
+                    "Statistics already showing or screen not available")
             return
 
         try:
@@ -7356,7 +8013,8 @@ class UniversalConverter(Screen):
     def _stats_closed(self, result=None):
         """Callback when statistics MessageBox is closed - stay in UniversalConverter"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug("Statistics MessageBox closed - staying in UniversalConverter")
+            logger.debug(
+                "Statistics MessageBox closed - staying in UniversalConverter")
         self._showing_stats = False
         self["status"].setText(_("Ready for next operation"))
         self["key_red"].setText(_("Open File"))
@@ -7415,8 +8073,12 @@ class UniversalConverter(Screen):
             # Cache statistics if available
             cache_stats = stats_data.get('cache_stats', {})
             if cache_stats:
-                match_hit_rate = cache_stats.get('match_hit_rate', cache_stats.get('match_hit_rate', 'N/A'))
-                match_cache_size = cache_stats.get('match_cache_size', cache_stats.get('match_cache_size', 0))
+                match_hit_rate = cache_stats.get(
+                    'match_hit_rate', cache_stats.get(
+                        'match_hit_rate', 'N/A'))
+                match_cache_size = cache_stats.get(
+                    'match_cache_size', cache_stats.get(
+                        'match_cache_size', 0))
 
                 message.extend([
                     "",
@@ -7447,7 +8109,9 @@ class UniversalConverter(Screen):
 
     def calculate_updated_stats(self):
         """Calculate complete updated statistics after editing"""
-        if not hasattr(self, 'm3u_channels_list') or not self.m3u_channels_list:
+        if not hasattr(
+                self,
+                'm3u_channels_list') or not self.m3u_channels_list:
             return self.last_conversion_stats
 
         # Count all match types
@@ -7480,7 +8144,8 @@ class UniversalConverter(Screen):
         total_channels = len(self.m3u_channels_list)
 
         # Calculate effective coverage based on database mode
-        db_mode = self.epg_mapper.database_mode if hasattr(self, 'epg_mapper') and self.epg_mapper else "both"
+        db_mode = self.epg_mapper.database_mode if hasattr(
+            self, 'epg_mapper') and self.epg_mapper else "both"
 
         if db_mode == "full":
             effective_epg_matches = rytec_matches + dvb_matches + dvbt_matches
@@ -7495,7 +8160,9 @@ class UniversalConverter(Screen):
         else:
             effective_epg_matches = rytec_matches + dvb_matches
 
-        effective_coverage = f"{(effective_epg_matches / total_channels * 100):.1f}%" if total_channels > 0 else "0%"
+        effective_coverage = f"{
+            (
+                effective_epg_matches / total_channels * 100):.1f}%" if total_channels > 0 else "0%"
 
         # Update stats data
         updated_stats = self.last_conversion_stats.copy()
@@ -7520,7 +8187,8 @@ class UniversalConverter(Screen):
                 stats = self.epg_mapper._get_cache_statistics()
 
                 # Get the REAL counts from statistics
-                total_processed = stats.get('total_processed', 436)  # Use actual processed count
+                total_processed = stats.get(
+                    'total_processed', 436)  # Use actual processed count
                 rytec_matches = stats.get('rytec_matches', 0)
                 dvb_matches = stats.get('dvb_matches', 0)
                 dvbt_matches = stats.get('dvbt_matches', 0)
@@ -7528,22 +8196,27 @@ class UniversalConverter(Screen):
                 manual_db_matches = stats.get('manual_db_matches', 0)
 
                 # Calculate the REAL total (should match total_processed)
-                real_total = rytec_matches + dvb_matches + dvbt_matches + fallback_matches + manual_db_matches
+                real_total = rytec_matches + dvb_matches + \
+                    dvbt_matches + fallback_matches + manual_db_matches
 
                 logger.info("🔍 FINAL COUNT VERIFICATION:")
                 logger.info(f"   Total valid channels: {total_processed}")
                 logger.info(f"   Total calculated matches: {real_total}")
-                logger.info(f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
-                logger.info(f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
+                logger.info(
+                    f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
+                logger.info(
+                    f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
 
                 # Check consistency
                 if real_total != total_processed:
-                    logger.warning(f"⚠️ COUNT MISMATCH: Calculated {real_total} vs Processed {total_processed}")
+                    logger.warning(
+                        f"⚠️ COUNT MISMATCH: Calculated {real_total} vs Processed {total_processed}")
                     # Auto-adjust to match reality
                     # scale_factor = total_processed / real_total if real_total > 0 else 1
                     adjusted_fallback = max(0, total_processed -
                                             (rytec_matches + dvb_matches + dvbt_matches + manual_db_matches))
-                    logger.info(f"🔧 ADJUSTED: Fallback now {adjusted_fallback}, Total now {total_processed}")
+                    logger.info(
+                        f"🔧 ADJUSTED: Fallback now {adjusted_fallback}, Total now {total_processed}")
 
                 logger.info("🎯 ===== DETAILED CONVERSION STATISTICS =====")
                 logger.info(f"📊 Total channels processed: {total_processed}")
@@ -7572,8 +8245,16 @@ class UniversalConverter(Screen):
 
                 # Cache statistics
                 logger.info("💾 CACHE PERFORMANCE:")
-                logger.info(f"   Hit rate: {stats.get('match_hit_rate', 'N/A')}")
-                logger.info(f"   Cache size: {stats.get('match_cache_size', 0)} entries")
+                logger.info(
+                    f"   Hit rate: {
+                        stats.get(
+                            'match_hit_rate',
+                            'N/A')}")
+                logger.info(
+                    f"   Cache size: {
+                        stats.get(
+                            'match_cache_size',
+                            0)} entries")
 
                 logger.info("==========================================")
 
@@ -7661,7 +8342,14 @@ class ManualMatchEditor(Screen):
             <widget source="key_blue" render="Label" position="797,660" size="250,45" zPosition="11" font="Regular;26" noWrap="1" valign="center" halign="center" backgroundColor="#05000603" objectTypes="key_blue,StaticText" transparent="1" />
         </screen>"""
 
-    def __init__(self, session, conversion_data, epg_mapper, bouquet_name="", callback=None, parent_callback=None):
+    def __init__(
+            self,
+            session,
+            conversion_data,
+            epg_mapper,
+            bouquet_name="",
+            callback=None,
+            parent_callback=None):
         Screen.__init__(self, session)
         self.session = session
         logger.info("✅ Manual database match editor initialized")
@@ -7714,7 +8402,8 @@ class ManualMatchEditor(Screen):
     def start_editor(self):
         """Start the editor with improved EPG detection"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug("🔍 ENHANCED DEBUG: Checking conversion_data EPG status:")
+            logger.debug(
+                "🔍 ENHANCED DEBUG: Checking conversion_data EPG status:")
 
         epg_count = 0
         no_epg_count = 0
@@ -7731,7 +8420,8 @@ class ManualMatchEditor(Screen):
             has_epg = False
             epg_type = "NO EPG"
 
-            if any(epg_type in str(match_type).lower() for epg_type in ['rytec', 'dvb', 'dvbt']):
+            if any(epg_type in str(match_type).lower()
+                   for epg_type in ['rytec', 'dvb', 'dvbt']):
                 has_epg = True
                 epg_type = "AUTO EPG"
             elif 'manual' in str(match_type).lower():
@@ -7743,7 +8433,8 @@ class ManualMatchEditor(Screen):
                 epg_type = "DVB EPG"
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"   {idx}: {name[:30]} -> {match_type} | {epg_type} | TVG: {tvg_id}")
+                logger.debug(
+                    f"   {idx}: {name[:30]} -> {match_type} | {epg_type} | TVG: {tvg_id}")
 
             if has_epg:
                 epg_count += 1
@@ -7751,7 +8442,8 @@ class ManualMatchEditor(Screen):
                 no_epg_count += 1
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"📊 ENHANCED EPG Summary: {epg_count} with EPG, {no_epg_count} without EPG, {manual_count} manual")
+            logger.debug(
+                f"📊 ENHANCED EPG Summary: {epg_count} with EPG, {no_epg_count} without EPG, {manual_count} manual")
 
         self.force_epg_detection()
 
@@ -7777,7 +8469,8 @@ class ManualMatchEditor(Screen):
         """Force EPG detection for channels with match_type unknown."""
         enhanced_count = 0
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info("🔄 FORCING EPG search for channels with match_type unknown...")
+            logger.info(
+                "🔄 FORCING EPG search for channels with match_type unknown...")
 
         for channel in self.conversion_data:
             current_match_type = channel.get('match_type', 'unknown')
@@ -7794,13 +8487,10 @@ class ManualMatchEditor(Screen):
 
                 # Force lookup with optimized parameters
                 service_ref, match_type = self.epg_mapper._find_best_service_match(
-                    clean_name,
-                    tvg_id,
-                    name,
-                    channel.get('url', '')
-                )
+                    clean_name, tvg_id, name, channel.get('url', ''))
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(f"   Lookup result: service_ref={service_ref}, match_type={match_type}")
+                    logger.debug(
+                        f"   Lookup result: service_ref={service_ref}, match_type={match_type}")
 
                 # If a DVB/Rytec match is found, update channel info
                 if service_ref and service_ref.startswith('1:0:'):
@@ -7817,7 +8507,8 @@ class ManualMatchEditor(Screen):
 
         if enhanced_count > 0:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🎯 Forced EPG detected for {enhanced_count} channels")
+                logger.info(
+                    f"🎯 Forced EPG detected for {enhanced_count} channels")
         else:
             logger.warning("⚠️ No EPG found during forced detection!")
 
@@ -7825,7 +8516,8 @@ class ManualMatchEditor(Screen):
         """Save all manual changes - called by GREEN button"""
         try:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("💾 SAVE ALL CORRECTED: Starting with proper manual detection")
+                logger.info(
+                    "💾 SAVE ALL CORRECTED: Starting with proper manual detection")
 
             # 1. Use the CORRECT method to check for manual changes
             actually_modified_count = self.count_truly_manual_changes()
@@ -7843,9 +8535,11 @@ class ManualMatchEditor(Screen):
                 # 3. RESET changes_made flag after successful save
                 self.changes_made = False
 
-                self["status"].setText(_("Saved {} MANUAL corrections").format(saved_count))
+                self["status"].setText(
+                    _("Saved {} MANUAL corrections").format(saved_count))
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"🎉 Success: {saved_count} TRULY MANUAL corrections saved")
+                    logger.info(
+                        f"🎉 Success: {saved_count} TRULY MANUAL corrections saved")
 
                 # 4. Reload services
                 self.reload_services_after_manual_edit()
@@ -7879,14 +8573,16 @@ class ManualMatchEditor(Screen):
                 actually_modified_count += 1
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"🔍 MANUAL COUNT: Found {actually_modified_count} truly manual changes")
+            logger.info(
+                f"🔍 MANUAL COUNT: Found {actually_modified_count} truly manual changes")
         return actually_modified_count
 
     def save_manual_mappings_to_database_corrected(self):
         """Save ONLY truly manual modifications"""
         try:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("💾 CORRECTED SAVE: Saving only TRUE manual modifications")
+                logger.info(
+                    "💾 CORRECTED SAVE: Saving only TRUE manual modifications")
 
             if not hasattr(self, 'manual_db') or not self.manual_db:
                 if config.plugins.m3uconverter.enable_debug.value:
@@ -7922,22 +8618,29 @@ class ManualMatchEditor(Screen):
 
                     mapping_data = {
                         'channel_name': channel_name,
-                        'original_name': channel.get('original_name', channel_name),
+                        'original_name': channel.get(
+                            'original_name',
+                            channel_name),
                         'clean_name': self.epg_mapper.clean_channel_name(channel_name),
-                        'tvg_id': channel.get('tvg_id', ''),
+                        'tvg_id': channel.get(
+                            'tvg_id',
+                            ''),
                         'assigned_sref': current_sref,
                         'match_type': simple_match_type,
                         'similarity': 1.0,
-                        'bouquet_source': getattr(self, 'bouquet_name', 'manual_edit'),
+                        'bouquet_source': getattr(
+                            self,
+                            'bouquet_name',
+                            'manual_edit'),
                         'created': strftime("%Y-%m-%d %H:%M:%S"),
                         'last_used': strftime("%Y-%m-%d %H:%M:%S"),
-                        'manually_modified': True
-                    }
+                        'manually_modified': True}
 
                     if self.manual_db.save_manual_mapping(mapping_data):
                         saved_count += 1
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info(f"✅ SAVED MANUAL: {saved_count}. {channel_name}")
+                            logger.info(
+                                f"✅ SAVED MANUAL: {saved_count}. {channel_name}")
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(f"🎯 FINAL MANUAL SAVE: {saved_count} channels")
@@ -7960,14 +8663,16 @@ class ManualMatchEditor(Screen):
             # Create a list of clean_name values for current channels
             current_clean_names = set()
             for channel in self.conversion_data:
-                clean_name = self.epg_mapper.clean_channel_name(channel.get('name', ''))
+                clean_name = self.epg_mapper.clean_channel_name(
+                    channel.get('name', ''))
                 if clean_name:  # Only add non-empty clean names
                     current_clean_names.add(clean_name)
 
             # Filter the database: keep only mappings for existing channels
             filtered_mappings = []
             for mapping in data.get('mappings', []):
-                if isinstance(mapping, dict) and mapping.get('clean_name') in current_clean_names:
+                if isinstance(mapping, dict) and mapping.get(
+                        'clean_name') in current_clean_names:
                     # Ensure the mapping has all required fields
                     if not mapping.get('assigned_sref'):
                         continue  # Skip invalid mappings
@@ -7983,7 +8688,8 @@ class ManualMatchEditor(Screen):
             if success:
                 new_count = len(filtered_mappings)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"🧹 DATABASE CLEANED: {old_count} -> {new_count} mappings")
+                    logger.info(
+                        f"🧹 DATABASE CLEANED: {old_count} -> {new_count} mappings")
                 return True
             else:
                 logger.error("❌ Failed to save cleaned database")
@@ -8008,9 +8714,11 @@ class ManualMatchEditor(Screen):
                         db.reloadServicelist()
                         db.reloadBouquets()
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info("✅ Services successfully reloaded after manual edit")
+                            logger.info(
+                                "✅ Services successfully reloaded after manual edit")
                     else:
-                        logger.warning("⚠️ Could not get eDVBDB instance for reload")
+                        logger.warning(
+                            "⚠️ Could not get eDVBDB instance for reload")
                 except Exception as e:
                     logger.error(f"❌ Error during service reload: {str(e)}")
                 finally:
@@ -8021,7 +8729,8 @@ class ManualMatchEditor(Screen):
             # Use a ONE-SHOT timer with longer delay
             self.reload_timer = eTimer()
             self.reload_timer.callback.append(do_reload)
-            self.reload_timer.start(5000, True)  # 5 seconds delay, True = single shot
+            # 5 seconds delay, True = single shot
+            self.reload_timer.start(5000, True)
 
         except Exception as e:
             logger.error(f"❌ Error setting up service reload: {str(e)}")
@@ -8040,7 +8749,8 @@ class ManualMatchEditor(Screen):
         """Handle closing"""
         try:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info("ManualMatchEditor: Simple close requested - returning to parent")
+                logger.info(
+                    "ManualMatchEditor: Simple close requested - returning to parent")
             self.close()
         except Exception as e:
             logger.error(f"Error in ManualMatchEditor request_close: {str(e)}")
@@ -8048,7 +8758,8 @@ class ManualMatchEditor(Screen):
 
     def ask_save_before_close(self):
         """Ask user if they want to save before closing"""
-        message = _("You have unsaved manual changes.\n\nDo you want to save before closing?")
+        message = _(
+            "You have unsaved manual changes.\n\nDo you want to save before closing?")
 
         def callback(result):
             try:
@@ -8056,10 +8767,12 @@ class ManualMatchEditor(Screen):
                     if result:
                         # User said YES to save - save and close
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info("💾 User chose to save changes before closing")
+                            logger.info(
+                                "💾 User chose to save changes before closing")
                         if self.save_all_changes():
                             if config.plugins.m3uconverter.enable_debug.value:
-                                logger.info("✅ Changes saved successfully, now closing")
+                                logger.info(
+                                    "✅ Changes saved successfully, now closing")
                             self.do_final_close()
                         else:
                             if config.plugins.m3uconverter.enable_debug.value:
@@ -8102,7 +8815,8 @@ class ManualMatchEditor(Screen):
             epg_source = ""
 
             # 1. Check the match_type first
-            if any(epg_type in str(match_type).lower() for epg_type in ['rytec', 'dvb', 'dvbt']):
+            if any(epg_type in str(match_type).lower()
+                   for epg_type in ['rytec', 'dvb', 'dvbt']):
                 has_epg = True
                 if 'rytec' in match_type.lower():
                     epg_source = "🛰️"
@@ -8165,12 +8879,17 @@ class ManualMatchEditor(Screen):
 
         # Update footer stats
         total_channels = len(self.conversion_data)
-        epg_percentage = (epg_channels / total_channels * 100) if total_channels > 0 else 0
+        epg_percentage = (
+            epg_channels /
+            total_channels *
+            100) if total_channels > 0 else 0
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"📊 FINAL STATS: {epg_channels} with EPG, {no_epg_channels} without EPG")
+            logger.debug(
+                f"📊 FINAL STATS: {epg_channels} with EPG, {no_epg_channels} without EPG")
 
-        self["status"].setText(_("EPG Coverage: {}/{} channels ({:.1f}%)").format(
-            epg_channels, total_channels, epg_percentage))
+        self["status"].setText(
+            _("EPG Coverage: {}/{} channels ({:.1f}%)").format(
+                epg_channels, total_channels, epg_percentage))
 
     def channel_selected(self):
         """When selecting a channel on the left"""
@@ -8193,12 +8912,13 @@ class ManualMatchEditor(Screen):
             logger.debug(f"   TVG ID: {tvg_id}")
 
         # Enhanced status display
-        has_epg = any(epg_type in str(match_type).lower() for epg_type in ['rytec', 'dvb', 'dvbt', 'manual']) or sref.startswith('1:0:')
+        has_epg = any(epg_type in str(match_type).lower() for epg_type in [
+                      'rytec', 'dvb', 'dvbt', 'manual']) or sref.startswith('1:0:')
         epg_status = "✅ HAS EPG" if has_epg else "❌ NO EPG"
 
-        self["status"].setText(_("Channel: {} | {} | Match: {} | Press RIGHT for matches").format(
-            channel_name, epg_status, match_type
-        ))
+        self["status"].setText(
+            _("Channel: {} | {} | Match: {} | Press RIGHT for matches").format(
+                channel_name, epg_status, match_type))
 
         self.update_suggested_matches(selected_index)
 
@@ -8213,8 +8933,10 @@ class ManualMatchEditor(Screen):
 
         # Update status
         if 0 <= channel_index < len(self.conversion_data):
-            channel_name = self.conversion_data[channel_index].get('name', 'Unknown')
-            self["status"].setText(_("Searching matches for: {}...").format(channel_name))
+            channel_name = self.conversion_data[channel_index].get(
+                'name', 'Unknown')
+            self["status"].setText(
+                _("Searching matches for: {}...").format(channel_name))
 
         # Start background thread using twisted
         callInThread(self._find_matches_in_background, channel_index)
@@ -8234,10 +8956,12 @@ class ManualMatchEditor(Screen):
 
         # --- PREPARE CLEAN NAMES ---
         # Remove quality indicators
-        name_without_quality = self.epg_mapper._quality_pattern.sub('', channel_name).strip()
+        name_without_quality = self.epg_mapper._quality_pattern.sub(
+            '', channel_name).strip()
 
         # Compact version (all characters together)
-        clean_name_no_quality = self.epg_mapper.clean_channel_name(name_without_quality)
+        clean_name_no_quality = self.epg_mapper.clean_channel_name(
+            name_without_quality)
 
         # Version with spaces (to search for "Cine 34" etc.)
         spaced_no_quality = ' '.join(name_without_quality.lower().split())
@@ -8250,8 +8974,7 @@ class ManualMatchEditor(Screen):
         # 0. CASE-INSENSITIVE SEARCH (high priority)
         if channel_index == self.current_channel_index:
             case_insensitive_matches = self.epg_mapper._search_case_insensitive_matches(
-                channel_name, clean_name_no_quality, tvg_id
-            )
+                channel_name, clean_name_no_quality, tvg_id)
             if case_insensitive_matches:
                 all_matches.extend(case_insensitive_matches)
                 self._safe_update_ui(all_matches, show_loading=False)
@@ -8259,35 +8982,46 @@ class ManualMatchEditor(Screen):
         # 1. FAST SEARCH - Clean name without quality words (more important)
         if channel_index == self.current_channel_index:
             # Try both versions: compact and spaced
-            rytec_matches = self.search_rytec_matches(channel_name, clean_name_no_quality, tvg_id)
-            rytec_matches += self.search_rytec_matches(channel_name, spaced_no_quality, tvg_id)
-            dvb_matches = self.search_dvb_matches(channel_name, clean_name_no_quality)
-            dvb_matches += self.search_dvb_matches(channel_name, spaced_no_quality)
+            rytec_matches = self.search_rytec_matches(
+                channel_name, clean_name_no_quality, tvg_id)
+            rytec_matches += self.search_rytec_matches(
+                channel_name, spaced_no_quality, tvg_id)
+            dvb_matches = self.search_dvb_matches(
+                channel_name, clean_name_no_quality)
+            dvb_matches += self.search_dvb_matches(
+                channel_name, spaced_no_quality)
             batch_results = rytec_matches + dvb_matches
             if batch_results:
                 all_matches.extend(batch_results)
                 self._safe_update_ui(all_matches, show_loading=False)
 
         # 2. SEARCH WITH QUALITY WORDS (if necessary)
-        if channel_index == self.current_channel_index and len(all_matches) < 15:  # INCREASED FROM 8 TO 15
-            rytec_with_quality = self.search_rytec_matches(channel_name, clean_name, tvg_id)
-            dvb_with_quality = self.search_dvb_matches(channel_name, clean_name)
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 15:  # INCREASED FROM 8 TO 15
+            rytec_with_quality = self.search_rytec_matches(
+                channel_name, clean_name, tvg_id)
+            dvb_with_quality = self.search_dvb_matches(
+                channel_name, clean_name)
             batch_results = rytec_with_quality + dvb_with_quality
             if batch_results:
                 all_matches.extend(batch_results)
                 self._safe_update_ui(all_matches, show_loading=False)
 
         # 3. IMPROVED: PRESERVE ORIGINAL NAME STRUCTURE FOR SHORT NAMES
-        if channel_index == self.current_channel_index and len(all_matches) < 30:  # INCREASED FROM 10 TO 25
-            # For short names or names with numbers (like "20 Mediaset"), use less aggressive cleaning
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 30:  # INCREASED FROM 10 TO 25
+            # For short names or names with numbers (like "20 Mediaset"), use
+            # less aggressive cleaning
             original_words = channel_name.split()
 
             # Try variations of the original name with minimal cleaning
             if len(original_words) <= 3:  # Short names
                 original_clean = ' '.join(original_words).lower().strip()
                 if original_clean and len(original_clean) >= 3:
-                    original_rytec = self.search_rytec_matches(channel_name, original_clean, tvg_id)
-                    original_dvb = self.search_dvb_matches(channel_name, original_clean)
+                    original_rytec = self.search_rytec_matches(
+                        channel_name, original_clean, tvg_id)
+                    original_dvb = self.search_dvb_matches(
+                        channel_name, original_clean)
                     batch_results = original_rytec + original_dvb
                     if batch_results:
                         all_matches.extend(batch_results)
@@ -8296,15 +9030,18 @@ class ManualMatchEditor(Screen):
             # Also try preserving numbers (like "20 mediaset")
             name_with_numbers = ' '.join(original_words).lower().strip()
             if name_with_numbers and name_with_numbers != clean_name_no_quality:
-                numbers_rytec = self.search_rytec_matches(channel_name, name_with_numbers, tvg_id)
-                numbers_dvb = self.search_dvb_matches(channel_name, name_with_numbers)
+                numbers_rytec = self.search_rytec_matches(
+                    channel_name, name_with_numbers, tvg_id)
+                numbers_dvb = self.search_dvb_matches(
+                    channel_name, name_with_numbers)
                 batch_results = numbers_rytec + numbers_dvb
                 if batch_results:
                     all_matches.extend(batch_results)
                     self._safe_update_ui(all_matches, show_loading=False)
 
         # 4. WORD COMBINATIONS (NO LENGTH LIMIT)
-        if channel_index == self.current_channel_index and len(all_matches) < 40:  # INCREASED FROM 15 TO 35
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 40:  # INCREASED FROM 15 TO 35
             words = name_without_quality.split()
             if len(words) > 1:
                 # All 2-word combinations (no length limit)
@@ -8314,12 +9051,15 @@ class ManualMatchEditor(Screen):
                     phrase = f"{words[i]} {words[i + 1]}"
                     phrase_clean = self.epg_mapper.clean_channel_name(phrase)
                     if phrase_clean:
-                        phrase_rytec = self.search_rytec_matches(channel_name, phrase_clean, '')[:3]  # INCREASED FROM 2 TO 3
-                        phrase_dvb = self.search_dvb_matches(channel_name, phrase_clean)[:3]  # INCREASED FROM 2 TO 3
+                        phrase_rytec = self.search_rytec_matches(channel_name, phrase_clean, '')[
+                            :3]  # INCREASED FROM 2 TO 3
+                        phrase_dvb = self.search_dvb_matches(channel_name, phrase_clean)[
+                            :3]  # INCREASED FROM 2 TO 3
                         batch_results = phrase_rytec + phrase_dvb
                         if batch_results:
                             all_matches.extend(batch_results)
-                            self._safe_update_ui(all_matches, show_loading=False)
+                            self._safe_update_ui(
+                                all_matches, show_loading=False)
 
         # 5. SINGLE WORDS (NO LENGTH LIMIT)
         if channel_index == self.current_channel_index:
@@ -8330,8 +9070,10 @@ class ManualMatchEditor(Screen):
                 # NO LENGTH CHECK - search all words
                 word_clean = self.epg_mapper.clean_channel_name(word)
                 if word_clean:
-                    word_rytec = self.search_rytec_matches(channel_name, word_clean, '')[:3]  # INCREASED FROM 2 TO 3
-                    word_dvb = self.search_dvb_matches(channel_name, word_clean)[:3]  # INCREASED FROM 2 TO 3
+                    word_rytec = self.search_rytec_matches(channel_name, word_clean, '')[
+                        :3]  # INCREASED FROM 2 TO 3
+                    word_dvb = self.search_dvb_matches(channel_name, word_clean)[
+                        :3]  # INCREASED FROM 2 TO 3
                     batch_results = word_rytec + word_dvb
                     if batch_results:
                         all_matches.extend(batch_results)
@@ -8346,13 +9088,15 @@ class ManualMatchEditor(Screen):
                 word_clean = self.epg_mapper.clean_channel_name(word)
                 if word_clean:
                     # Search in Rytec IDs and names
-                    id_matches = self.epg_mapper._find_rytec_ids_by_keyword(word_clean)
+                    id_matches = self.epg_mapper._find_rytec_ids_by_keyword(
+                        word_clean)
                     if id_matches:
                         all_matches.extend(id_matches)
                         self._safe_update_ui(all_matches, show_loading=False)
 
         # 7. SEARCH MEANINGFUL WORDS (FILTERED - BETTER QUALITY)
-        if channel_index == self.current_channel_index and len(all_matches) < 50:  # INCREASED FROM 20 TO 40
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 50:  # INCREASED FROM 20 TO 40
             words = name_without_quality.split()
             meaningful_words = []
 
@@ -8373,20 +9117,24 @@ class ManualMatchEditor(Screen):
                     self._safe_update_ui(all_matches, show_loading=False)
 
         # 8. DIRECT SEARCH IN RYTEC FOR CLEAN NAME
-        if channel_index == self.current_channel_index and len(all_matches) < 60:  # INCREASED FROM 25 TO 50
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 60:  # INCREASED FROM 25 TO 50
             # Search directly in Rytec database using clean name
             clean_for_rytec = clean_name_no_quality.replace(' ', '').lower()
 
             # Search exact or partial matches in Rytec database
-            for rytec_id, service_ref in self.epg_mapper.mapping.rytec['basic'].items():
+            for rytec_id, service_ref in self.epg_mapper.mapping.rytec['basic'].items(
+            ):
                 if not service_ref:
                     continue
 
                 rytec_clean = rytec_id.lower().replace('.it', '')
 
                 # If the clean name is contained in Rytec ID or vice versa
-                if (clean_for_rytec in rytec_clean or rytec_clean in clean_for_rytec) and len(clean_for_rytec) >= 3:
-                    similarity = self.epg_mapper._calculate_similarity(clean_for_rytec, rytec_clean)
+                if (clean_for_rytec in rytec_clean or rytec_clean in clean_for_rytec) and len(
+                        clean_for_rytec) >= 3:
+                    similarity = self.epg_mapper._calculate_similarity(
+                        clean_for_rytec, rytec_clean)
                     if similarity > 0.4:  # Low threshold for partial matches
                         all_matches.append({
                             'type': 'rytec',
@@ -8399,8 +9147,10 @@ class ManualMatchEditor(Screen):
             if all_matches:
                 self._safe_update_ui(all_matches, show_loading=False)
 
-        # 9. SPECIFIC SEARCH FOR "NUMBER NAME" PATTERN (e.g., "20 Mediaset" -> "20Mediaset")
-        if channel_index == self.current_channel_index and len(all_matches) < 70:  # INCREASED FROM 30 TO 60
+        # 9. SPECIFIC SEARCH FOR "NUMBER NAME" PATTERN (e.g., "20 Mediaset" ->
+        # "20Mediaset")
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 70:  # INCREASED FROM 30 TO 60
             words = name_without_quality.split()
 
             # Search pattern like "20 Mediaset" → "20Mediaset"
@@ -8408,7 +9158,8 @@ class ManualMatchEditor(Screen):
                 word1, word2 = words
 
                 # If one word is numeric and the other textual
-                if (word1.isdigit() and not word2.isdigit()) or (word2.isdigit() and not word1.isdigit()):
+                if (word1.isdigit() and not word2.isdigit()) or (
+                        word2.isdigit() and not word1.isdigit()):
                     if word1.isdigit():
                         number, name = word1, word2
                     else:
@@ -8428,7 +9179,8 @@ class ManualMatchEditor(Screen):
                     for combo in combinations:
                         if combo in self.epg_mapper.mapping.rytec['basic']:
                             service_ref = self.epg_mapper.mapping.rytec['basic'][combo]
-                            if service_ref and self.epg_mapper._is_service_compatible(service_ref):
+                            if service_ref and self.epg_mapper._is_service_compatible(
+                                    service_ref):
                                 all_matches.append({
                                     'type': 'rytec',
                                     'sref': service_ref,
@@ -8442,7 +9194,8 @@ class ManualMatchEditor(Screen):
                         clean_combo = self.epg_mapper.clean_channel_name(combo)
                         if clean_combo in self.epg_mapper.mapping.dvb:
                             for service in self.epg_mapper.mapping.dvb[clean_combo]:
-                                service_type = 'dvbt' if self.epg_mapper._is_dvb_t_service(service['sref']) else 'dvb'
+                                service_type = 'dvbt' if self.epg_mapper._is_dvb_t_service(
+                                    service['sref']) else 'dvb'
                                 all_matches.append({
                                     'type': service_type,
                                     'sref': service['sref'],
@@ -8455,15 +9208,20 @@ class ManualMatchEditor(Screen):
                 self._safe_update_ui(all_matches, show_loading=False)
 
         # 10. IMPROVED SEARCH FOR SHORT NAMES AND NUMBERED CHANNELS
-        if channel_index == self.current_channel_index and len(all_matches) < 70:  # INCREASED FROM 35 TO 70
-            short_name_matches = self.epg_mapper._enhanced_search_short_names(clean_name_no_quality, channel_name)
+        if channel_index == self.current_channel_index and len(
+                all_matches) < 70:  # INCREASED FROM 35 TO 70
+            short_name_matches = self.epg_mapper._enhanced_search_short_names(
+                clean_name_no_quality, channel_name)
             if short_name_matches:
                 all_matches.extend(short_name_matches)
                 self._safe_update_ui(all_matches, show_loading=False)
 
         # Final update - show completion
         if channel_index == self.current_channel_index:
-            self._safe_update_ui(all_matches, show_loading=False, is_final=True)
+            self._safe_update_ui(
+                all_matches,
+                show_loading=False,
+                is_final=True)
 
     def _safe_update_ui(self, all_matches, show_loading=False, is_final=False):
         """Thread-safe UI update with current matches"""
@@ -8479,7 +9237,13 @@ class ManualMatchEditor(Screen):
                 seen_srefs.add(match['sref'])
 
         # Sort and limit - INCREASED LIMIT FROM 25 TO 50
-        unique_matches.sort(key=lambda x: (x.get('priority', 0), x['similarity']), reverse=True)
+        unique_matches.sort(
+            key=lambda x: (
+                x.get(
+                    'priority',
+                    0),
+                x['similarity']),
+            reverse=True)
         final_matches = unique_matches[:50]  # INCREASED FROM 25 TO 50
         self.current_suggestions = final_matches
 
@@ -8499,12 +9263,18 @@ class ManualMatchEditor(Screen):
                 icon = icons.get(match['type'], '❓')
 
                 # Show service reference as in old code
-                sref_short = match['sref'][:30] + "..." if len(match['sref']) > 30 else match['sref']
-                match_text = f"{i + 1}. {icon} {similarity_pct}%\n{match['name'][:35]}\n{sref_short}"
+                sref_short = match['sref'][:30] + \
+                    "..." if len(match['sref']) > 30 else match['sref']
+                match_text = f"{i +
+                                1}. {icon} {similarity_pct}%\n{match['name'][:35]}\n{sref_short}"
                 match_items.append(match_text)
 
         # Update UI in main thread using callFromThread
-        callFromThread(self._update_match_list, match_items, len(final_matches), is_final)
+        callFromThread(
+            self._update_match_list,
+            match_items,
+            len(final_matches),
+            is_final)
 
     def _update_match_list(self, match_items, match_count, is_final=False):
         """Update match list in main thread"""
@@ -8514,17 +9284,24 @@ class ManualMatchEditor(Screen):
 
                 # Update status with match count
                 if 0 <= self.current_channel_index < len(self.conversion_data):
-                    channel_name = self.conversion_data[self.current_channel_index].get('name', 'Unknown')
+                    channel_name = self.conversion_data[self.current_channel_index].get(
+                        'name', 'Unknown')
                     if is_final:
                         if match_count > 0:
-                            self["status"].setText(_("Found {} matches for: {} | Select and press OK").format(match_count, channel_name))
+                            self["status"].setText(
+                                _("Found {} matches for: {} | Select and press OK").format(
+                                    match_count, channel_name))
                         else:
-                            self["status"].setText(_("No matches found for: {}").format(channel_name))
+                            self["status"].setText(
+                                _("No matches found for: {}").format(channel_name))
                     else:
                         if match_count > 0:
-                            self["status"].setText(_("Found {} matches so far for: {} | Searching...").format(match_count, channel_name))
+                            self["status"].setText(
+                                _("Found {} matches so far for: {} | Searching...").format(
+                                    match_count, channel_name))
                         else:
-                            self["status"].setText(_("Searching matches for: {}...").format(channel_name))
+                            self["status"].setText(
+                                _("Searching matches for: {}...").format(channel_name))
 
         except Exception as e:
             print(f"Error updating match list: {e}")
@@ -8543,7 +9320,8 @@ class ManualMatchEditor(Screen):
             rytec_id = self.epg_mapper._convert_to_rytec_format(tvg_id)
             if rytec_id in self.epg_mapper.mapping.rytec['basic']:
                 service_ref = self.epg_mapper.mapping.rytec['basic'][rytec_id]
-                if service_ref and self.epg_mapper._is_service_compatible(service_ref):
+                if service_ref and self.epg_mapper._is_service_compatible(
+                        service_ref):
                     matches.append({
                         'type': 'rytec',
                         'sref': service_ref,
@@ -8554,12 +9332,14 @@ class ManualMatchEditor(Screen):
 
         # Search by name similarity in Rytec database
         limit = config.plugins.m3uconverter.rytec_search_limit.value
-        for rytec_id, service_ref in list(self.epg_mapper.mapping.rytec['basic'].items())[:limit]:
+        for rytec_id, service_ref in list(
+                self.epg_mapper.mapping.rytec['basic'].items())[:limit]:
             if not service_ref:
                 continue
 
             # Calculate similarity with the clean name
-            similarity = self.epg_mapper._calculate_similarity(clean_name, rytec_id.lower())
+            similarity = self.epg_mapper._calculate_similarity(
+                clean_name, rytec_id.lower())
 
             # FIX: Add safety check before accessing similarity_threshold_rytec
             if hasattr(self.epg_mapper, 'similarity_threshold_rytec'):
@@ -8586,10 +9366,12 @@ class ManualMatchEditor(Screen):
         if clean_name in self.epg_mapper.mapping.dvb:
             for service in self.epg_mapper.mapping.dvb[clean_name]:
                 service_name = service.get('name', 'DVB Service')
-                similarity = self.epg_mapper._calculate_similarity(clean_name, service_name)
+                similarity = self.epg_mapper._calculate_similarity(
+                    clean_name, service_name)
 
                 if similarity > self.epg_mapper.similarity_threshold_dvb:
-                    service_type = 'dvbt' if self.epg_mapper._is_dvb_t_service(service['sref']) else 'dvb'
+                    service_type = 'dvbt' if self.epg_mapper._is_dvb_t_service(
+                        service['sref']) else 'dvb'
 
                     matches.append({
                         'type': service_type,
@@ -8600,16 +9382,21 @@ class ManualMatchEditor(Screen):
                     })
 
         # Extended search by similarity across all DVB services
-        # for service_name, services in list(self.epg_mapper.mapping.dvb.items())[:1000]:  # Limit for performance
+        # for service_name, services in
+        # list(self.epg_mapper.mapping.dvb.items())[:1000]:  # Limit for
+        # performance
         limit = config.plugins.m3uconverter.dvb_search_limit.value
-        for service_name, services in list(self.epg_mapper.mapping.dvb.items())[:limit]:
+        for service_name, services in list(
+                self.epg_mapper.mapping.dvb.items())[:limit]:
             if len(services) == 0:
                 continue
 
-            similarity = self.epg_mapper._calculate_similarity(clean_name, service_name)
+            similarity = self.epg_mapper._calculate_similarity(
+                clean_name, service_name)
             if similarity > self.epg_mapper.similarity_threshold_dvb:
                 service = services[0]
-                service_type = 'dvbt' if self.epg_mapper._is_dvb_t_service(service['sref']) else 'dvb'
+                service_type = 'dvbt' if self.epg_mapper._is_dvb_t_service(
+                    service['sref']) else 'dvb'
 
                 matches.append({
                     'type': service_type,
@@ -8624,13 +9411,15 @@ class ManualMatchEditor(Screen):
     def assign_selected_match(self):
         """Assign the selected match to current channel with OK button"""
         if self.current_focus != "right":
-            self["status"].setText(_("First select a match from the right list (use RIGHT arrow)"))
+            self["status"].setText(
+                _("First select a match from the right list (use RIGHT arrow)"))
             return
 
         match_index = self["match_list"].getSelectedIndex()
         if (match_index < 0 or match_index >= len(self.current_suggestions) or
                 self.current_channel_index >= len(self.conversion_data)):
-            self["status"].setText(_("Please select a valid match from the right list"))
+            self["status"].setText(
+                _("Please select a valid match from the right list"))
             return
 
         channel_data = self.conversion_data[self.current_channel_index]
@@ -8645,11 +9434,13 @@ class ManualMatchEditor(Screen):
         # Store original data for reset capability - IMPORTANT FIX
         if 'original_sref' not in channel_data:
             channel_data['original_sref'] = channel_data.get('sref', '')
-            channel_data['original_match_type'] = channel_data.get('match_type', '')
+            channel_data['original_match_type'] = channel_data.get(
+                'match_type', '')
 
         # Match type - mark as TRULY MANUAL
         base_type = selected_match['type']  # 'rytec', 'dvb', 'dvbt'
-        match_type = f"manual_{base_type}"  # 'manual_rytec', 'manual_dvb', 'manual_dvbt'
+        # 'manual_rytec', 'manual_dvb', 'manual_dvbt'
+        match_type = f"manual_{base_type}"
 
         channel_data['sref'] = selected_match['sref']
         channel_data['match_type'] = match_type
@@ -8663,7 +9454,8 @@ class ManualMatchEditor(Screen):
         if original_sref and original_sref != current_sref:
             self.changes_made = True
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"📝 MANUAL CHANGE: {channel_name} - {original_sref[:30]} -> {current_sref[:30]}")
+                logger.info(
+                    f"📝 MANUAL CHANGE: {channel_name} - {original_sref[:30]} -> {current_sref[:30]}")
         else:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(f"ℹ️ No real change: {channel_name}")
@@ -8677,13 +9469,15 @@ class ManualMatchEditor(Screen):
         self["channel_list"].selectionEnabled(1)
         self["match_list"].selectionEnabled(0)
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Manual assignment CONFIRMED: {channel_name} -> {match_type}")
+            logger.info(
+                f"Manual assignment CONFIRMED: {channel_name} -> {match_type}")
 
         self["status"].setText(_("EPG assigned: {} | {}").format(
             channel_name, selected_match['name']))
 
         # Refresh suggestions for next channel
-        # self.channel_selected() # better on break, after EPG assignment, suggested refreshments are useless
+        # self.channel_selected() # better on break, after EPG assignment,
+        # suggested refreshments are useless
 
     def save_undo_state(self, channel_data):
         """Save current state for undo functionality"""
@@ -8732,8 +9526,9 @@ class ManualMatchEditor(Screen):
                 self["channel_list"].moveToIndex(channel_index)
                 self.current_channel_index = channel_index
 
-                self["status"].setText(_("Undo: Restored previous state for {}").format(
-                    last_action['channel_name']))
+                self["status"].setText(
+                    _("Undo: Restored previous state for {}").format(
+                        last_action['channel_name']))
 
                 # Refresh suggestions
                 self.channel_selected()
@@ -8764,14 +9559,16 @@ class ManualMatchEditor(Screen):
         # Restore original data if available
         if 'original_sref' in channel_data:
             channel_data['sref'] = channel_data['original_sref']
-            channel_data['match_type'] = channel_data.get('original_match_type', 'iptv_fallback')
+            channel_data['match_type'] = channel_data.get(
+                'original_match_type', 'iptv_fallback')
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(f"🔄 RESET TO ORIGINAL: {channel_name}")
         else:
             # Regenerate IPTV reference as fallback
             url = channel_data.get('url', '')
             if url:
-                channel_data['sref'] = self.epg_mapper._generate_service_reference(url)
+                channel_data['sref'] = self.epg_mapper._generate_service_reference(
+                    url)
                 channel_data['match_type'] = 'iptv_fallback'
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"🔄 RESET TO IPTV: {channel_name}")
@@ -8793,7 +9590,8 @@ class ManualMatchEditor(Screen):
     def write_group_bouquet(self, group, channels):
         """Use CoreConverter for bouquet writing"""
         safe_name = self.core_converter.get_safe_filename(group)
-        return self.core_converter.write_group_bouquet(safe_name, channels, self.epg_mapper)
+        return self.core_converter.write_group_bouquet(
+            safe_name, channels, self.epg_mapper)
 
     def update_main_bouquet(self, groups):
         """Use CoreConverter for main bouquet update"""
@@ -8819,7 +9617,8 @@ class ManualMatchEditor(Screen):
         self.current_focus = "left"
         self["channel_list"].selectionEnabled(1)
         self["match_list"].selectionEnabled(0)
-        self["status"].setText(_("Select a channel to edit (use OK or RIGHT to go to matches)"))
+        self["status"].setText(
+            _("Select a channel to edit (use OK or RIGHT to go to matches)"))
 
     def focus_right(self):
         """Move focus to right list"""
@@ -8844,7 +9643,8 @@ class ManualMatchEditor(Screen):
             self["match_list"].moveToIndex(0)
             self["status"].setText(_("Select a match and press OK to assign"))
         else:
-            self["status"].setText(_("No matches found - try different search"))
+            self["status"].setText(
+                _("No matches found - try different search"))
 
     def up(self):
         """Navigate up in current list"""
@@ -9019,12 +9819,16 @@ class ManualDatabaseEditor(Screen):
             # 🔥 Update button labels based on selection mode
             if self.selection_mode:
                 self["key_green"].setText(_("Done"))
-                self["status"].setText(_("Selection mode active. Select items with OK"))
+                self["status"].setText(
+                    _("Selection mode active. Select items with OK"))
             else:
                 self["key_green"].setText(_("Select"))
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ Database reloaded. Selection mode: {self.selection_mode}, View: {'duplicates' if self.showing_duplicates else 'all'}")
+                logger.info(
+                    f"✅ Database reloaded. Selection mode: {
+                        self.selection_mode}, View: {
+                        'duplicates' if self.showing_duplicates else 'all'}")
 
         except Exception as e:
             logger.error(f"Error loading database: {str(e)}")
@@ -9099,7 +9903,8 @@ class ManualDatabaseEditor(Screen):
                 prefix = "[X] " if i in self.selected_items else "[ ] " if self.selection_mode else ""
                 # sref_short = sref[:30] + "..." if len(sref) > 30 else sref
 
-                display_text = f"{prefix}{i + 1:03d}. {channel_name} [{match_type}]"
+                display_text = f"{prefix}{
+                    i + 1:03d}. {channel_name} [{match_type}]"
                 if len(display_text) > 80:
                     display_text = display_text[:77] + "..."
 
@@ -9120,7 +9925,9 @@ class ManualDatabaseEditor(Screen):
                     duplicates[clean_name] = []
                 duplicates[clean_name].append((i, mapping))
 
-        return {name: entries for name, entries in duplicates.items() if len(entries) > 1}
+        return {
+            name: entries for name,
+            entries in duplicates.items() if len(entries) > 1}
 
     def toggle_duplicates_view(self):
         """Toggle between all mappings and duplicates view - IMPROVED"""
@@ -9195,17 +10002,22 @@ class ManualDatabaseEditor(Screen):
         # Header with information
         if self.selection_mode:
             display_list.append(_(">>> SELECTION MODE - Select items with OK"))
-            display_list.append(_(">>> {} duplicate groups, {} total mappings").format(len(duplicates), total_duplicates))
+            display_list.append(
+                _(">>> {} duplicate groups, {} total mappings").format(
+                    len(duplicates), total_duplicates))
         else:
             display_list.append(_(">>> DUPLICATES VIEW"))
-            display_list.append(_(">>> {} groups, {} mappings total").format(len(duplicates), total_duplicates))
+            display_list.append(
+                _(">>> {} groups, {} mappings total").format(
+                    len(duplicates), total_duplicates))
 
         self.duplicates_data.append(("header", "info"))
         self.duplicates_data.append(("header", "info"))
 
         for clean_name, entries in duplicates.items():
             # Group header
-            group_header = _("--- {} ({} duplicates) ---").format(clean_name, len(entries))
+            group_header = _(
+                "--- {} ({} duplicates) ---").format(clean_name, len(entries))
             display_list.append(group_header)
             self.duplicates_data.append(("group_header", clean_name))
 
@@ -9221,14 +10033,16 @@ class ManualDatabaseEditor(Screen):
                     # Format display text
                     display_text = f"{prefix}{channel_name} [{match_type}]"
                     if sref:
-                        sref_short = sref[:25] + "..." if len(sref) > 25 else sref
+                        sref_short = sref[:25] + \
+                            "..." if len(sref) > 25 else sref
                         display_text += f" - {sref_short}"
 
                     if len(display_text) > 80:
                         display_text = display_text[:77] + "..."
 
                     display_list.append(display_text)
-                    self.duplicates_data.append(("duplicate", orig_index, mapping))
+                    self.duplicates_data.append(
+                        ("duplicate", orig_index, mapping))
 
         self["mapping_list"].setList(display_list)
         self.update_status()
@@ -9239,7 +10053,8 @@ class ManualDatabaseEditor(Screen):
         selected_count = len(self.selected_items)
 
         if self.selection_mode:
-            status_text = _("SELECTION MODE: {} items selected").format(selected_count)
+            status_text = _("SELECTION MODE: {} items selected").format(
+                selected_count)
             if self.showing_duplicates:
                 duplicates = self.find_duplicates()
                 if duplicates:
@@ -9253,7 +10068,8 @@ class ManualDatabaseEditor(Screen):
                 else:
                     status_text = _("No duplicates found")
             else:
-                status_text = _("ALL MAPPINGS: {} total").format(len(self.mappings))
+                status_text = _("ALL MAPPINGS: {} total").format(
+                    len(self.mappings))
 
         self["status"].setText(status_text)
 
@@ -9269,7 +10085,8 @@ class ManualDatabaseEditor(Screen):
             return
 
         selected_count = len(self.selected_items)
-        message = _("Delete {} selected items?\n\nThis action cannot be undone.").format(selected_count)
+        message = _("Delete {} selected items?\n\nThis action cannot be undone.").format(
+            selected_count)
 
         def confirm_callback(result):
             if result:
@@ -9294,25 +10111,35 @@ class ManualDatabaseEditor(Screen):
                     if was_showing_duplicates:
                         remaining_duplicates = self.find_duplicates()
                         if remaining_duplicates:
-                            # Still duplicates remaining, stay in duplicates view
+                            # Still duplicates remaining, stay in duplicates
+                            # view
                             self.show_duplicates()
-                            self["status"].setText(_("Deleted {} items. Still in selection mode.").format(selected_count))
+                            self["status"].setText(
+                                _("Deleted {} items. Still in selection mode.").format(selected_count))
                         else:
-                            # No more duplicates, return to normal view but REMAIN in selection mode
+                            # No more duplicates, return to normal view but
+                            # REMAIN in selection mode
                             self.showing_duplicates = False
                             self.show_all_mappings()
-                            self["status"].setText(_("Deleted {} items. No more duplicates.").format(selected_count))
+                            self["status"].setText(
+                                _("Deleted {} items. No more duplicates.").format(selected_count))
                     else:
                         # Was in normal view, remain there
                         self.show_all_mappings()
-                        self["status"].setText(_("Deleted {} items").format(selected_count))
+                        self["status"].setText(
+                            _("Deleted {} items").format(selected_count))
 
-                    logger.info(f"✅ Deleted {selected_count} items, remained in selection mode")
+                    logger.info(
+                        f"✅ Deleted {selected_count} items, remained in selection mode")
 
                 else:
                     self["status"].setText(_("Error deleting items"))
 
-        self.session.openWithCallback(confirm_callback, MessageBox, message, MessageBox.TYPE_YESNO)
+        self.session.openWithCallback(
+            confirm_callback,
+            MessageBox,
+            message,
+            MessageBox.TYPE_YESNO)
 
     def perform_bulk_delete(self):
         """Actually delete the selected mappings"""
@@ -9335,7 +10162,10 @@ class ManualDatabaseEditor(Screen):
             for index in deleted_indices:
                 if 0 <= index < len(temp_mappings):
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"🗑️ Deleting index {index}: {temp_mappings[index].get('channel_name', 'Unknown')}")
+                        logger.info(
+                            f"🗑️ Deleting index {index}: {
+                                temp_mappings[index].get(
+                                    'channel_name', 'Unknown')}")
                     del temp_mappings[index]
 
             new_mappings = temp_mappings
@@ -9351,7 +10181,9 @@ class ManualDatabaseEditor(Screen):
                     # Update local cache
                     self.mappings = new_mappings
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"✅ Deleted {deleted_count} mappings, new total: {len(new_mappings)}")
+                        logger.info(
+                            f"✅ Deleted {deleted_count} mappings, new total: {
+                                len(new_mappings)}")
                     return True
 
             return False
@@ -9364,7 +10196,9 @@ class ManualDatabaseEditor(Screen):
         """Delete selected mapping with proper GUI update"""
         mapping = self.get_current_mapping()
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"🔍 delete_mapping called, mapping: {mapping is not None}")
+            logger.debug(
+                f"🔍 delete_mapping called, mapping: {
+                    mapping is not None}")
 
         if not mapping:
             if config.plugins.m3uconverter.enable_debug.value:
@@ -9407,7 +10241,11 @@ class ManualDatabaseEditor(Screen):
                 else:
                     self["status"].setText(_("Error deleting mapping"))
 
-        self.session.openWithCallback(confirm_callback, MessageBox, message, MessageBox.TYPE_YESNO)
+        self.session.openWithCallback(
+            confirm_callback,
+            MessageBox,
+            message,
+            MessageBox.TYPE_YESNO)
 
     def perform_delete_mapping(self, mapping_to_delete):
         """Actually delete the specified mapping"""
@@ -9424,7 +10262,9 @@ class ManualDatabaseEditor(Screen):
                         mapping.get('assigned_sref') == mapping_to_delete.get('assigned_sref')):
                     deleted = True
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"✅ Deleted mapping: {mapping_to_delete.get('channel_name')}")
+                        logger.info(
+                            f"✅ Deleted mapping: {
+                                mapping_to_delete.get('channel_name')}")
                 else:
                     new_mappings.append(mapping)
 
@@ -9439,7 +10279,8 @@ class ManualDatabaseEditor(Screen):
                     return True
                 else:
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.error("❌ Failed to save database after deletion")
+                        logger.error(
+                            "❌ Failed to save database after deletion")
                     return False
             else:
                 if config.plugins.m3uconverter.enable_debug.value:
@@ -9455,7 +10296,8 @@ class ManualDatabaseEditor(Screen):
         selected_index = self["mapping_list"].getSelectedIndex()
 
         if self.showing_duplicates:
-            if selected_index < 0 or selected_index >= len(self.duplicates_data):
+            if selected_index < 0 or selected_index >= len(
+                    self.duplicates_data):
                 return None
             entry = self.duplicates_data[selected_index]
             if entry[0] == "mapping" and len(entry) >= 3:
@@ -9500,7 +10342,9 @@ class ManualDatabaseEditor(Screen):
                 self.show_all_mappings()
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Opening ManualMatchEditor for: {mapping.get('channel_name')}")
+            logger.info(
+                f"Opening ManualMatchEditor for: {
+                    mapping.get('channel_name')}")
 
         self.session.openWithCallback(
             mapping_editor_closed,
@@ -9540,7 +10384,8 @@ class ManualDatabaseEditor(Screen):
             self.close()
             return
 
-        message = _("You have unsaved changes in the database.\n\nDo you want to save before closing?")
+        message = _(
+            "You have unsaved changes in the database.\n\nDo you want to save before closing?")
 
         def callback(result):
             if result:
@@ -9646,7 +10491,8 @@ class ManualDatabaseManager:
                 self.db_path = "/tmp/manual_mappings.json"
                 if not exists(self.db_path):
                     with open(self.db_path, 'w', encoding='utf-8') as f:
-                        json.dump(initial_data, f, indent=2, ensure_ascii=False)
+                        json.dump(
+                            initial_data, f, indent=2, ensure_ascii=False)
 
     def load_database(self):
         """Load the database from memory with enhanced error recovery AND CACHE"""
@@ -9659,7 +10505,8 @@ class ManualDatabaseManager:
             # If the file doesn’t exist, create a default structure
             if not exists(self.db_path):
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info("Database file not found, creating default structure")
+                    logger.info(
+                        "Database file not found, creating default structure")
                 data = self._get_default_structure()
                 self._cached_db = data  # ✅ SAVE TO CACHE
                 return data
@@ -9671,7 +10518,8 @@ class ManualDatabaseManager:
             # Handle empty file
             if not content:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.warning("Database file is empty, creating default structure")
+                    logger.warning(
+                        "Database file is empty, creating default structure")
                 data = self._get_default_structure()
                 self._cached_db = data  # ✅ SAVE TO CACHE
                 return data
@@ -9707,10 +10555,13 @@ class ManualDatabaseManager:
 
                     # Backup the corrupted file
                     if exists(self.db_path):
-                        corrupt_backup = f"{self.db_path}.corrupted_{strftime('%Y%m%d_%H%M%S')}"
+                        corrupt_backup = f"{
+                            self.db_path}.corrupted_{
+                            strftime('%Y%m%d_%H%M%S')}"
                         shutil.copy2(self.db_path, corrupt_backup)
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info(f"Backed up corrupted file to: {corrupt_backup}")
+                            logger.info(
+                                f"Backed up corrupted file to: {corrupt_backup}")
 
                     data = self._get_default_structure()
                     self._cached_db = data  # ✅ SAVE TO CACHE
@@ -9723,17 +10574,18 @@ class ManualDatabaseManager:
                     if isinstance(mapping, dict):
                         # Ensure all mappings have a consistent structure
                         normalized_mapping = {
-                            'channel_name': mapping.get('channel_name', ''),
-                            'original_name': mapping.get('original_name', mapping.get('channel_name', '')),
-                            'clean_name': mapping.get('clean_name', ''),
-                            'tvg_id': mapping.get('tvg_id', ''),
-                            'assigned_sref': mapping.get('assigned_sref', ''),
-                            'match_type': mapping.get('match_type', 'manual_db'),
-                            'similarity': mapping.get('similarity', 1.0),
-                            'bouquet_source': mapping.get('bouquet_source', 'unknown'),
-                            'created': mapping.get('created', ''),
-                            'last_used': mapping.get('last_used', '')
-                        }
+                            'channel_name': mapping.get(
+                                'channel_name', ''), 'original_name': mapping.get(
+                                'original_name', mapping.get(
+                                    'channel_name', '')), 'clean_name': mapping.get(
+                                'clean_name', ''), 'tvg_id': mapping.get(
+                                'tvg_id', ''), 'assigned_sref': mapping.get(
+                                'assigned_sref', ''), 'match_type': mapping.get(
+                                'match_type', 'manual_db'), 'similarity': mapping.get(
+                                    'similarity', 1.0), 'bouquet_source': mapping.get(
+                                        'bouquet_source', 'unknown'), 'created': mapping.get(
+                                            'created', ''), 'last_used': mapping.get(
+                                                'last_used', '')}
 
                         # Remove original_sref if it exists
                         if 'original_sref' in mapping:
@@ -9754,7 +10606,8 @@ class ManualDatabaseManager:
     def find_mapping(self, channel_name, tvg_id=None, clean_name=None):
         """ULTRA OPTIMIZED version with pre-built indexes"""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"🔍 MANUAL DB FIND_MAPPING: '{channel_name}' -> '{clean_name}'")
+            logger.debug(
+                f"🔍 MANUAL DB FIND_MAPPING: '{channel_name}' -> '{clean_name}'")
         try:
             if not hasattr(self, '_manual_cache'):
                 self._manual_cache = {}
@@ -9805,28 +10658,37 @@ class ManualDatabaseManager:
                         mapping_data.get('tvg_id'),
                         mapping_data.get('clean_name')
                     )
-                    if existing and existing.get('assigned_sref') == mapping_data.get('assigned_sref'):
+                    if existing and existing.get(
+                            'assigned_sref') == mapping_data.get('assigned_sref'):
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.debug(f"🔄 Auto-save skip: identical mapping already exists for {mapping_data.get('channel_name')}")
+                            logger.debug(
+                                f"🔄 Auto-save skip: identical mapping already exists for {
+                                    mapping_data.get('channel_name')}")
                         return True  # Do not save duplicates
 
                 # Check that assigned_sref is not an encoded URL
                 assigned_sref = mapping_data.get('assigned_sref', '')
                 if assigned_sref and assigned_sref.startswith('http'):
-                    # This is a URL, not a valid service reference – convert it properly
+                    # This is a URL, not a valid service reference – convert it
+                    # properly
                     if hasattr(self, 'epg_mapper') and self.epg_mapper:
-                        mapping_data['assigned_sref'] = self.epg_mapper._generate_service_reference(assigned_sref)
+                        mapping_data['assigned_sref'] = self.epg_mapper._generate_service_reference(
+                            assigned_sref)
                     else:
                         # Fallback: generate an IPTV-style service reference
-                        url_hash = hashlib.md5(assigned_sref.encode('utf-8')).hexdigest()[:8]
+                        url_hash = hashlib.md5(
+                            assigned_sref.encode('utf-8')).hexdigest()[:8]
                         service_id = int(url_hash, 16) % 65536
-                        encoded_url = assigned_sref.replace(':', '%3a').replace(' ', '%20')
+                        encoded_url = assigned_sref.replace(
+                            ':', '%3a').replace(' ', '%20')
                         mapping_data['assigned_sref'] = f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
 
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"💾 SAVE: {mapping_data.get('channel_name')} -> {mapping_data.get('assigned_sref')}")
+                    logger.info(
+                        f"💾 SAVE: {mapping_data.get('channel_name')} -> {mapping_data.get('assigned_sref')}")
 
-                if not mapping_data.get('assigned_sref') or not mapping_data.get('channel_name'):
+                if not mapping_data.get(
+                        'assigned_sref') or not mapping_data.get('channel_name'):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.error("❌ Invalid mapping data")
                     return False
@@ -9858,9 +10720,13 @@ class ManualDatabaseManager:
                 success = self.save_database(data)
 
                 if success:
-                    logger.info(f"✅ Saved successfully: {mapping_data.get('channel_name')}")
+                    logger.info(
+                        f"✅ Saved successfully: {
+                            mapping_data.get('channel_name')}")
                 else:
-                    logger.error(f"❌ Save failed: {mapping_data.get('channel_name')}")
+                    logger.error(
+                        f"❌ Save failed: {
+                            mapping_data.get('channel_name')}")
 
                 return success
 
@@ -9891,7 +10757,9 @@ class ManualDatabaseManager:
                 data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
 
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"📏 Enforced DB size limit: {len(mappings)} -> {max_size}")
+                    logger.info(
+                        f"📏 Enforced DB size limit: {
+                            len(mappings)} -> {max_size}")
 
                 # Save directly without calling save_database
                 temp_path = f"{self.db_path}.tmp"
@@ -9909,7 +10777,8 @@ class ManualDatabaseManager:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("💾 SAVE DATABASE DEBUG: Starting save process")
                 logger.info(f"   Data type: {type(data)}")
-                logger.info(f"   Mappings count: {len(data.get('mappings', []))}")
+                logger.info(
+                    f"   Mappings count: {len(data.get('mappings', []))}")
 
             # Validate data structure before saving
             if not isinstance(data, dict) or 'mappings' not in data:
@@ -9934,18 +10803,22 @@ class ManualDatabaseManager:
                 else:
                     corrupted_count += 1
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"⚠️ Corrupted mapping at index {i}: {mapping}")
+                        logger.warning(
+                            f"⚠️ Corrupted mapping at index {i}: {mapping}")
 
             if corrupted_count > 0:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.warning(f"⚠️ Found {corrupted_count} corrupted mappings")
+                    logger.warning(
+                        f"⚠️ Found {corrupted_count} corrupted mappings")
 
             data['mappings'] = valid_mappings
             data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
 
             # DEBUG: Log before file operations
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"💾 About to write {len(valid_mappings)} mappings to file")
+                logger.info(
+                    f"💾 About to write {
+                        len(valid_mappings)} mappings to file")
 
             # Save with atomic write and verification
             temp_path = f"{self.db_path}.tmp"
@@ -9968,11 +10841,18 @@ class ManualDatabaseManager:
                 with open(temp_path, 'r', encoding='utf-8') as f:
                     saved_content = f.read()
                     if config.plugins.m3uconverter.enable_debug.value:
-                        verified_data = json.loads(saved_content)  # Test reading
-                        logger.info(f"✅ Saved file verification PASSED: {len(verified_data.get('mappings', []))} mappings loaded successfully")
+                        verified_data = json.loads(
+                            saved_content)  # Test reading
+                        logger.info(
+                            f"✅ Saved file verification PASSED: {
+                                len(
+                                    verified_data.get(
+                                        'mappings',
+                                        []))} mappings loaded successfully")
             except json.JSONDecodeError as e:
                 logger.error(f"❌ Saved file verification FAILED: {str(e)}")
-                logger.error(f"❌ Corrupted content: {saved_content[e.pos - 50:e.pos + 50]}")
+                logger.error(
+                    f"❌ Corrupted content: {saved_content[e.pos - 50:e.pos + 50]}")
                 return False
 
             # Replace original file
@@ -10039,7 +10919,9 @@ class ManualDatabaseManager:
 
         self._manual_indexes_built = True
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"✅ Built manual DB indexes: {len(mappings)} mappings")
+            logger.debug(
+                f"✅ Built manual DB indexes: {
+                    len(mappings)} mappings")
 
     def cleanup_inconsistent_data(self):
         """Remove inconsistent entries from the manual database"""
@@ -10057,7 +10939,8 @@ class ManualDatabaseManager:
                     continue
 
                 # Check for mandatory fields
-                if not mapping.get('channel_name') or not mapping.get('assigned_sref'):
+                if not mapping.get('channel_name') or not mapping.get(
+                        'assigned_sref'):
                     removed_count += 1
                     continue
 
@@ -10072,7 +10955,8 @@ class ManualDatabaseManager:
                 data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
                 self.save_database(data)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"🧹 Cleaned {removed_count} inconsistent mappings from database")
+                    logger.info(
+                        f"🧹 Cleaned {removed_count} inconsistent mappings from database")
 
             return removed_count
 
@@ -10091,7 +10975,9 @@ class ManualDatabaseManager:
                 content = f.read()
 
             # Create emergency backup
-            emergency_backup = f"{self.db_path}.emergency_backup_{strftime('%Y%m%d_%H%M%S')}"
+            emergency_backup = f"{
+                self.db_path}.emergency_backup_{
+                strftime('%Y%m%d_%H%M%S')}"
             with open(emergency_backup, 'w', encoding='utf-8') as f:
                 f.write(content)
 
@@ -10103,13 +10989,16 @@ class ManualDatabaseManager:
             for mapping_str in potential_mappings:
                 try:
                     # Clean up the mapping string
-                    mapping_str = sub(r',\s*}', '}', mapping_str)  # Remove trailing commas
-                    mapping_str = sub(r'"\s*"', '": "', mapping_str)  # Fix missing colons
+                    mapping_str = sub(
+                        r',\s*}', '}', mapping_str)  # Remove trailing commas
+                    mapping_str = sub(
+                        r'"\s*"', '": "', mapping_str)  # Fix missing colons
 
                     mapping = json.loads(mapping_str)
-                    if isinstance(mapping, dict) and mapping.get('channel_name'):
+                    if isinstance(mapping,
+                                  dict) and mapping.get('channel_name'):
                         valid_mappings.append(mapping)
-                except:
+                except BaseException:
                     continue
 
             # Create new database structure
@@ -10121,7 +11010,9 @@ class ManualDatabaseManager:
                 json.dump(new_data, f, indent=2, ensure_ascii=False)
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ Emergency repair completed. Recovered {len(valid_mappings)} mappings.")
+                logger.info(
+                    f"✅ Emergency repair completed. Recovered {
+                        len(valid_mappings)} mappings.")
             return True
 
         except Exception as e:
@@ -10137,7 +11028,9 @@ class ManualDatabaseManager:
         try:
             # Create backup before saving
             if exists(self.db_path):
-                backup_path = f"{self.db_path}.backup_{strftime('%Y%m%d_%H%M%S')}"
+                backup_path = f"{
+                    self.db_path}.backup_{
+                    strftime('%Y%m%d_%H%M%S')}"
                 shutil.copy2(self.db_path, backup_path)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"Created backup: {backup_path}")
@@ -10174,18 +11067,22 @@ class ManualDatabaseManager:
             for i, mapping in enumerate(data.get('mappings', [])):
                 if not isinstance(mapping, dict):
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"⚠️ Mapping {i} is not a dict: {mapping}")
+                        logger.warning(
+                            f"⚠️ Mapping {i} is not a dict: {mapping}")
                     continue
 
-                if not mapping.get('channel_name') or not mapping.get('assigned_sref'):
+                if not mapping.get('channel_name') or not mapping.get(
+                        'assigned_sref'):
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.warning(f"⚠️ Mapping {i} missing required fields: {mapping}")
+                        logger.warning(
+                            f"⚠️ Mapping {i} missing required fields: {mapping}")
                     continue
 
                 valid_count += 1
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ Database integrity check: {valid_count} valid mappings")
+                logger.info(
+                    f"✅ Database integrity check: {valid_count} valid mappings")
             return True
 
         except Exception as e:
@@ -10243,7 +11140,10 @@ class ManualDatabaseManager:
             if open_braces > close_braces:
                 fixed += '}' * (open_braces - close_braces)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"Added {open_braces - close_braces} missing closing braces")
+                    logger.info(
+                        f"Added {
+                            open_braces -
+                            close_braces} missing closing braces")
             elif close_braces > open_braces:
                 # Remove extra closing braces from end
                 while close_braces > open_braces and fixed.endswith('}'):
@@ -10282,14 +11182,18 @@ class ManualDatabaseManager:
 
             if first_brace == -1 or last_brace == -1:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.warning("No valid JSON structure found, creating default")
+                    logger.warning(
+                        "No valid JSON structure found, creating default")
                 return json.dumps(self._get_default_structure())
 
             # Extract the main content between first { and last }
             json_content = content[first_brace:last_brace + 1]
 
             # Fix common pattern: "key" "value" should be "key": "value"
-            json_content = sub(r'("[^"]+")\s+"([^"]+)"', r'\1: "\2"', json_content)
+            json_content = sub(
+                r'("[^"]+")\s+"([^"]+)"',
+                r'\1: "\2"',
+                json_content)
 
             # Fix missing commas between objects in mappings array
             json_content = sub(r'"\s*}\s*"', '"}, "', json_content)
@@ -10328,9 +11232,13 @@ class ManualDatabaseManager:
                     try:
                         remove(backup)
                         if config.plugins.m3uconverter.enable_debug.value:
-                            logger.info(f"🧹 Removed old backup: {basename(backup)}")
+                            logger.info(
+                                f"🧹 Removed old backup: {
+                                    basename(backup)}")
                     except Exception as e:
-                        logger.error(f"❌ Error removing backup {backup}: {str(e)}")
+                        logger.error(
+                            f"❌ Error removing backup {backup}: {
+                                str(e)}")
 
         except Exception as e:
             logger.error(f"Backup cleanup error: {str(e)}")
@@ -10351,12 +11259,15 @@ class ManualDatabaseManager:
                     encoded_url = url.replace(':', '%3a').replace(' ', '%20')
                     mapping['assigned_sref'] = f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
                     fixed_count += 1
-                    logger.info(f"🔧 Fixed mapping: {mapping.get('channel_name')}")
+                    logger.info(
+                        f"🔧 Fixed mapping: {
+                            mapping.get('channel_name')}")
 
             if fixed_count > 0:
                 data['mappings'] = mappings
                 self.save_database(data)
-                logger.info(f"✅ Fixed {fixed_count} mappings with URL instead of service reference")
+                logger.info(
+                    f"✅ Fixed {fixed_count} mappings with URL instead of service reference")
 
             return fixed_count
 
@@ -10370,7 +11281,8 @@ def main(session, **kwargs):
     if config.plugins.m3uconverter.enable_debug.value:
         logger.info(f"🚀 Plugin starting, storage: {ARCHIMEDE_CONVERTER_PATH}")
         core_converter._log_current_configuration
-        core_converter.cleanup_old_backups(config.plugins.m3uconverter.max_backups.value)
+        core_converter.cleanup_old_backups(
+            config.plugins.m3uconverter.max_backups.value)
     session.open(ConversionSelector)
 
 

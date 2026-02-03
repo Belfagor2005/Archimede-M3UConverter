@@ -79,8 +79,12 @@ class CoreConverter:
     def __init__(self):
         """Initialize core converter with directories and logging."""
         if not self.__initialized:
-            self.backup_dir = join(ARCHIMEDE_CONVERTER_PATH, "archimede_backup")
-            self.log_file = join(ARCHIMEDE_CONVERTER_PATH, "core_converter_archimede_converter.log")
+            self.backup_dir = join(
+                ARCHIMEDE_CONVERTER_PATH,
+                "archimede_backup")
+            self.log_file = join(
+                ARCHIMEDE_CONVERTER_PATH,
+                "core_converter_archimede_converter.log")
             self._create_necessary_directories()
             self.__initialized = True
 
@@ -89,43 +93,80 @@ class CoreConverter:
         try:
             logger.info("=== CURRENT CONFIGURATION (Setup Order) ===")
             logger.info("📁 FILE & STORAGE SETTINGS:")
-            logger.info(f"  • Default Folder: {config.plugins.m3uconverter.lastdir.value}")
-            logger.info(f"  • Large file threshold: {config.plugins.m3uconverter.large_file_threshold_mb.value} MB")
+            logger.info(
+                f"  • Default Folder: {
+                    config.plugins.m3uconverter.lastdir.value}")
+            logger.info(
+                f"  • Large file threshold: {
+                    config.plugins.m3uconverter.large_file_threshold_mb.value} MB")
 
             logger.info("🎯 BOUQUET SETTINGS:")
-            logger.info(f"  • Bouquet Mode: {config.plugins.m3uconverter.bouquet_mode.value}")
-            logger.info(f"  • Bouquet Position: {config.plugins.m3uconverter.bouquet_position.value}")
+            logger.info(
+                f"  • Bouquet Mode: {
+                    config.plugins.m3uconverter.bouquet_mode.value}")
+            logger.info(
+                f"  • Bouquet Position: {
+                    config.plugins.m3uconverter.bouquet_position.value}")
 
             logger.info("🔧 STREAM & CONVERSION:")
-            logger.info(f"  • Convert HLS Streams: {config.plugins.m3uconverter.hls_convert.value}")
+            logger.info(
+                f"  • Convert HLS Streams: {
+                    config.plugins.m3uconverter.hls_convert.value}")
 
             logger.info("⚙️ SYSTEM SETTINGS:")
-            logger.info(f"  • Create Backup: {config.plugins.m3uconverter.backup_enable.value}")
-            logger.info(f"  • Max Backups: {config.plugins.m3uconverter.max_backups.value}")
-            logger.info(f"  • Debug Mode: {config.plugins.m3uconverter.enable_debug.value}")
+            logger.info(
+                f"  • Create Backup: {
+                    config.plugins.m3uconverter.backup_enable.value}")
+            logger.info(
+                f"  • Max Backups: {
+                    config.plugins.m3uconverter.max_backups.value}")
+            logger.info(
+                f"  • Debug Mode: {
+                    config.plugins.m3uconverter.enable_debug.value}")
 
             logger.info("📡 EPG SETTINGS:")
-            logger.info(f"  • Enable EPG: {config.plugins.m3uconverter.epg_enabled.value}")
+            logger.info(
+                f"  • Enable EPG: {
+                    config.plugins.m3uconverter.epg_enabled.value}")
 
             logger.info("  📊 EPG CONFIGURATION:")
-            logger.info(f"    • EPG Language: {config.plugins.m3uconverter.language.value}")
-            logger.info(f"    • EPG Generation Mode: {config.plugins.m3uconverter.epg_generation_mode.value}")
-            logger.info(f"    • Database Mode: {config.plugins.m3uconverter.epg_database_mode.value}")
-            logger.info(f"    • Use Manual Database: {config.plugins.m3uconverter.use_manual_database.value}")
-            logger.info(f"    • Ignore DVB-T services: {config.plugins.m3uconverter.ignore_dvbt.value}")
+            logger.info(
+                f"    • EPG Language: {
+                    config.plugins.m3uconverter.language.value}")
+            logger.info(
+                f"    • EPG Generation Mode: {
+                    config.plugins.m3uconverter.epg_generation_mode.value}")
+            logger.info(
+                f"    • Database Mode: {
+                    config.plugins.m3uconverter.epg_database_mode.value}")
+            logger.info(
+                f"    • Use Manual Database: {
+                    config.plugins.m3uconverter.use_manual_database.value}")
+            logger.info(
+                f"    • Ignore DVB-T services: {config.plugins.m3uconverter.ignore_dvbt.value}")
 
             logger.info("  🎯 SIMILARITY THRESHOLDS:")
-            logger.info(f"    • Global Similarity: {config.plugins.m3uconverter.similarity_threshold.value}%")
-            logger.info(f"    • Rytec Similarity: {config.plugins.m3uconverter.similarity_threshold_rytec.value}%")
-            logger.info(f"    • DVB Similarity: {config.plugins.m3uconverter.similarity_threshold_dvb.value}%")
+            logger.info(
+                f"    • Global Similarity: {
+                    config.plugins.m3uconverter.similarity_threshold.value}%")
+            logger.info(
+                f"    • Rytec Similarity: {
+                    config.plugins.m3uconverter.similarity_threshold_rytec.value}%")
+            logger.info(
+                f"    • DVB Similarity: {
+                    config.plugins.m3uconverter.similarity_threshold_dvb.value}%")
 
             logger.info("  💾 MANUAL DATABASE:")
-            logger.info(f"    • Manual DB Max Size: {config.plugins.m3uconverter.manual_db_max_size.value}")
-            logger.info(f"    • Auto-open Editor: {config.plugins.m3uconverter.auto_open_editor.value}")
+            logger.info(
+                f"    • Manual DB Max Size: {
+                    config.plugins.m3uconverter.manual_db_max_size.value}")
+            logger.info(
+                f"    • Auto-open Editor: {config.plugins.m3uconverter.auto_open_editor.value}")
 
             logger.info("  🗄️ DEBUG STORAGE:")
             logger.info(f"    • BASE_STORAGE_PATH: {BASE_STORAGE_PATH}")
-            logger.info(f"    • ARCHIMEDE_CONVERTER_PATH: {ARCHIMEDE_CONVERTER_PATH}")
+            logger.info(
+                f"    • ARCHIMEDE_CONVERTER_PATH: {ARCHIMEDE_CONVERTER_PATH}")
             logger.info(f"    • LOG_DIR: {LOG_DIR}")
             logger.info(f"    • DB PATCH: {DB_PATCH}")
             logger.info(f"    • USB exists: {isdir('/media/usb/')}")
@@ -159,7 +200,8 @@ class CoreConverter:
         safe_name = sub(r'_+', '_', safe_name).strip('_')
 
         suffix = "_m3ubouquet"
-        base_name = safe_name[:50 - len(suffix)] if len(safe_name) > 50 - len(suffix) else safe_name
+        base_name = safe_name[:50 - len(suffix)] if len(
+            safe_name) > 50 - len(suffix) else safe_name
 
         return base_name + suffix if base_name else "m3uconverter_bouquet"
 
@@ -188,7 +230,8 @@ class CoreConverter:
 
             with open(temp_file, "w", encoding="utf-8", buffering=65536) as f:
                 f.write(f"#NAME {name_bouquet}\n")
-                f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | Archimede Converter | ---\n")
+                f.write(
+                    "#SERVICE 1:64:0:0:0:0:0:0:0:0::--- | Archimede Converter | ---\n")
                 f.write("#DESCRIPTION --- | Archimede Converter | ---\n")
 
                 for ch in channels:
@@ -201,15 +244,18 @@ class CoreConverter:
 
                     if not service_ref:
                         if epg_mapper:
-                            service_ref = epg_mapper._generate_service_reference(ch['url'])
+                            service_ref = epg_mapper._generate_service_reference(
+                                ch['url'])
                         else:
-                            service_ref = self._generate_basic_service_reference(ch['url'])
+                            service_ref = self._generate_basic_service_reference(
+                                ch['url'])
 
                     f.write(f"#SERVICE {service_ref}\n")
 
                     # Clean name for description
                     desc = ch.get('name', 'Unknown Channel')
-                    desc = ''.join(c for c in desc if c.isprintable() or c.isspace())
+                    desc = ''.join(
+                        c for c in desc if c.isprintable() or c.isspace())
                     desc = transliterate_text(desc)
                     f.write(f"#DESCRIPTION {desc}\n")
 
@@ -219,7 +265,9 @@ class CoreConverter:
             replace(temp_file, filename)
             chmod(filename, 0o644)
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ Manual bouquet written: {safe_name} with {len(channels)} channels")
+                logger.info(
+                    f"✅ Manual bouquet written: {safe_name} with {
+                        len(channels)} channels")
             return True
 
         except Exception as e:
@@ -228,7 +276,9 @@ class CoreConverter:
                     remove(temp_file)
                 except Exception:
                     pass
-            logger.error(f"❌ Failed to write manual bouquet {safe_name}: {str(e)}")
+            logger.error(
+                f"❌ Failed to write manual bouquet {safe_name}: {
+                    str(e)}")
             return False
 
     def _generate_basic_service_reference(self, url):
@@ -262,7 +312,8 @@ class CoreConverter:
         for group in groups:
             safe_name = self.get_safe_filename(group)
             bouquet_path = "userbouquet." + safe_name + ".tv"
-            line_to_add = '#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "' + bouquet_path + '" ORDER BY bouquet\n'
+            line_to_add = '#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "' + \
+                bouquet_path + '" ORDER BY bouquet\n'
 
             # Check if line already exists
             if not any(line_to_add in line for line in existing_lines):
@@ -284,7 +335,9 @@ class CoreConverter:
             with open(main_file, "w", encoding="utf-8") as f:
                 f.writelines(final_content)
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Updated bouquets.tv with {len(new_lines)} new bouquets")
+                logger.info(
+                    f"Updated bouquets.tv with {
+                        len(new_lines)} new bouquets")
             return True
         except Exception as e:
             if config.plugins.m3uconverter.enable_debug.value:
@@ -301,7 +354,9 @@ class CoreConverter:
         except Exception as e:
             self._log_error(e)
             self._restore_backup()
-            raise RuntimeError(f"Conversion failed (restored backup). Error: {str(e)}")
+            raise RuntimeError(
+                f"Conversion failed (restored backup). Error: {
+                    str(e)}")
 
     def _create_backup(self):
         """Create a backup of the existing bouquets."""
@@ -309,12 +364,15 @@ class CoreConverter:
             if not exists("/etc/enigma2/bouquets.tv"):
                 return
 
-            self.cleanup_old_backups(config.plugins.m3uconverter.max_backups.value)
+            self.cleanup_old_backups(
+                config.plugins.m3uconverter.max_backups.value)
 
             timestamp = strftime("%Y%m%d_%H%M%S")
             import random
             unique_id = random.randint(100, 999)
-            backup_file = join(self.backup_dir, f"bouquets_{timestamp}_{unique_id}.tv")
+            backup_file = join(
+                self.backup_dir,
+                f"bouquets_{timestamp}_{unique_id}.tv")
             shutil.copy2("/etc/enigma2/bouquets.tv", backup_file)
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(f"💾 Backup created: {basename(backup_file)}")
@@ -325,8 +383,8 @@ class CoreConverter:
     def _restore_backup(self):
         """Restore the most recent available backup."""
         try:
-            backups = sorted([f for f in listdir(self.backup_dir)
-                              if f.startswith("bouquets_") and f.endswith(".tv")])
+            backups = sorted([f for f in listdir(self.backup_dir) if f.startswith(
+                "bouquets_") and f.endswith(".tv")])
 
             if backups:
                 latest_backup = join(self.backup_dir, backups[-1])
@@ -366,8 +424,8 @@ class CoreConverter:
     def cleanup_old_backups(self, max_backups=3):
         """Keep only the latest N backups."""
         try:
-            backups = sorted([f for f in listdir(self.backup_dir)
-                              if f.startswith("bouquets_") and f.endswith(".tv")])
+            backups = sorted([f for f in listdir(self.backup_dir) if f.startswith(
+                "bouquets_") and f.endswith(".tv")])
 
             for old_backup in backups[:-max_backups]:
                 remove(join(self.backup_dir, old_backup))
@@ -383,18 +441,24 @@ class UnifiedChannelMapping:
         # Rytec databases
         self.rytec = {
             'basic': {},                    # Base Rytec mapping (id -> sref)
-            'clean': {},                    # Clean names mapping (clean_name -> sref)
-            'extended': defaultdict(list),  # Extended info with variants (id -> [variants])
+            # Clean names mapping (clean_name -> sref)
+            'clean': {},
+            # Extended info with variants (id -> [variants])
+            'extended': defaultdict(list),
             'by_name': defaultdict(list)    # Rytec entries by channel name
         }
 
         # DVB databases
-        self.dvb = defaultdict(list)        # DVB channels from lamedb/bouquets (name -> [services])
+        # DVB channels from lamedb/bouquets (name -> [services])
+        self.dvb = defaultdict(list)
 
         # Optimized structures
-        self.optimized = {}                 # Optimized for matching (name -> best_service)
-        self.reverse_mapping = {}           # Reverse mapping (channel_id -> satellite)
-        self.auto_discovered = {}           # Auto-discovered references (channel_id -> sref)
+        # Optimized for matching (name -> best_service)
+        self.optimized = {}
+        # Reverse mapping (channel_id -> satellite)
+        self.reverse_mapping = {}
+        # Auto-discovered references (channel_id -> sref)
+        self.auto_discovered = {}
 
         # Caches
         self._clean_name_cache = {}         # Cache for cleaned names

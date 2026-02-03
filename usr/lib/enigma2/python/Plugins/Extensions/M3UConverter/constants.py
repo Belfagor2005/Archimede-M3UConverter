@@ -38,7 +38,8 @@ from .version import CURRENT_VERSION
 
 
 # ==================== CONSTANTS & PATHS ====================
-PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
+PLUGIN_TITLE = _(
+    "Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
 ARCHIMEDE_M3U_PATH = join(BASE_STORAGE_PATH, "movie")
@@ -72,7 +73,11 @@ class M3UConverterSettings(Setup):
 
     def __init__(self, session, parent=None):
         """Initialize settings screen."""
-        Setup.__init__(self, session, setup="M3UConverterSettings", plugin="Extensions/M3UConverter")
+        Setup.__init__(
+            self,
+            session,
+            setup="M3UConverterSettings",
+            plugin="Extensions/M3UConverter")
         self.parent = parent
 
     def keySave(self):

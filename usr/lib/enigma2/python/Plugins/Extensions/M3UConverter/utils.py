@@ -66,15 +66,16 @@ def get_best_storage_path():
                     remove(test_file)
                     print(f"✅ Mount OK: {mount_point}")
                     return mount_point
-                except:
+                except BaseException:
                     continue
-    except:
+    except BaseException:
         pass
 
     return "/tmp/"
 
 
-PLUGIN_TITLE = _("Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
+PLUGIN_TITLE = _(
+    "Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
 PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
 ARCHIMEDE_M3U_PATH = join(BASE_STORAGE_PATH, "movie")
@@ -134,7 +135,8 @@ def update_mounts_configuration():
     if not mounts:
         default_path = default_movie_path()
         mounts = [(default_path, default_path)]
-    config.plugins.m3uconverter.lastdir.setChoices(mounts, default=mounts[0][0])
+    config.plugins.m3uconverter.lastdir.setChoices(
+        mounts, default=mounts[0][0])
     config.plugins.m3uconverter.lastdir.save()
 
 
@@ -146,7 +148,11 @@ def clean_group_name(name):
     cleaned = name.strip()
     cleaned = sub(r'^\s*\|[A-Z]+\|\s*', '', cleaned)
     cleaned = sub(r'^\s*[A-Z]{2}:\s*', '', cleaned)
-    cleaned = sub(r'^\s*(IT|UK|FR|DE|ES|NL|PL|GR|CZ|HU|RO|SE|NO|DK|FI|NOW)\s+', '', cleaned, flags=IGNORECASE)
+    cleaned = sub(
+        r'^\s*(IT|UK|FR|DE|ES|NL|PL|GR|CZ|HU|RO|SE|NO|DK|FI|NOW)\s+',
+        '',
+        cleaned,
+        flags=IGNORECASE)
     cleaned = sub(r'[^\w\s\-àèéìíòóùúÀÈÉÌÍÒÓÙÚ]', '', cleaned)
     cleaned = ' '.join(cleaned.split())
 
@@ -195,7 +201,7 @@ def _reload_services_after_delay(delay=4000):
             system("wget -qO - http://127.0.0.1/web/servicelistreload > /dev/null 2>&1")
             logger.info("Bouquets reloaded via web interface")
             return True
-        except:
+        except BaseException:
             logger.error("All reload methods failed")
             return False
 
@@ -278,7 +284,9 @@ class M3UFileBrowser(Screen):
     def _on_ok_pressed(self):
         """Handle OK button press for file selection."""
         selection = self["filelist"].getCurrent()
-        if not selection or not isinstance(selection, list) or not isinstance(selection[0], tuple):
+        if not selection or not isinstance(
+                selection, list) or not isinstance(
+                selection[0], tuple):
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.error(f"Invalid selection format: {selection}")
             return
@@ -288,7 +296,8 @@ class M3UFileBrowser(Screen):
         is_directory = file_data[1]
 
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"file_data: {file_data}, path: {path}, is_directory: {is_directory}")
+            logger.info(
+                f"file_data: {file_data}, path: {path}, is_directory: {is_directory}")
         try:
             if is_directory:
                 self["filelist"].changeDir(path)
@@ -316,6 +325,7 @@ class M3UFileBrowser(Screen):
 
 class AspectManager:
     """Manage aspect ratio settings for video playback."""
+
     def __init__(self):
         self.init_aspect = self.get_current_aspect()
         if config.plugins.m3uconverter.enable_debug.value:

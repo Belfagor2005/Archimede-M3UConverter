@@ -107,7 +107,9 @@ class PluginInfoScreen(Screen):
         Screen.__init__(self, session)
         self.setTitle(_("Plugin Information"))
 
-        self["Title"] = StaticText(_("Archimede Universal Converter v.%s") % CURRENT_VERSION)
+        self["Title"] = StaticText(
+            _("Archimede Universal Converter v.%s") %
+            CURRENT_VERSION)
         self["key_red"] = StaticText(_("Close"))
         self["key_green"] = StaticText(_("Prev"))
         self["key_yellow"] = StaticText(_("Next"))
@@ -137,7 +139,9 @@ class PluginInfoScreen(Screen):
     def _on_layout_finish(self):
         """Set focus safely after layout is complete"""
         try:
-            if hasattr(self, "scrollable_text") and self["scrollable_text"] is not None:
+            if hasattr(
+                    self,
+                    "scrollable_text") and self["scrollable_text"] is not None:
                 self.setFocus(self["scrollable_text"])
         except Exception as e:
             logger.error(f"Error setting focus: {str(e)}")
@@ -149,10 +153,7 @@ class PluginInfoScreen(Screen):
         page_info = f"Page {self.current_page + 1}/{total_pages}"
         self["Title"].setText(
             _("Archimede Universal Converter by Lululla v.{version} - {page}").format(
-                version=CURRENT_VERSION,
-                page=page_info
-            )
-        )
+                version=CURRENT_VERSION, page=page_info))
 
         if self.current_page > 0:
             self["key_green"].setText(_("Prev"))
@@ -212,7 +213,8 @@ class PluginInfoScreen(Screen):
             line = lines[i]
 
             # Check if this line starts a new category
-            is_new_category = any(line.strip().startswith(indicator) for indicator in category_indicators)
+            is_new_category = any(line.strip().startswith(indicator)
+                                  for indicator in category_indicators)
 
             # If it's a new category AND we already have content on current page
             # AND adding this category would make us exceed the page limit
@@ -229,11 +231,14 @@ class PluginInfoScreen(Screen):
                     j = i + 1
                     while j < len(lines):
                         next_line = lines[j]
-                        # Stop if we hit another category or empty line followed by category
-                        if any(next_line.strip().startswith(indicator) for indicator in category_indicators):
+                        # Stop if we hit another category or empty line
+                        # followed by category
+                        if any(next_line.strip().startswith(indicator)
+                               for indicator in category_indicators):
                             break
                         if next_line.strip() == "" and j + 1 < len(lines):
-                            if any(lines[j + 1].strip().startswith(indicator) for indicator in category_indicators):
+                            if any(lines[j + 1].strip().startswith(indicator)
+                                   for indicator in category_indicators):
                                 break
                         category_lines += 1
                         j += 1
@@ -466,10 +471,14 @@ class PluginInfoScreen(Screen):
                 total = stats.get('total_channels', 0)
                 fallback = stats.get('fallback_matches', 0)
 
-                # Estimate duplicates based on fallback matches (often duplicates)
-                duplicates = int(fallback * 0.3)  # ~30% of fallbacks are duplicates
+                # Estimate duplicates based on fallback matches (often
+                # duplicates)
+                # ~30% of fallbacks are duplicates
+                duplicates = int(fallback * 0.3)
                 unique = max(0, total - duplicates)
-                reduction = round((duplicates / total * 100), 1) if total > 0 else 0
+                reduction = round(
+                    (duplicates / total * 100),
+                    1) if total > 0 else 0
 
                 return {
                     'total': total,
@@ -510,7 +519,8 @@ class PluginInfoScreen(Screen):
             import re
 
             # Pattern for total channels
-            total_match = re.search(r'TOTAL CHANNELS.*?(\d+)', content, re.IGNORECASE)
+            total_match = re.search(
+                r'TOTAL CHANNELS.*?(\d+)', content, re.IGNORECASE)
             if total_match:
                 stats['total'] = int(total_match.group(1))
 
@@ -526,7 +536,8 @@ class PluginInfoScreen(Screen):
             fallback_match = re.search(r'Fallback.*?(\d+)', content)
             if fallback_match and stats['total'] > 0:
                 fallbacks = int(fallback_match.group(1))
-                stats['duplicates'] = int(fallbacks * 0.4)  # Estimate 40% as duplicates
+                stats['duplicates'] = int(
+                    fallbacks * 0.4)  # Estimate 40% as duplicates
                 stats['unique'] = stats['total'] - stats['duplicates']
 
             # Pattern for manual corrections (false positives prevented)
@@ -536,7 +547,8 @@ class PluginInfoScreen(Screen):
 
             # Calculate reduction percentage
             if stats['total'] > 0 and stats['duplicates'] > 0:
-                stats['reduction'] = round((stats['duplicates'] / stats['total']) * 100, 1)
+                stats['reduction'] = round(
+                    (stats['duplicates'] / stats['total']) * 100, 1)
 
             # Determine efficiency
             if stats['reduction'] > 15:

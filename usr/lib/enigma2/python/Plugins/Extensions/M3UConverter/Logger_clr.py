@@ -48,7 +48,12 @@ class ColoredLogger:
     encoding = getattr(sys.stdout, 'encoding', None) or ''
     SUPPORTS_UNICODE = encoding.lower().startswith('utf')
 
-    def __new__(cls, log_path=None, plugin_name="generic", clear_on_start=True, max_size_mb=1):
+    def __new__(
+            cls,
+            log_path=None,
+            plugin_name="generic",
+            clear_on_start=True,
+            max_size_mb=1):
         """Singleton for log_path + plugin_name combination"""
         instance_key = f"{log_path}_{plugin_name}"
 
@@ -57,7 +62,8 @@ class ColoredLogger:
                 if instance_key not in cls._instances:
                     instance = super().__new__(cls)
                     cls._instances[instance_key] = instance
-                    instance._initialize(log_path, plugin_name, clear_on_start, max_size_mb)
+                    instance._initialize(
+                        log_path, plugin_name, clear_on_start, max_size_mb)
 
         return cls._instances[instance_key]
 
@@ -129,7 +135,10 @@ class ColoredLogger:
 
         # Output a console
         if self.SUPPORTS_COLOR and color:
-            print(f"{timestamp} {self.plugin_name} {label} {color}{message}{self.END}")
+            print(
+                f"{timestamp} {
+                    self.plugin_name} {label} {color}{message}{
+                    self.END}")
         else:
             print(console_message)
 
@@ -163,7 +172,7 @@ class ColoredLogger:
         """Returns the file size in MB"""
         try:
             return getsize(self.log_file) / (1024 * 1024)
-        except:
+        except BaseException:
             return 0
 
     def _rotate_logs(self):
@@ -180,7 +189,7 @@ class ColoredLogger:
             for old_backup in backups[4:]:
                 try:
                     remove(old_backup)
-                except:
+                except BaseException:
                     pass
 
             # Rename existing files
@@ -191,7 +200,7 @@ class ColoredLogger:
                 if exists(old_name):
                     try:
                         rename(old_name, new_name)
-                    except:
+                    except BaseException:
                         pass
 
         except Exception as e:
@@ -269,7 +278,11 @@ class ColoredLogger:
         self.debug("MessageBox closed")
 
 
-def get_logger(log_path=None, plugin_name="generic", clear_on_start=True, max_size_mb=1):
+def get_logger(
+        log_path=None,
+        plugin_name="generic",
+        clear_on_start=True,
+        max_size_mb=1):
     """
     Factory function to get a logger instance
     Args:
