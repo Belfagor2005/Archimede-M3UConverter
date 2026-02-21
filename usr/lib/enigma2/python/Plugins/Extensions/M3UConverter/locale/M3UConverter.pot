@@ -1354,3 +1354,146 @@ msgstr ""
 #: utils.py:103
 msgid "Temporary"
 msgstr ""
+
+# New strings - GitHub Action
+
+msgid "(Based on selected database mode: {})"
+msgstr ""
+
+msgid "(Reused previous manual corrections)"
+msgstr ""
+
+msgid "- {} duplicate groups"
+msgstr ""
+
+msgid "-- Auto-open Editor"
+msgstr ""
+
+msgid "-- DVB search limit (Match Edit)"
+msgstr ""
+
+msgid "-- Database Mode"
+msgstr ""
+
+msgid "-- EPG Generation Mode"
+msgstr ""
+
+msgid "-- EPG Language"
+msgstr ""
+
+msgid "-- Ignore DVB-T services"
+msgstr ""
+
+msgid "-- Max Backups"
+msgstr ""
+
+msgid "-- Rytec search limit (Match Edit)"
+msgstr ""
+
+msgid "-- Similarity Threshold DVB (%)"
+msgstr ""
+
+msgid "-- Similarity Threshold Global (%)"
+msgstr ""
+
+msgid "-- Similarity Threshold Rytec (%)"
+msgstr ""
+
+msgid "-- Use Manual Database"
+msgstr ""
+
+msgid "---- Max manual corrections to save"
+msgstr ""
+
+msgid "Archimede Converter Settings"
+msgstr ""
+
+msgid "Bouquet Mode"
+msgstr ""
+
+msgid "Bouquet Position"
+msgstr ""
+
+msgid "Convert HLS Streams"
+msgstr ""
+
+msgid "Convert HLS to Enigma2 format"
+msgstr ""
+
+msgid "Converting: {processed_count}/{total_valid} ({progress}%)"
+msgstr ""
+
+msgid "Create Backup"
+msgstr ""
+
+msgid "Create backup before conversion"
+msgstr ""
+
+msgid "Create single or multiple bouquets"
+msgstr ""
+
+msgid "Debug Mode"
+msgstr ""
+
+msgid "Default Folder"
+msgstr ""
+
+msgid "Default folder for opening and saving M3U files"
+msgstr ""
+
+msgid "EPG matching algorithm"
+msgstr ""
+
+msgid "Enable EPG"
+msgstr ""
+
+msgid "Enable detailed logging"
+msgstr ""
+
+msgid "Files larger than this will be sampled (1000 channels max)"
+msgstr ""
+
+msgid "Generate EPG data for bouquets"
+msgstr ""
+
+msgid "Global similarity threshold for all matches (20-100%)"
+msgstr ""
+
+msgid "Ignore DVB-T services on conversion"
+msgstr ""
+
+msgid "Language for EPG sources"
+msgstr ""
+
+msgid "Large file threshold (MB)"
+msgstr ""
+
+msgid "Max DVB entries scanned during automatic Match Edit (Slow down scanning)"
+msgstr ""
+
+msgid "Max Rytec entries scanned during automatic Match Edit (Slow down scanning)"
+msgstr ""
+
+msgid "Maximum backup copies"
+msgstr ""
+
+msgid "Maximum manual corrections to save"
+msgstr ""
+
+msgid "Open manual editor after conversion"
+msgstr ""
+
+msgid "Position in channel list"
+msgstr ""
+
+msgid "Select databases for channel matching"
+msgstr ""
+
+msgid "Similarity threshold for DVB matches (20-100%)"
+msgstr ""
+
+msgid "Similarity threshold for Rytec matches (20-100%)"
+msgstr ""
+
+msgid "Use saved manual corrections"
+msgstr ""
