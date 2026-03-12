@@ -5981,7 +5981,12 @@ class UniversalConverter(Screen):
         return entries
 
     def _parse_tv_file(self, filename=None):
-        """Parse TV bouquet file for TV-to-TV conversion."""
+        """
+        Parse a TV bouquet file (userbouquet.*.tv) for IPTV channels.
+        The method extracts channel names and URLs from the #SERVICE lines.
+        It handles the common case where a channel name may be appended after the URL
+        separated by a plain colon (:) – a situation that breaks M3U playback.
+        """
         try:
             file_to_parse = filename or self.selected_file
             if not file_to_parse:
@@ -5991,34 +5996,47 @@ class UniversalConverter(Screen):
             with codecs.open(file_to_parse, "r", encoding="utf-8") as f:
                 content = f.read()
 
-                # Enhanced pattern to handle different TV bouquet formats
+                # Regular expression to capture IPTV service lines.
+                # It matches lines starting with #SERVICE followed by either 4097 or 5002,
+                # then any number of colon-separated fields (up to 10) and captures the rest
+                # as the URL part (group 1). The following #DESCRIPTION line provides the channel name (group 2).
                 pattern = r'#SERVICE\s(?:4097|5002):[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:(.*?)\s*\n#DESCRIPTION\s*(.*?)\s*\n'
                 matches = findall(pattern, content, DOTALL)
 
-                for service, name in matches:
-                    # URL decoding and filtering HTTP/HTTPS/HLS streams
-                    url = unquote(service.strip())
-                    if any(url.startswith(proto)
-                           for proto in ('http://', 'https://', 'hls://')):
-                        # Store as tuple for TV bouquets (name, url)
-                        channel_data = (name.strip(), url)
-                        channels.append(channel_data)
+                for raw_url_part, name in matches:
+                    # Clean the URL part: strip leading/trailing whitespace.
+                    raw_url = raw_url_part.strip()
+
+                    # --- FIX: Remove any extra channel name appended after the last plain colon ---
+                    # In valid IPTV service references, the URL is fully percent‑encoded.
+                    # Any plain colon (:) appearing in the URL part is not part of the real URL;
+                    # it is often added by some tools to append the channel name.
+                    # We split on the first plain colon and discard everything after it.
+                    if ':' in raw_url:
+                        # Split only at the first colon – the left part is the clean URL.
+                        raw_url = raw_url.split(':', 1)[0]
+
+                    # Decode percent‑encoded characters (e.g., %3a -> :, %20 -> space).
+                    url = unquote(raw_url)
+
+                    # Ensure the URL starts with a supported protocol.
+                    if any(url.startswith(proto) for proto in ('http://', 'https://', 'hls://')):
+                        # Store as tuple (name, url) – this format is used throughout the plugin.
+                        channels.append((name.strip(), url))
 
             if not channels:
                 raise ValueError(_("No IPTV channels found in the bouquet"))
 
             self.m3u_channels_list = channels
 
-            # Update UI with channel names only
-            display_list = [channel[0] for channel in channels]
+            # Update UI with channel names only (first 100 are shown).
+            display_list = [channel[0] for channel in channels[:100]]
             self["list"].setList(display_list)
             self.file_loaded = True
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(
-                    f"✅ TV file parsed successfully: {
-                        len(channels)} channels found")
-                logger.info(f"📺 Sample channels: {channels[:3]}")
+                logger.info(f"✅ TV file parsed successfully: {len(channels)} channels found")
+                logger.debug(f"📺 Sample channels: {channels[:3]}")
 
             self._update_ui_success(len(self.m3u_channels_list))
 
