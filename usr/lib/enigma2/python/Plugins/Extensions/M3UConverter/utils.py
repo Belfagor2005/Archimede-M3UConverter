@@ -43,9 +43,8 @@ from Screens.Screen import Screen
 from Tools.Directories import defaultRecordingLocation
 
 # 🧱 LOCAL MODULES
-from . import _
+from . import _, __version__
 from .Logger_clr import get_logger
-from .version import CURRENT_VERSION
 
 
 # ==================== UTILITY FUNCTIONS A ====================
@@ -75,7 +74,7 @@ def get_best_storage_path():
 
 
 PLUGIN_TITLE = _(
-    "Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
+    "Archimede Universal Converter v.%s by Lululla") % __version__
 PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
 ARCHIMEDE_M3U_PATH = join(BASE_STORAGE_PATH, "movie")

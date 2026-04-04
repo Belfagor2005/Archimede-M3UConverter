@@ -34,8 +34,7 @@ from Components.Sources.StaticText import StaticText
 from Components.config import config
 
 # 🧱 LOCAL MODULES
-from . import _
-from .version import CURRENT_VERSION, LAST_MODIFIED_DATE
+from . import _, __version__, LAST_MODIFIED_DATE
 from .constants import (
     SCREEN_WIDTH,
     BASE_STORAGE_PATH,
@@ -109,7 +108,7 @@ class PluginInfoScreen(Screen):
 
         self["Title"] = StaticText(
             _("Archimede Universal Converter v.%s") %
-            CURRENT_VERSION)
+            __version__)
         self["key_red"] = StaticText(_("Close"))
         self["key_green"] = StaticText(_("Prev"))
         self["key_yellow"] = StaticText(_("Next"))
@@ -153,7 +152,7 @@ class PluginInfoScreen(Screen):
         page_info = f"Page {self.current_page + 1}/{total_pages}"
         self["Title"].setText(
             _("Archimede Universal Converter by Lululla v.{version} - {page}").format(
-                version=CURRENT_VERSION, page=page_info))
+                version=__version__, page=page_info))
 
         if self.current_page > 0:
             self["key_green"].setText(_("Prev"))

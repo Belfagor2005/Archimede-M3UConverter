@@ -32,14 +32,13 @@ from enigma import getDesktop
 from Screens.Setup import Setup
 
 # ?? LOCAL MODULES
-from . import _
+from . import _, __version__
 from .utils import get_best_storage_path
-from .version import CURRENT_VERSION
 
 
 # ==================== CONSTANTS & PATHS ====================
 PLUGIN_TITLE = _(
-    "Archimede Universal Converter v.%s by Lululla") % CURRENT_VERSION
+    "Archimede Universal Converter v.%s by Lululla") % __version__
 PLUGIN_PATH = dirname(__file__)
 BASE_STORAGE_PATH = get_best_storage_path()
 ARCHIMEDE_M3U_PATH = join(BASE_STORAGE_PATH, "movie")

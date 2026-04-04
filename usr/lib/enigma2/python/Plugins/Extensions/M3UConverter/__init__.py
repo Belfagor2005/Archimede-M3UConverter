@@ -5,7 +5,8 @@ __author__ = "Lululla"
 __email__ = "ekekaz@gmail.com"
 __copyright__ = "Copyright (c) 2024 Lululla"
 __license__ = "GPL-v2"
-__version__ = "3.3"
+__version__ = "3.2"
+LAST_MODIFIED_DATE = "20251210"
 
 import os
 import gettext
