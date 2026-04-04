@@ -5998,7 +5998,8 @@ class UniversalConverter(Screen):
                 # Regular expression to capture IPTV service lines.
                 # It matches lines starting with #SERVICE followed by either 4097 or 5002,
                 # then any number of colon-separated fields (up to 10) and captures the rest
-                # as the URL part (group 1). The following #DESCRIPTION line provides the channel name (group 2).
+                # as the URL part (group 1). The following #DESCRIPTION line
+                # provides the channel name (group 2).
                 pattern = r'#SERVICE\s(?:4097|5002):[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:(.*?)\s*\n#DESCRIPTION\s*(.*?)\s*\n'
                 matches = findall(pattern, content, DOTALL)
 
@@ -6010,17 +6011,22 @@ class UniversalConverter(Screen):
                     # In valid IPTV service references, the URL is fully percent‑encoded.
                     # Any plain colon (:) appearing in the URL part is not part of the real URL;
                     # it is often added by some tools to append the channel name.
-                    # We split on the first plain colon and discard everything after it.
+                    # We split on the first plain colon and discard everything
+                    # after it.
                     if ':' in raw_url:
-                        # Split only at the first colon – the left part is the clean URL.
+                        # Split only at the first colon – the left part is the
+                        # clean URL.
                         raw_url = raw_url.split(':', 1)[0]
 
-                    # Decode percent‑encoded characters (e.g., %3a -> :, %20 -> space).
+                    # Decode percent‑encoded characters (e.g., %3a -> :, %20 ->
+                    # space).
                     url = unquote(raw_url)
 
                     # Ensure the URL starts with a supported protocol.
-                    if any(url.startswith(proto) for proto in ('http://', 'https://', 'hls://')):
-                        # Store as tuple (name, url) – this format is used throughout the plugin.
+                    if any(url.startswith(proto)
+                           for proto in ('http://', 'https://', 'hls://')):
+                        # Store as tuple (name, url) – this format is used
+                        # throughout the plugin.
                         channels.append((name.strip(), url))
 
             if not channels:
@@ -6034,7 +6040,9 @@ class UniversalConverter(Screen):
             self.file_loaded = True
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"✅ TV file parsed successfully: {len(channels)} channels found")
+                logger.info(
+                    f"✅ TV file parsed successfully: {
+                        len(channels)} channels found")
                 logger.debug(f"📺 Sample channels: {channels[:3]}")
 
             self._update_ui_success(len(self.m3u_channels_list))

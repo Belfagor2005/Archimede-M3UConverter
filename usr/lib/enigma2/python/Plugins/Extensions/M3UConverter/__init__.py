@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from Tools.Directories import resolveFilename, SCOPE_PLUGINS
+from Components.Language import language
+import gettext
+import os
 
 __author__ = "Lululla"
 __email__ = "ekekaz@gmail.com"
@@ -8,11 +12,6 @@ __license__ = "GPL-v2"
 __version__ = "3.2"
 LAST_MODIFIED_DATE = "20251210"
 
-import os
-import gettext
-
-from Components.Language import language
-from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 
 PluginLanguageDomain = "M3UConverter"
 PluginLanguagePath = "Extensions/M3UConverter/locale"
