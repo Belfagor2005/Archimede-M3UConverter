@@ -248,8 +248,10 @@ class CoreConverter:
             chmod(filename, 0o644)
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ Manual bouquet written: {safe_name} with {
-                        len(channels)} channels")
+                    "✅ Manual bouquet written: %s with %s channels",
+                    safe_name,
+                    len(channels)
+                )
             return True
 
         except Exception as e:
@@ -258,9 +260,12 @@ class CoreConverter:
                     remove(temp_file)
                 except Exception:
                     pass
+
             logger.error(
-                f"❌ Failed to write manual bouquet {safe_name}: {
-                    str(e)}")
+                "❌ Failed to write manual bouquet %s: %s",
+                safe_name,
+                e
+            )
             return False
 
     def _generate_basic_service_reference(self, url):

@@ -518,12 +518,16 @@ class EPGServiceMapper:
         if old_mode != self.database_mode:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"🔄 Database mode changed from {old_mode} to {
-                        self.database_mode} - resetting caches")
+                    "🔄 Database mode changed from %s to %s - resetting caches",
+                    old_mode,
+                    self.database_mode
+                )
             self.reset_caches(clear_match_cache=True)
 
         logger.info(
-            f"🔄 Config refreshed - Database mode: {self.database_mode}")
+            "🔄 Config refreshed - Database mode: %s",
+            self.database_mode
+        )
 
     def _optimize_memory_usage(self):
         """Periodic memory cleanup with LRU strategy"""
