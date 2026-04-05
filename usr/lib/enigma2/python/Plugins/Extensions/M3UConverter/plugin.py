@@ -818,9 +818,9 @@ class EPGServiceMapper:
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                "Debug DVB mapping keys: %s",
-                list(self.mapping.dvb.keys())[:10] if self.mapping.dvb else 'EMPTY'
-            )
+                "Debug DVB mapping keys: %s", list(
+                    self.mapping.dvb.keys())[
+                    :10] if self.mapping.dvb else 'EMPTY')
             logger.info(
                 "Total DVB channels: %s",
                 len(self.mapping.dvb) if self.mapping.dvb else 0
@@ -901,7 +901,8 @@ class EPGServiceMapper:
             # Handle DVB-T and DVB-C
             if service_type in ['terrestrial', 'cable']:
                 # Skip DVB-T if configured to ignore them
-                if config.plugins.m3uconverter.ignore_dvbt.value and self._is_dvb_t_service(service_ref):
+                if config.plugins.m3uconverter.ignore_dvbt.value and self._is_dvb_t_service(
+                        service_ref):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
                             "🔧 Skipping DVB-T service: %s",
@@ -2128,11 +2129,7 @@ class EPGServiceMapper:
 
                 # Create the correct XML entry
                 entry = '  <!-- {} [{}] --><channel id="{}">{}</channel>\n'.format(
-                    channel_name,
-                    match_type,
-                    channel_id,
-                    service_ref
-                )
+                    channel_name, match_type, channel_id, service_ref)
                 channel_entries.append(entry)
                 processed_count += 1
 
@@ -2168,11 +2165,18 @@ class EPGServiceMapper:
                 )
                 logger.info(
                     "EPG Match stats - Rytec: %s, DVB-S: %s, DVB-T: %s, Fallback: %s",
-                    cache_stats.get('rytec', 0),
-                    cache_stats.get('dvb', 0),
-                    cache_stats.get('dvbt', 0),
-                    cache_stats.get('fallback', 0)
-                )
+                    cache_stats.get(
+                        'rytec',
+                        0),
+                    cache_stats.get(
+                        'dvb',
+                        0),
+                    cache_stats.get(
+                        'dvbt',
+                        0),
+                    cache_stats.get(
+                        'fallback',
+                        0))
                 logger.info("========= debug_epg_mapping =========")
             return True
 
@@ -2236,8 +2240,7 @@ class EPGServiceMapper:
                 updated_content = existing_content + '\n' + new_source
                 content = content.replace(
                     sourcecat_match.group(0),
-                    '<sourcecat sourcecatname="Archimede Converter">{}</sourcecat>'.format(updated_content)
-                )
+                    '<sourcecat sourcecatname="Archimede Converter">{}</sourcecat>'.format(updated_content))
             else:
                 # Create new sourcecat
                 new_sourcecat = '  <sourcecat sourcecatname="Archimede Converter">\n'
