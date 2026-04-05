@@ -340,7 +340,9 @@ class EPGServiceMapper:
         """Initialize EPGServiceMapper with database mode control"""
         try:
             logger.info(
-                f"=== INITIALIZATION - DATABASE MODE: {self.database_mode} ===")
+                "=== INITIALIZATION - DATABASE MODE: %s ===",
+                self.database_mode
+            )
             if not hasattr(self, 'services'):
                 self.services = []
 
@@ -365,7 +367,9 @@ class EPGServiceMapper:
                 self._parse_lamedb()
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"✅ Lamedb loaded: {len(self.mapping.dvb)} channels")
+                        "✅ Lamedb loaded: %s channels",
+                        len(self.mapping.dvb)
+                    )
                 self._parse_existing_bouquets()
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info("✅ Existing bouquets loaded")
@@ -1149,7 +1153,10 @@ class EPGServiceMapper:
                         })
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔍 PARSED: {total_count} services, {dvbt_count} DVB-T services")
+                "🔍 PARSED: %s services, %s DVB-T services",
+                total_count,
+                dvbt_count
+            )
 
     def _parse_legacy_lamedb_format(self, content):
         """Parse traditional lamedb file format."""
@@ -1538,7 +1545,10 @@ class EPGServiceMapper:
                 del self.mapping.dvb[channel_name]
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔧 Removed {removed_count} DVB-T (EEEE) services (mode: {self.database_mode})")
+                "🔧 Removed %s DVB-T (EEEE) services (mode: %s)",
+                removed_count,
+                self.database_mode
+            )
         return removed_count
 
     def _enhanced_search_short_names(self, clean_name, original_name):
@@ -1700,14 +1710,21 @@ class EPGServiceMapper:
         """Wrapper for manual database matching"""
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"🎯 MANUAL DB CALLED: '{channel_name}' -> '{clean_name}'")
+                "🎯 MANUAL DB CALLED: '%s' -> '%s'",
+                channel_name,
+                clean_name
+            )
 
         if hasattr(self, 'manual_db') and self.manual_db:
             result = self.manual_db.find_mapping(
-                channel_name, clean_name=clean_name)
+                channel_name, clean_name=clean_name
+            )
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"🎯 MANUAL DB RESULT: {result is not None}")
+                logger.debug(
+                    "🎯 MANUAL DB RESULT: %s",
+                    result is not None
+                )
 
         if result:
             service_ref = result.get('assigned_sref')
@@ -2713,7 +2730,9 @@ class EPGServiceMapper:
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"🔢 COUNTER VERIFICATION: Total expected: {total_expected}")
+                "🔢 COUNTER VERIFICATION: Total expected: %s",
+                total_expected
+            )
 
         # Calculate total match requests
         total_match_requests = self._match_cache_hits + self._match_cache_misses
@@ -5316,8 +5335,9 @@ class UniversalConverter(Screen):
             self.session.open(ConversionSelector)
         except Exception as e:
             logger.error(
-                f"Error opening ConversionSelector from editor: {
-                    str(e)}")
+                "Error opening ConversionSelector from editor: %s",
+                str(e)
+            )
 
     def _open_mapping_editor(self, mapping):
         """Open ManualMatchEditor for a specific mapping"""
@@ -5834,7 +5854,10 @@ class UniversalConverter(Screen):
 
         if url != original_url:
             logger.debug(
-                f"🔗 URL encoded: {original_url[:20]}... -> {url[:20]}...")
+                "🔗 URL encoded: %s... -> %s...",
+                original_url[:20],
+                url[:20]
+            )
 
         if config.plugins.m3uconverter.hls_convert.value:
             if any(url.lower().endswith(ext) for ext in ('.m3u8', '.stream')):
@@ -6421,13 +6444,10 @@ class UniversalConverter(Screen):
         # DEBUG: Check the status of the epg_mapper
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔍 EPG_MAPPER STATUS: exists={
-                    hasattr(
-                        self,
-                        'epg_mapper')}, value={
-                    self.epg_mapper if hasattr(
-                        self,
-                        'epg_mapper') else 'NO ATTR'}")
+                "🔍 EPG_MAPPER STATUS: exists=%s, value=%s",
+                hasattr(self, 'epg_mapper'),
+                self.epg_mapper if hasattr(self, 'epg_mapper') else 'NO ATTR'
+            )
 
         # DEBUG: Detailed channel analysis
         if config.plugins.m3uconverter.enable_debug.value:
@@ -6435,9 +6455,15 @@ class UniversalConverter(Screen):
             for i, ch in enumerate(
                     self.m3u_channels_list[:10]):  # First 10 channels
                 logger.info(
-                    f"   {i}: '{ch.get('name', 'Unknown')}' -> URL: {ch.get('url', 'NO URL')}")
+                    "   %s: '%s' -> URL: %s",
+                    i,
+                    ch.get('name', 'Unknown'),
+                    ch.get('url', 'NO URL')
+                )
             logger.info(
-                f"📊 TOTAL CHANNELS TO PROCESS: {len(self.m3u_channels_list)}")
+                "📊 TOTAL CHANNELS TO PROCESS: %s",
+                len(self.m3u_channels_list)
+            )
 
         if self.cancel_conversion:
             if config.plugins.m3uconverter.enable_debug.value:
@@ -6473,7 +6499,9 @@ class UniversalConverter(Screen):
         rytec_count = len(self.epg_mapper.mapping.rytec.get('basic', {}))
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔍 RYTEC DATABASE STATUS: {rytec_count} channels loaded")
+                "🔍 RYTEC DATABASE STATUS: %s channels loaded",
+                rytec_count
+            )
 
         # Preload caches for performance
         if rytec_count == 0:
@@ -8682,7 +8710,11 @@ class ManualMatchEditor(Screen):
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"📊 ENHANCED EPG Summary: {epg_count} with EPG, {no_epg_count} without EPG, {manual_count} manual")
+                "📊 ENHANCED EPG Summary: %s with EPG, %s without EPG, %s manual",
+                epg_count,
+                no_epg_count,
+                manual_count
+            )
 
         self.force_epg_detection()
 
@@ -8813,7 +8845,9 @@ class ManualMatchEditor(Screen):
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔍 MANUAL COUNT: Found {actually_modified_count} truly manual changes")
+                "🔍 MANUAL COUNT: Found %s truly manual changes",
+                actually_modified_count
+            )
         return actually_modified_count
 
     def save_manual_mappings_to_database_corrected(self):
@@ -9124,7 +9158,10 @@ class ManualMatchEditor(Screen):
             100) if total_channels > 0 else 0
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"📊 FINAL STATS: {epg_channels} with EPG, {no_epg_channels} without EPG")
+                "📊 FINAL STATS: %s with EPG, %s without EPG",
+                epg_channels,
+                no_epg_channels
+            )
 
         self["status"].setText(
             _("EPG Coverage: {}/{} channels ({:.1f}%)").format(
@@ -9709,7 +9746,10 @@ class ManualMatchEditor(Screen):
         self["match_list"].selectionEnabled(0)
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Manual assignment CONFIRMED: {channel_name} -> {match_type}")
+                "Manual assignment CONFIRMED: %s -> %s",
+                channel_name,
+                match_type
+            )
 
         self["status"].setText(_("EPG assigned: {} | {}").format(
             channel_name, selected_match['name']))
@@ -10436,8 +10476,9 @@ class ManualDatabaseEditor(Screen):
         mapping = self.get_current_mapping()
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"🔍 delete_mapping called, mapping: {
-                    mapping is not None}")
+                "🔍 delete_mapping called, mapping: %s",
+                mapping is not None
+            )
 
         if not mapping:
             if config.plugins.m3uconverter.enable_debug.value:
@@ -10582,8 +10623,9 @@ class ManualDatabaseEditor(Screen):
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Opening ManualMatchEditor for: {
-                    mapping.get('channel_name')}")
+                "Opening ManualMatchEditor for: %s",
+                mapping.get('channel_name')
+            )
 
         self.session.openWithCallback(
             mapping_editor_closed,
@@ -10846,7 +10888,10 @@ class ManualDatabaseManager:
         """ULTRA OPTIMIZED version with pre-built indexes"""
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"🔍 MANUAL DB FIND_MAPPING: '{channel_name}' -> '{clean_name}'")
+                "🔍 MANUAL DB FIND_MAPPING: '%s' -> '%s'",
+                channel_name,
+                clean_name
+            )
         try:
             if not hasattr(self, '_manual_cache'):
                 self._manual_cache = {}
@@ -11159,8 +11204,9 @@ class ManualDatabaseManager:
         self._manual_indexes_built = True
         if config.plugins.m3uconverter.enable_debug.value:
             logger.debug(
-                f"✅ Built manual DB indexes: {
-                    len(mappings)} mappings")
+                "✅ Built manual DB indexes: %s mappings",
+                len(mappings)
+            )
 
     def cleanup_inconsistent_data(self):
         """Remove inconsistent entries from the manual database"""
