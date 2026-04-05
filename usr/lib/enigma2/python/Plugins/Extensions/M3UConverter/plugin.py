@@ -2222,7 +2222,8 @@ class EPGServiceMapper:
 
             # Check if this bouquet already exists in sources
             escaped_name = escape(bouquet_name)
-            existing_pattern = r'<source type="gen_xmltv"[^>]*channels="{}\.channels\.xml"[^>]*>'.format(escaped_name)
+            existing_pattern = r'<source type="gen_xmltv"[^>]*channels="{}\.channels\.xml"[^>]*>'.format(
+                escaped_name)
 
             if search(existing_pattern, content):
                 # Remove existing entry to update it
@@ -2230,8 +2231,7 @@ class EPGServiceMapper:
                     r'<source type="gen_xmltv"[^>]*channels="{}\.channels\.xml"[^>]*>.*?</source>'.format(escaped_name),
                     '',
                     content,
-                    flags=DOTALL
-                )
+                    flags=DOTALL)
             # Create the new source entry
             new_source = (
                 '    <source type="gen_xmltv" nocheck="1" channels="{}.channels.xml">\n'
@@ -3085,7 +3085,8 @@ class EPGServiceMapper:
         """Download and parse EPGShare data with extensive debugging."""
         try:
             country_code = LANGUAGE_TO_COUNTRY.get(language_code, 'ALL')
-            epg_url = "https://epgshare01.online/epgshare01/epg_ripper_{}1.xml.gz".format(country_code)
+            epg_url = "https://epgshare01.online/epgshare01/epg_ripper_{}1.xml.gz".format(
+                country_code)
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
@@ -3323,8 +3324,7 @@ class EPGServiceMapper:
             with open(debug_file_tab, 'w', encoding='utf-8') as f:
                 separator = ';'  # Excel-friendly delimiter
                 f.write(
-                    "Channel{0}Original_Name{0}TVG_ID{0}Clean_Name{0}Match_Type{0}Has_EPG{0}Service_Ref{0}URL_Start\n".format(separator)
-                )
+                    "Channel{0}Original_Name{0}TVG_ID{0}Clean_Name{0}Match_Type{0}Has_EPG{0}Service_Ref{0}URL_Start\n".format(separator))
                 for channel in normalized_data:
                     # CORREZIONE: Gestire sia dizionari che tuple
                     if isinstance(channel, dict):
@@ -4207,9 +4207,7 @@ class UniversalConverter(Screen):
                         break
                     else:
                         logger.error(
-                            "❌ Rytec file exists but 0 channels loaded from: %s",
-                            rytec_path
-                        )
+                            "❌ Rytec file exists but 0 channels loaded from: %s", rytec_path)
                 else:
                     logger.warning(f"📁 File not found: {rytec_path}")
             # 3. Channel mapping and optimizations
