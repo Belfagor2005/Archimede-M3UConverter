@@ -5991,8 +5991,8 @@ class UniversalConverter(Screen):
                 name = sub(r'\[.*?\]', '', channel['name']).strip()
                 group = channel.get('group', 'Default')
                 group = clean_group_name(group)
-                display_text = "{}. {}{}".format(
-                    idx + 1:03d, 
+                display_text = "{:03d}. {}{}".format(
+                    idx + 1,
                     group + ' - ' if group else '', 
                     name
                 )
