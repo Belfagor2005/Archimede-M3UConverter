@@ -2076,8 +2076,9 @@ class EPGServiceMapper:
         epg_path = join(epgimport_path, epg_filename)
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Generating EPG channels file with {
-                    len(epg_data)} entries")
+                "Generating EPG channels file with %s entries",
+                len(epg_data)
+            )
 
         try:
             if config.plugins.m3uconverter.enable_debug.value:
@@ -2086,7 +2087,10 @@ class EPGServiceMapper:
                     len(epg_data)
                 )
             if epg_data:
-                logger.info(f"First entry: {epg_data[0]}")
+                logger.info(
+                    "First entry: %s",
+                    epg_data[0]
+                )
 
             channel_entries = []
             cache_stats = {'rytec': 0, 'dvb': 0, 'dvbt': 0, 'fallback': 0}
@@ -2102,13 +2106,19 @@ class EPGServiceMapper:
                 if processed_count % 10 == 0:
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.debug(
-                            f"Processing channel {processed_count}: {channel_name} -> {match_type}")
+                            "Processing channel %s: %s -> %s",
+                            processed_count,
+                            channel_name,
+                            match_type
+                        )
 
                 # Ensure service_ref is not empty
                 if not service_ref:
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"Skipping channel without service_ref: {channel_name}")
+                            "Skipping channel without service_ref: %s",
+                            channel_name
+                        )
                     continue
 
                 # Use the correct EPG ID method
