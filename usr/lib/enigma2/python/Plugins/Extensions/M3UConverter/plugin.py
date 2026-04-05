@@ -4965,8 +4965,12 @@ class UniversalConverter(Screen):
                 match_type = mapping.get('match_type', '')
                 usage_count = mapping.get('usage_count', 0)
 
-                display_text = f"{
-                    i + 1}. {channel_name} [{match_type}] (Used: {usage_count}x)"
+                display_text = "{}. {} [{}] (Used: {}x)".format(
+                    i + 1,
+                    channel_name,
+                    match_type,
+                    usage_count
+                )
                 items.append((display_text, mapping))
 
             def choice_callback(selected_item):
@@ -5097,17 +5101,20 @@ class UniversalConverter(Screen):
                     remove(oldest_export)
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"🧹 Removed old export: {
-                                basename(oldest_export)}")
+                            "🧹 Removed old export: %s",
+                            basename(oldest_export)
+                        )
                     old_exports.pop(0)
                 except Exception as e:
                     logger.error(
-                        f"❌ Error removing export {oldest_export}: {
-                            str(e)}")
+                        "❌ Error removing export %s: %s",
+                        oldest_export,
+                        str(e)
+                    )
                     break
 
             timestamp = strftime("%Y%m%d_%H%M%S")
-            export_filename = f"manual_mappings_export_{timestamp}.json"
+            export_filename = "manual_mappings_export_{}.json".format(timestamp)
             export_path = join(export_dir, export_filename)
 
             with open(export_path, 'w', encoding='utf-8') as f:
@@ -5603,7 +5610,9 @@ class UniversalConverter(Screen):
                             'Unknown')}")
 
             if len(new_mappings) > 5:
-                preview_lines.append(f"  ... and {len(new_mappings) - 5} more")
+                preview_lines.append(
+                    "  ... and %s more" % (len(new_mappings) - 5)
+                )
 
             preview_lines.extend([
                 "",
@@ -5613,22 +5622,21 @@ class UniversalConverter(Screen):
             # Show first 5 duplicates
             for i, mapping in enumerate(duplicate_mappings[:5]):
                 preview_lines.append(
-                    f"  {
-                        i +
-                        1}. {
-                        mapping.get(
-                            'channel_name',
-                            'Unknown')}")
+                    "  {}. {}".format(
+                        i + 1,
+                        mapping.get('channel_name', 'Unknown')
+                    )
+                )
 
             if len(duplicate_mappings) > 5:
                 preview_lines.append(
-                    f"  ... and {
-                        len(duplicate_mappings) -
-                        5} more")
+                    "  ... and %s more" % (len(duplicate_mappings) - 5)
+                )
 
             def preview_closed(result=None):
                 self._show_import_options(
-                    import_path, import_mappings, current_mappings)
+                    import_path, import_mappings, current_mappings
+                )
 
             self.session.openWithCallback(
                 preview_closed,
