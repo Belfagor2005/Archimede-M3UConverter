@@ -5435,7 +5435,8 @@ class UniversalConverter(Screen):
 
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        "✅ Deleted manual mapping: {}".format(mapping_to_delete.get('channel_name')))
+                        "✅ Deleted manual mapping: {}".format(
+                            mapping_to_delete.get('channel_name')))
                 return True
 
             return False
@@ -5622,7 +5623,11 @@ class UniversalConverter(Screen):
             # Show first 5 new mappings
             for i, mapping in enumerate(new_mappings[:5]):
                 preview_lines.append(
-                    "  {}. {}".format(i + 1, mapping.get('channel_name', 'Unknown')))
+                    "  {}. {}".format(
+                        i + 1,
+                        mapping.get(
+                            'channel_name',
+                            'Unknown')))
 
             if len(new_mappings) > 5:
                 preview_lines.append(
@@ -5777,8 +5782,8 @@ class UniversalConverter(Screen):
                 # Update state
                 self.file_loaded = True
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(
-                        "File loaded successfully, channels: {}".format(len(self.m3u_channels_list)))
+                    logger.debug("File loaded successfully, channels: {}".format(
+                        len(self.m3u_channels_list)))
 
             except Exception as e:
                 logger.error(f"Processing failed: {str(e)}")
@@ -6002,9 +6007,8 @@ class UniversalConverter(Screen):
             self.file_loaded = True
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(
-                    "✅ FINAL COUNT: {} channels ready for conversion".format(len(self.m3u_channels_list))
-                )
+                logger.info("✅ FINAL COUNT: {} channels ready for conversion".format(
+                    len(self.m3u_channels_list)))
             self._update_ui_success(len(self.m3u_channels_list))
 
         except Exception as e:
