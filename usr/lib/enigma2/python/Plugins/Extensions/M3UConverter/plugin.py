@@ -3516,7 +3516,7 @@ class EPGServiceMapper:
             )
         )
         logger.debug("Result: %s", result)
-        logger.debug("Match type: %s", match_type))
+        logger.debug("Match type: %s", match_type)
 
     def _cleanup_all_match_types(self):
         """Global cleanup of all match_type entries in the system"""
