@@ -5435,14 +5435,13 @@ class UniversalConverter(Screen):
 
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"✅ Deleted manual mapping: {
-                            mapping_to_delete.get('channel_name')}")
+                        "✅ Deleted manual mapping: {}".format(mapping_to_delete.get('channel_name')))
                 return True
 
             return False
 
         except Exception as e:
-            logger.error(f"Error performing delete: {str(e)}")
+            logger.error("Error performing delete: {}".format(str(e)))
             return False
 
     def _perform_clean_database(self):
@@ -5623,12 +5622,7 @@ class UniversalConverter(Screen):
             # Show first 5 new mappings
             for i, mapping in enumerate(new_mappings[:5]):
                 preview_lines.append(
-                    f"  {
-                        i +
-                        1}. {
-                        mapping.get(
-                            'channel_name',
-                            'Unknown')}")
+                    "  {}. {}".format(i + 1, mapping.get('channel_name', 'Unknown')))
 
             if len(new_mappings) > 5:
                 preview_lines.append(
@@ -5767,9 +5761,7 @@ class UniversalConverter(Screen):
             self.selected_file = normpath(str(path))
 
             try:
-                # AGGIUNTA CRUCIALE: Gestione esplicita per tv_to_tv
                 if self.conversion_type == "tv_to_tv":
-                    # Questo è il metodo mancante!
                     self._parse_tv_file(selected_path)
                 elif self.conversion_type == "m3u_to_tv":
                     self._parse_m3u_file(selected_path)
@@ -5786,7 +5778,7 @@ class UniversalConverter(Screen):
                 self.file_loaded = True
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.debug(
-                        f"File loaded successfully, channels: {len(self.m3u_channels_list)}")
+                        "File loaded successfully, channels: {}".format(len(self.m3u_channels_list)))
 
             except Exception as e:
                 logger.error(f"Processing failed: {str(e)}")
@@ -5917,7 +5909,7 @@ class UniversalConverter(Screen):
                     if count >= max_channels:
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info(
-                                f"Reached maximum channel limit: {max_channels}")
+                                "Reached maximum channel limit: {}".format(max_channels))
                         break
 
                     if line.startswith('#EXTINF:'):
@@ -5999,11 +5991,11 @@ class UniversalConverter(Screen):
                 name = sub(r'\[.*?\]', '', channel['name']).strip()
                 group = channel.get('group', 'Default')
                 group = clean_group_name(group)
-                display_text = f"{
-                    idx +
-                    1:03d}. {
-                    group +
-                    ' - ' if group else ''}{name}"
+                display_text = "{}. {}{}".format(
+                    idx + 1:03d, 
+                    group + ' - ' if group else '', 
+                    name
+                )
                 display_list.append(display_text)
 
             self["list"].setList(display_list)
@@ -6011,7 +6003,8 @@ class UniversalConverter(Screen):
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ FINAL COUNT: {len(self.m3u_channels_list)} channels ready for conversion")
+                    "✅ FINAL COUNT: {} channels ready for conversion".format(len(self.m3u_channels_list))
+                )
             self._update_ui_success(len(self.m3u_channels_list))
 
         except Exception as e:
