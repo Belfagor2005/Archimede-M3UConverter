@@ -6818,7 +6818,9 @@ class UniversalConverter(Screen):
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("🔍 FINAL COUNT VERIFICATION:")
                 logger.info("   Total valid channels: %s", total_valid)
-                logger.info("   Total calculated matches: %s", total_calculated)
+                logger.info(
+                    "   Total calculated matches: %s",
+                    total_calculated)
                 logger.info(
                     "   Rytec: %s, DVB-S: %s, DVB-T: %s",
                     rytec_matches,
