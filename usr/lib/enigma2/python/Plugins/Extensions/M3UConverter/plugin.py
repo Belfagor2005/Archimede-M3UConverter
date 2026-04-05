@@ -5998,7 +5998,7 @@ class UniversalConverter(Screen):
                 group = clean_group_name(group)
                 display_text = "{:03d}. {}{}".format(
                     idx + 1,
-                    group + ' - ' if group else '', 
+                    group + ' - ' if group else '',
                     name
                 )
                 display_list.append(display_text)
