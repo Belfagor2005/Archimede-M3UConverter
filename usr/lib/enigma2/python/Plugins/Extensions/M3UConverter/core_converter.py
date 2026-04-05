@@ -354,8 +354,9 @@ class CoreConverter:
             self._log_error(e)
             self._restore_backup()
             raise RuntimeError(
-                f"Conversion failed (restored backup). Error: {
-                    str(e)}")
+                "Conversion failed (restored backup). Error: {}".format(str(e))
+            )
+
 
     def _create_backup(self):
         """Create a backup of the existing bouquets."""
@@ -369,15 +370,22 @@ class CoreConverter:
             timestamp = strftime("%Y%m%d_%H%M%S")
             import random
             unique_id = random.randint(100, 999)
+
             backup_file = join(
                 self.backup_dir,
-                f"bouquets_{timestamp}_{unique_id}.tv")
+                "bouquets_{}_{}.tv".format(timestamp, unique_id)
+            )
+
             shutil.copy2("/etc/enigma2/bouquets.tv", backup_file)
+
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"💾 Backup created: {basename(backup_file)}")
+                logger.info(
+                    "💾 Backup created: %s",
+                    basename(backup_file)
+                )
 
         except Exception as e:
-            raise RuntimeError(f"Backup failed: {str(e)}")
+            raise RuntimeError("Backup failed: {}".format(str(e)))
 
     def _restore_backup(self):
         """Restore the most recent available backup."""
@@ -415,7 +423,7 @@ class CoreConverter:
             return False
 
         try:
-            cmd = f"curl --max-time {timeout} --head --silent --fail --output /dev/null {url}"
+            cmd = "curl --max-time {} --head --silent --fail --output /dev/null {}".format(timeout, url)
             return system(cmd) == 0
         except Exception:
             return False

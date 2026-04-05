@@ -818,11 +818,13 @@ class EPGServiceMapper:
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Debug DVB mapping keys: {
-                    list(
-                        self.mapping.dvb.keys())[
-                        :10] if self.mapping.dvb else 'EMPTY'}")
-            logger.info(f"Total DVB channels: {len(self.mapping.dvb)}")
+                "Debug DVB mapping keys: %s",
+                list(self.mapping.dvb.keys())[:10] if self.mapping.dvb else 'EMPTY'
+            )
+            logger.info(
+                "Total DVB channels: %s",
+                len(self.mapping.dvb) if self.mapping.dvb else 0
+            )
 
         for name, services in self.mapping.dvb.items():
             if not services:
@@ -854,7 +856,9 @@ class EPGServiceMapper:
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Optimized channel map built: {len(self.mapping.optimized)} entries")
+                "Optimized channel map built: %s entries",
+                len(self.mapping.optimized)
+            )
 
     def classify_service_type(self, service_ref=None):
         """Classify service type based on service reference."""
@@ -897,17 +901,21 @@ class EPGServiceMapper:
             # Handle DVB-T and DVB-C
             if service_type in ['terrestrial', 'cable']:
                 # Skip DVB-T if configured to ignore them
-                if config.plugins.m3uconverter.ignore_dvbt.value and self._is_dvb_t_service(
-                        service_ref):
+                if config.plugins.m3uconverter.ignore_dvbt.value and self._is_dvb_t_service(service_ref):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"🔧 Skipping DVB-T service: {service.get('name', 'Unknown')}")
+                            "🔧 Skipping DVB-T service: %s",
+                            service.get('name', 'Unknown')
+                        )
                     continue
+
                 # Keep DVB-C and non-ignored DVB-T
                 compatible_services.append(service)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"🔧 Keeping terrestrial/cable service: {service.get('name', 'Unknown')}")
+                        "🔧 Keeping terrestrial/cable service: %s",
+                        service.get('name', 'Unknown')
+                    )
                 continue
 
             # KEEP IPTV
@@ -1044,7 +1052,9 @@ class EPGServiceMapper:
                 if content.strip().startswith("p:") and "services" not in content:
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"Lamedb file {lamedb_path} appears to be a transponder list")
+                            "Lamedb file %s appears to be a transponder list",
+                            lamedb_path
+                        )
                     continue
 
                 # Identify the file format
@@ -1264,9 +1274,9 @@ class EPGServiceMapper:
             channels = root.findall('.//channel')
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"Found {
-                        len(channels)} channel elements with lxml")
-
+                    "Found %s channel elements with lxml",
+                    len(channels)
+                )
             added_count = 0
             for channel in channels:
                 try:
@@ -1315,8 +1325,9 @@ class EPGServiceMapper:
             channels = root.findall('.//channel')
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"Found {
-                        len(channels)} channel elements with ElementTree")
+                    "Found %s channel elements with ElementTree",
+                    len(channels)
+                )
 
             added_count = 0
             for channel in channels:
@@ -1353,7 +1364,9 @@ class EPGServiceMapper:
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"Added {added_count} channels with ElementTree parsing")
+                    "Added %s channels with ElementTree parsing",
+                    added_count
+                )
             return added_count > 0
 
         except Exception as e:
@@ -1716,7 +1729,11 @@ class EPGServiceMapper:
         """Universal matching with IMPROVED handling"""
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔍 MATCH: '{original_name}' -> tvg_id: '{tvg_id}' -> clean: '{clean_name}'")
+                "🔍 MATCH: '%s' -> tvg_id: '%s' -> clean: '%s'",
+                original_name,
+                tvg_id,
+                clean_name
+            )
 
         # Initialize statistics if not already set
         if not hasattr(self, '_stats_counters'):
@@ -1744,7 +1761,10 @@ class EPGServiceMapper:
             cached = self._match_cache[cache_key]
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(
-                    f"✅ CACHE HIT: {cache_key} -> {cached['match_type']}")
+                    "✅ CACHE HIT: %s -> %s",
+                    cache_key,
+                    cached['match_type']
+                )
             return cached['sref'], cached['match_type']
 
         # 3. ENHANCED: Special handling for short names and numbered channels
@@ -1813,7 +1833,10 @@ class EPGServiceMapper:
                     match_type = 'rytec_name'
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.debug(
-                            f"✅ Rytec name match: {original_name} -> {best_match['name']}")
+                            "✅ Rytec name match: %s -> %s",
+                            original_name,
+                            best_match['name']
+                        )
 
         # 5. RYTEC KEYWORD SEARCH - Use configurable similarity threshold
         if (not service_ref and
@@ -1832,7 +1855,10 @@ class EPGServiceMapper:
                     match_type = 'rytec_keyword'
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.debug(
-                            f"✅ Rytec keyword match: {original_name} -> {best_keyword_match['name']}")
+                            "✅ Rytec keyword match: %s -> %s",
+                            original_name,
+                            best_keyword_match['name']
+                        )
 
         # 6. DVB SEARCH - Use configurable similarity threshold
         if not service_ref and self.database_mode in ["full", "both", "dvb"]:
@@ -2056,8 +2082,9 @@ class EPGServiceMapper:
         try:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"EPG_DATA DEBUG: {
-                        len(epg_data)} entries received")
+                    "EPG_DATA DEBUG: %s entries received",
+                    len(epg_data)
+                )
             if epg_data:
                 logger.info(f"First entry: {epg_data[0]}")
 
@@ -2100,7 +2127,12 @@ class EPGServiceMapper:
                     cache_stats['fallback'] += 1
 
                 # Create the correct XML entry
-                entry = f'  <!-- {channel_name} [{match_type}] --><channel id="{channel_id}">{service_ref}</channel>\n'
+                entry = '  <!-- {} [{}] --><channel id="{}">{}</channel>\n'.format(
+                    channel_name,
+                    match_type,
+                    channel_id,
+                    service_ref
+                )
                 channel_entries.append(entry)
                 processed_count += 1
 
@@ -2109,8 +2141,9 @@ class EPGServiceMapper:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.error("NO CHANNEL ENTRIES TO WRITE!")
                     logger.error(
-                        f"EPG data had {
-                            len(epg_data)} entries but 0 were processed")
+                        "EPG data had %s entries but 0 were processed",
+                        len(epg_data)
+                    )
                 return False
 
             # SINGLE WRITE
@@ -2124,21 +2157,22 @@ class EPGServiceMapper:
             file_size = getsize(epg_path) if exists(epg_path) else 0
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"EPG file written: {epg_path} ({file_size} bytes, {
-                        len(channel_entries)} entries)")
+                    "EPG file written: %s (%s bytes, %s entries)",
+                    epg_path,
+                    file_size,
+                    len(channel_entries)
+                )
                 logger.info(
-                    f"Optimized EPG channels file created: {
-                        len(channel_entries)} entries")
+                    "Optimized EPG channels file created: %s entries",
+                    len(channel_entries)
+                )
                 logger.info(
-                    f"EPG Match stats - Rytec: {
-                        cache_stats.get(
-                            'rytec', 0)}, DVB-S: {
-                        cache_stats.get(
-                            'dvb', 0)}, DVB-T: {
-                        cache_stats.get(
-                            'dvbt', 0)}, Fallback: {
-                                cache_stats.get(
-                                    'fallback', 0)}")
+                    "EPG Match stats - Rytec: %s, DVB-S: %s, DVB-T: %s, Fallback: %s",
+                    cache_stats.get('rytec', 0),
+                    cache_stats.get('dvb', 0),
+                    cache_stats.get('dvbt', 0),
+                    cache_stats.get('fallback', 0)
+                )
                 logger.info("========= debug_epg_mapping =========")
             return True
 
@@ -2185,10 +2219,12 @@ class EPGServiceMapper:
                     flags=DOTALL)
 
             # Create the new source entry
-            new_source = f'    <source type="gen_xmltv" nocheck="1" channels="{bouquet_name}.channels.xml">\n'
-            new_source += f'      <description>{bouquet_name}</description>\n'
-            new_source += f'      <url><![CDATA[{epg_url}]]></url>\n'
-            new_source += '    </source>\n'
+            new_source = (
+                '    <source type="gen_xmltv" nocheck="1" channels="{}.channels.xml">\n'
+                '      <description>{}</description>\n'
+                '      <url><![CDATA[{}]]></url>\n'
+                '    </source>\n'
+            ).format(bouquet_name, bouquet_name, epg_url)
 
             # Add to existing sourcecat or create new one
             sourcecat_pattern = r'<sourcecat sourcecatname="Archimede Converter">(.*?)</sourcecat>'
@@ -2200,7 +2236,8 @@ class EPGServiceMapper:
                 updated_content = existing_content + '\n' + new_source
                 content = content.replace(
                     sourcecat_match.group(0),
-                    f'<sourcecat sourcecatname="Archimede Converter">{updated_content}</sourcecat>')
+                    '<sourcecat sourcecatname="Archimede Converter">{}</sourcecat>'.format(updated_content)
+                )
             else:
                 # Create new sourcecat
                 new_sourcecat = '  <sourcecat sourcecatname="Archimede Converter">\n'
@@ -2291,7 +2328,10 @@ class EPGServiceMapper:
         """Generate correct hybrid service reference"""
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"🔧 _generate_hybrid_sref: dvb_sref={dvb_sref}, for_epg={for_epg}")
+                "🔧 _generate_hybrid_sref: dvb_sref=%s, for_epg=%s",
+                dvb_sref,
+                for_epg
+            )
 
         # IF it's for EPG, RETURN the ORIGINAL DVB reference
         if for_epg and dvb_sref and dvb_sref.startswith('1:'):
@@ -2302,7 +2342,10 @@ class EPGServiceMapper:
                 corrected_sref = ':'.join(parts)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"🔧 DVB NAMESPACE FIXED for EPG: {dvb_sref} -> {corrected_sref}")
+                        "🔧 DVB NAMESPACE FIXED for EPG: %s -> %s",
+                        dvb_sref,
+                        corrected_sref
+                    )
                 return corrected_sref
             return dvb_sref  # ⬅️ IMPORTANT: Return the DVB reference for EPG
 
@@ -2317,11 +2360,18 @@ class EPGServiceMapper:
                     on_id = parts[5]
                     namespace = parts[6]
 
-                    dvb_reference = f"1:0:{service_type}:{service_id}:{ts_id}:{on_id}:{namespace}:0:0:0:"
-                    if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(
-                            f"🔧 IPTV->DVB: {dvb_sref} -> {dvb_reference}")
-                    return dvb_reference
+                dvb_reference = "1:0:{}:{}:{}:{}:{}:0:0:0:".format(
+                    service_type, service_id, ts_id, on_id, namespace
+                )
+
+                if config.plugins.m3uconverter.enable_debug.value:
+                    logger.info(
+                        "🔧 IPTV->DVB: %s -> %s",
+                        dvb_sref,
+                        dvb_reference
+                    )
+
+                return dvb_reference
             else:
                 return dvb_sref
 
@@ -2336,7 +2386,10 @@ class EPGServiceMapper:
                     corrected_sref = ':'.join(parts)
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"🔧 DVB NAMESPACE: {dvb_sref} -> {corrected_sref}")
+                            "🔧 DVB NAMESPACE: %s -> %s",
+                            dvb_sref,
+                            corrected_sref
+                        )
                     return corrected_sref
                 return dvb_sref
             else:
@@ -2348,9 +2401,13 @@ class EPGServiceMapper:
                     ts_id = parts[4]
                     on_id = parts[5]
                     namespace = parts[6]
-
-                    base_sref = f"4097:0:{service_type}:{service_id}:{ts_id}:{on_id}:{namespace}:0:0:0:"
-
+                    base_sref = "4097:0:{}:{}:{}:{}:{}:0:0:0:".format(
+                        service_type,
+                        service_id,
+                        ts_id,
+                        on_id,
+                        namespace
+                    )
                     if url:
                         encoded_url = url.replace(
                             ':', '%3a').replace(
