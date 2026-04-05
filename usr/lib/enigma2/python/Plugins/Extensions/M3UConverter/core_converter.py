@@ -93,89 +93,71 @@ class CoreConverter:
         try:
             logger.info("=== CURRENT CONFIGURATION (Setup Order) ===")
             logger.info("📁 FILE & STORAGE SETTINGS:")
-            logger.info(
-                f"  • Default Folder: {
-                    config.plugins.m3uconverter.lastdir.value}")
-            logger.info(
-                f"  • Large file threshold: {
-                    config.plugins.m3uconverter.large_file_threshold_mb.value} MB")
+            logger.info("  • Default Folder: %s",
+                        config.plugins.m3uconverter.lastdir.value)
+            logger.info("  • Large file threshold: %s MB",
+                        config.plugins.m3uconverter.large_file_threshold_mb.value)
 
             logger.info("🎯 BOUQUET SETTINGS:")
-            logger.info(
-                f"  • Bouquet Mode: {
-                    config.plugins.m3uconverter.bouquet_mode.value}")
-            logger.info(
-                f"  • Bouquet Position: {
-                    config.plugins.m3uconverter.bouquet_position.value}")
+            logger.info("  • Bouquet Mode: %s",
+                        config.plugins.m3uconverter.bouquet_mode.value)
+            logger.info("  • Bouquet Position: %s",
+                        config.plugins.m3uconverter.bouquet_position.value)
 
             logger.info("🔧 STREAM & CONVERSION:")
-            logger.info(
-                f"  • Convert HLS Streams: {
-                    config.plugins.m3uconverter.hls_convert.value}")
+            logger.info("  • Convert HLS Streams: %s",
+                        config.plugins.m3uconverter.hls_convert.value)
 
             logger.info("⚙️ SYSTEM SETTINGS:")
-            logger.info(
-                f"  • Create Backup: {
-                    config.plugins.m3uconverter.backup_enable.value}")
-            logger.info(
-                f"  • Max Backups: {
-                    config.plugins.m3uconverter.max_backups.value}")
-            logger.info(
-                f"  • Debug Mode: {
-                    config.plugins.m3uconverter.enable_debug.value}")
+            logger.info("  • Create Backup: %s",
+                        config.plugins.m3uconverter.backup_enable.value)
+            logger.info("  • Max Backups: %s",
+                        config.plugins.m3uconverter.max_backups.value)
+            logger.info("  • Debug Mode: %s",
+                        config.plugins.m3uconverter.enable_debug.value)
 
             logger.info("📡 EPG SETTINGS:")
-            logger.info(
-                f"  • Enable EPG: {
-                    config.plugins.m3uconverter.epg_enabled.value}")
+            logger.info("  • Enable EPG: %s",
+                        config.plugins.m3uconverter.epg_enabled.value)
 
             logger.info("  📊 EPG CONFIGURATION:")
-            logger.info(
-                f"    • EPG Language: {
-                    config.plugins.m3uconverter.language.value}")
-            logger.info(
-                f"    • EPG Generation Mode: {
-                    config.plugins.m3uconverter.epg_generation_mode.value}")
-            logger.info(
-                f"    • Database Mode: {
-                    config.plugins.m3uconverter.epg_database_mode.value}")
-            logger.info(
-                f"    • Use Manual Database: {
-                    config.plugins.m3uconverter.use_manual_database.value}")
-            logger.info(
-                f"    • Ignore DVB-T services: {config.plugins.m3uconverter.ignore_dvbt.value}")
+            logger.info("    • EPG Language: %s",
+                        config.plugins.m3uconverter.language.value)
+            logger.info("    • EPG Generation Mode: %s",
+                        config.plugins.m3uconverter.epg_generation_mode.value)
+            logger.info("    • Database Mode: %s",
+                        config.plugins.m3uconverter.epg_database_mode.value)
+            logger.info("    • Use Manual Database: %s",
+                        config.plugins.m3uconverter.use_manual_database.value)
+            logger.info("    • Ignore DVB-T services: %s",
+                        config.plugins.m3uconverter.ignore_dvbt.value)
 
             logger.info("  🎯 SIMILARITY THRESHOLDS:")
-            logger.info(
-                f"    • Global Similarity: {
-                    config.plugins.m3uconverter.similarity_threshold.value}%")
-            logger.info(
-                f"    • Rytec Similarity: {
-                    config.plugins.m3uconverter.similarity_threshold_rytec.value}%")
-            logger.info(
-                f"    • DVB Similarity: {
-                    config.plugins.m3uconverter.similarity_threshold_dvb.value}%")
+            logger.info("    • Global Similarity: %s%%",
+                        config.plugins.m3uconverter.similarity_threshold.value)
+            logger.info("    • Rytec Similarity: %s%%",
+                        config.plugins.m3uconverter.similarity_threshold_rytec.value)
+            logger.info("    • DVB Similarity: %s%%",
+                        config.plugins.m3uconverter.similarity_threshold_dvb.value)
 
             logger.info("  💾 MANUAL DATABASE:")
-            logger.info(
-                f"    • Manual DB Max Size: {
-                    config.plugins.m3uconverter.manual_db_max_size.value}")
-            logger.info(
-                f"    • Auto-open Editor: {config.plugins.m3uconverter.auto_open_editor.value}")
+            logger.info("    • Manual DB Max Size: %s",
+                        config.plugins.m3uconverter.manual_db_max_size.value)
+            logger.info("    • Auto-open Editor: %s",
+                        config.plugins.m3uconverter.auto_open_editor.value)
 
             logger.info("  🗄️ DEBUG STORAGE:")
-            logger.info(f"    • BASE_STORAGE_PATH: {BASE_STORAGE_PATH}")
-            logger.info(
-                f"    • ARCHIMEDE_CONVERTER_PATH: {ARCHIMEDE_CONVERTER_PATH}")
-            logger.info(f"    • LOG_DIR: {LOG_DIR}")
-            logger.info(f"    • DB PATCH: {DB_PATCH}")
-            logger.info(f"    • USB exists: {isdir('/media/usb/')}")
-            logger.info(f"    • USB writable: {access('/media/usb/', W_OK)}")
+            logger.info("    • BASE_STORAGE_PATH: %s", BASE_STORAGE_PATH)
+            logger.info("    • ARCHIMEDE_CONVERTER_PATH: %s", ARCHIMEDE_CONVERTER_PATH)
+            logger.info("    • LOG_DIR: %s", LOG_DIR)
+            logger.info("    • DB PATCH: %s", DB_PATCH)
+            logger.info("    • USB exists: %s", isdir('/media/usb/'))
+            logger.info("    • USB writable: %s", access('/media/usb/', W_OK))
 
             logger.info("=== END CONFIGURATION ===")
 
         except Exception as e:
-            logger.error(f"Error logging configuration: {str(e)}")
+            logger.error("Error logging configuration: %s", e)
 
     def _create_necessary_directories(self):
         """Create necessary directories if they don't exist."""
