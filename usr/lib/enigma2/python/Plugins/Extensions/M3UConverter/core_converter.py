@@ -357,7 +357,6 @@ class CoreConverter:
                 "Conversion failed (restored backup). Error: {}".format(str(e))
             )
 
-
     def _create_backup(self):
         """Create a backup of the existing bouquets."""
         try:
@@ -423,7 +422,8 @@ class CoreConverter:
             return False
 
         try:
-            cmd = "curl --max-time {} --head --silent --fail --output /dev/null {}".format(timeout, url)
+            cmd = "curl --max-time {} --head --silent --fail --output /dev/null {}".format(
+                timeout, url)
             return system(cmd) == 0
         except Exception:
             return False
