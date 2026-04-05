@@ -511,9 +511,7 @@ class EPGServiceMapper:
                     "🔄 Similarity thresholds updated - Global: {}, Rytec: {}, DVB: {}".format(
                         self.similarity_threshold,
                         self.similarity_threshold_rytec,
-                        self.similarity_threshold_dvb
-                    )
-                )
+                        self.similarity_threshold_dvb))
 
         if old_mode != self.database_mode:
             if config.plugins.m3uconverter.enable_debug.value:
