@@ -4004,8 +4004,9 @@ class ConversionSelector(Screen):
                 content = f.read()
 
             # Remove source for this bouquet
-            pattern = rf'<source type="gen_xmltv"[^>]*channels="{
-                escape(bouquet_name)}\.channels\.xml"[^>]*>.*?</source>'
+            pattern = r'<source type="gen_xmltv"[^>]*channels="{}\.channels\.xml"[^>]*>.*?</source>'.format(
+                escape(bouquet_name)
+            )
             new_content = sub(pattern, '', content, flags=DOTALL)
 
             # If no more bouquets, remove the entire sourcecat
