@@ -11458,9 +11458,8 @@ class ManualDatabaseManager:
                 fixed += '}' * (open_braces - close_braces)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"Added {
-                            open_braces -
-                            close_braces} missing closing braces")
+                        "Added {} missing closing braces".format(open_braces - close_braces)
+                    )
             elif close_braces > open_braces:
                 # Remove extra closing braces from end
                 while close_braces > open_braces and fixed.endswith('}'):
