@@ -3322,8 +3322,8 @@ class EPGServiceMapper:
             import random
             unique_id = random.randint(1000, 9999)
             debug_file_tab = join(
-                DEBUG_DIR, "{}_{}_{}_quick_tab.csv".format(timestamp, unique_id, bouquet_name)
-            )
+                DEBUG_DIR, "{}_{}_{}_quick_tab.csv".format(
+                    timestamp, unique_id, bouquet_name))
 
             # 2. Also create a TAB-friendly version
             with open(debug_file_tab, 'w', encoding='utf-8') as f:
