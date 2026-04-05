@@ -580,13 +580,14 @@ class EPGServiceMapper:
                 keys_to_remove = [key for key,
                                   timestamp in entries_with_times[:excess]]
 
-                for key in keys_to_remove:
-                    del self._match_cache[key]
+            for key in keys_to_remove:
+                del self._match_cache[key]
 
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.debug(
-                        f"🧹 LRU Cleaned {
-                            len(keys_to_remove)} oldest entries from match cache")
+            if config.plugins.m3uconverter.enable_debug.value:
+                logger.debug(
+                    "🧹 LRU Cleaned %s oldest entries from match cache",
+                    len(keys_to_remove)
+                )
 
     def _clean_epg_cache(self):
         """Clean EPG cache"""

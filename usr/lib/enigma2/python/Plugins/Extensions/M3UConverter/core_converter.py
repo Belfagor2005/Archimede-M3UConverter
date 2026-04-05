@@ -326,14 +326,21 @@ class CoreConverter:
         try:
             with open(main_file, "w", encoding="utf-8") as f:
                 f.writelines(final_content)
+
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"Updated bouquets.tv with {
-                        len(new_lines)} new bouquets")
+                    "Updated bouquets.tv with %s new bouquets",
+                    len(new_lines)
+                )
+
             return True
+
         except Exception as e:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.error(f"Error writing bouquets.tv: {str(e)}")
+                logger.error(
+                    "Error writing bouquets.tv: %s",
+                    e
+                )
             return False
 
     def safe_conversion(self, function, *args, **kwargs):
