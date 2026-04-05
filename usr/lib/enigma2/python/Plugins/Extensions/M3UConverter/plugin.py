@@ -6400,11 +6400,18 @@ class UniversalConverter(Screen):
                         'program_id': channel.get('program-id') or channel.get('program_id') or ''
                     })
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.debug(f"Added channel: {name} - {url}")
+                        logger.debug(
+                            "Added channel: %s - %s",
+                            name,
+                            url
+                        )
                 else:
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"Skipping channel without valid URL: {name} - URL: {url}")
+                            "Skipping channel without valid URL: %s - URL: %s",
+                            name,
+                            url
+                        )
 
             # Update UI based on conversion type
             display_list = []
@@ -6422,12 +6429,15 @@ class UniversalConverter(Screen):
             # Log results for debugging
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(
-                    f"Found {len(self.m3u_channels_list)} channels in JSON file")
+                    "Found %d channels in JSON file",
+                    len(self.m3u_channels_list)
+                )
             if len(self.m3u_channels_list) > 0:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.debug(
-                        f"Sample channel: {
-                            self.m3u_channels_list[0]}")
+                        "Sample channel: %s",
+                        self.m3u_channels_list[0]
+                    )
 
         except Exception as e:
             logger.error(f"Error parsing JSON: {str(e)}")
@@ -6606,16 +6616,19 @@ class UniversalConverter(Screen):
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(
-                    f"Starting optimized conversion with {total_valid} valid channels (originally {total_original}) in batches of {batch_size}")
+                    "Starting optimized conversion with %d valid channels (originally %d) in batches of %d",
+                    total_valid,
+                    total_original,
+                    batch_size
+                )
 
             # USE ONLY VALID CHANNELS - FIXED COUNTING
             for batch_start in range(0, total_valid, batch_size):
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.debug(
-                        f"=== STARTING BATCH {
-                            batch_start //
-                            batch_size +
-                            1} ===")
+                        "=== STARTING BATCH %d ===",
+                        batch_start // batch_size + 1
+                    )
                 if self.cancel_conversion:
                     logger.info(
                         "🛑 Conversion cancelled during batch processing")
@@ -6682,7 +6695,10 @@ class UniversalConverter(Screen):
                     # DEBUG: Check that service_ref is not None
                     if service_ref is None and config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"❌ service_ref is None for: '{original_name}', match_type: {match_type}")
+                            "❌ service_ref is None for: '%s', match_type: %s",
+                            original_name,
+                            match_type
+                        )
 
                     bouquet_sref = self.epg_mapper._generate_hybrid_sref(
                         service_ref, url, for_epg=False)
@@ -6724,11 +6740,12 @@ class UniversalConverter(Screen):
                     if processed_count % 50 == 0:
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.debug(
-                                f"Progress counts: Rytec={
-                                    stats['rytec_matches']}, DVB={
-                                    stats['dvb_matches']}, Consistent={
-                                    stats['consistent_fallback']}, Fallback={
-                                    stats['fallback_matches']}")
+                                "Progress counts: Rytec=%s, DVB=%s, Consistent=%s, Fallback=%s",
+                                stats['rytec_matches'],
+                                stats['dvb_matches'],
+                                stats['consistent_fallback'],
+                                stats['fallback_matches']
+                            )
 
                     # Grouping
                     if config.plugins.m3uconverter.bouquet_mode.value == "single":
@@ -6742,8 +6759,8 @@ class UniversalConverter(Screen):
                     # processed_count E total_valid
                     if processed_count % 10 == 0:
                         progress = int((processed_count / total_valid) * 100)
-                        progress_message = _(
-                            f"Converting: {processed_count}/{total_valid} ({progress}%)")
+                        progress_message = _("Converting: %d/%d (%d%%)") % (
+                            processed_count, total_valid, progress)
                         self.update_progress(processed_count, progress_message)
 
                     # processed_count
@@ -6783,15 +6800,13 @@ class UniversalConverter(Screen):
                 self.update_main_bouquet(bouquet_names)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"Main bouquet updated with {
-                            len(bouquet_names)} bouquets")
+                        "Main bouquet updated with %d bouquets" % len(bouquet_names))
 
             # Phase 3: Optimized EPG generation
             if config.plugins.m3uconverter.epg_enabled.value and epg_data:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"EPG enabled, generating optimized files for {
-                            len(epg_data)} channels")
+                        "EPG enabled, generating optimized files for %d channels" % len(epg_data))
 
                 bouquet_name_for_epg = bouquet_names[0] if bouquet_names else "default_bouquet"
 
@@ -6823,7 +6838,7 @@ class UniversalConverter(Screen):
                     self.m3u_channels_list)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"💾 AUTO-SAVE RESULTS: {auto_saved_count} matches saved to manual database")
+                        "💾 AUTO-SAVE RESULTS: %d matches saved to manual database" % auto_saved_count)
 
             # Analyze data cache
             if config.plugins.m3uconverter.enable_debug.value:
@@ -7097,24 +7112,18 @@ class UniversalConverter(Screen):
                     return (False, "No channels to convert")
 
                 logger.info(
-                    f"🔍 DEBUG: m3u_channels_list type: {
-                        type(
-                            self.m3u_channels_list)}")
+                    "🔍 DEBUG: m3u_channels_list type: %s" % type(self.m3u_channels_list))
                 logger.info(
-                    f"🔍 DEBUG: m3u_channels_list length: {len(self.m3u_channels_list)}")
+                    "🔍 DEBUG: m3u_channels_list length: %d" % len(self.m3u_channels_list))
 
                 if self.m3u_channels_list:
                     logger.info(
-                        f"🔍 DEBUG: First item type: {
-                            type(
-                                self.m3u_channels_list[0])}")
+                        "🔍 DEBUG: First item type: %s" % type(self.m3u_channels_list[0]))
                     logger.info(
-                        f"🔍 DEBUG: First item: {
-                            self.m3u_channels_list[0]}")
+                        "🔍 DEBUG: First item: %s" % self.m3u_channels_list[0])
                     if isinstance(self.m3u_channels_list[0], dict):
                         logger.info(
-                            f"🔍 DEBUG: First item keys: {
-                                self.m3u_channels_list[0].keys()}")
+                            "🔍 DEBUG: First item keys: %s" % self.m3u_channels_list[0].keys())
 
                 # Convert tuple data to dictionary format for EPG processing
                 processed_channels = []
@@ -7122,14 +7131,13 @@ class UniversalConverter(Screen):
 
                 for idx, channel in enumerate(self.m3u_channels_list):
                     logger.info(
-                        f"🔍 DEBUG: Processing channel {idx}, type: {
-                            type(channel)}")
+                        "🔍 DEBUG: Processing channel %d, type: %s" % (idx, type(channel)))
 
                     if isinstance(channel, tuple) and len(channel) == 2:
                         # Convert (name, url) tuple to dictionary
                         name, url = channel
                         logger.info(
-                            f"🔍 DEBUG: Converting tuple - name: '{name}', url: '{url}'")
+                            "🔍 DEBUG: Converting tuple - name: '%s', url: '%s'" % (name, url))
 
                         channel_dict = {
                             'name': name,
@@ -7145,9 +7153,10 @@ class UniversalConverter(Screen):
                         url = channel.get('url') or channel.get('uri') or ''
 
                         logger.info(
-                            f"🔍 DEBUG: Processing dict - found name: '{
-                                channel.get('name')}', title: '{
-                                channel.get('title')}', selected: '{channel_name}'")
+                            "🔍 DEBUG: Processing dict - found name: '%s', title: '%s', selected: '%s'" % (
+                                channel.get('name'), 
+                                channel.get('title'), 
+                                channel_name))
 
                         channel_dict = {
                             'name': channel_name,
@@ -7155,7 +7164,7 @@ class UniversalConverter(Screen):
                             'original_name': channel_name
                         }
 
-                        # Copia tutti gli altri campi utili
+                        # Copy all other useful fields
                         for key, value in channel.items():
                             if key not in ['name', 'title', 'url', 'uri']:
                                 channel_dict[key] = value
@@ -7163,16 +7172,14 @@ class UniversalConverter(Screen):
                         processed_channels.append(channel_dict)
                     else:
                         logger.warning(
-                            f"⚠️ Skipping invalid channel format: {
-                                type(channel)} - {channel}")
+                            "⚠️ Skipping invalid channel format: '%s' - %s" % (type(channel), channel))
                         continue
 
                 if not processed_channels:
                     return (False, "No valid channels processed")
 
                 logger.info(
-                    f"✅ DEBUG: Successfully processed {
-                        len(processed_channels)} channels")
+                    "✅ DEBUG: Successfully processed %d channels" % len(processed_channels))
 
                 # Process channels with EPG matching
                 optimized_channels = []
@@ -7183,8 +7190,7 @@ class UniversalConverter(Screen):
                     # DEBUG: Check channel structure before processing
                     if not isinstance(channel, dict):
                         logger.error(
-                            f"❌ DEBUG: Channel {idx} is not a dict: {
-                                type(channel)}")
+                            "❌ DEBUG: Channel %d is not a dict: %s" % (idx, type(channel)))
                         continue
 
                     name = channel.get('name', '')
@@ -7192,7 +7198,7 @@ class UniversalConverter(Screen):
 
                     if not name:
                         logger.warning(
-                            f"⚠️ DEBUG: Channel {idx} has empty name: {channel}")
+                            "⚠️ DEBUG: Channel %d has empty name: %s" % (idx, channel))
                         # Skip channels without name
                         continue
 
@@ -7253,7 +7259,7 @@ class UniversalConverter(Screen):
                         # Generate EPG files if enabled
                         if config.plugins.m3uconverter.epg_enabled.value and epg_data:
                             logger.info(
-                                f"🎯 Generating EPG for TV-to-TV conversion: {len(epg_data)} channels")
+                                "🎯 Generating EPG for TV-to-TV conversion: %d channels" % len(epg_data))
 
                             # Generate channels.xml
                             epg_success = self.epg_mapper._generate_epg_channels_file(
@@ -7879,10 +7885,8 @@ class UniversalConverter(Screen):
             self.last_cache_stats = self.epg_mapper._get_cache_statistics()
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"💾 Statistics preserved: {
-                        self.last_cache_stats.get(
-                            'total_matches',
-                            0)} total matches")
+                    "💾 Statistics preserved: %d total matches" % self.last_cache_stats.get(
+                        'total_matches', 0))
 
     def show_conversion_stats(self, conversion_type, stats_data):
         """Show ACCURATE conversion statistics."""
@@ -8427,9 +8431,7 @@ class UniversalConverter(Screen):
         else:
             effective_epg_matches = rytec_matches + dvb_matches
 
-        effective_coverage = f"{
-            (
-                effective_epg_matches / total_channels * 100):.1f}%" if total_channels > 0 else "0%"
+        effective_coverage = "{:.1f}%".format(effective_epg_matches / total_channels * 100) if total_channels > 0 else "0%"
 
         # Update stats data
         updated_stats = self.last_conversion_stats.copy()
@@ -8467,23 +8469,23 @@ class UniversalConverter(Screen):
                     dvbt_matches + fallback_matches + manual_db_matches
 
                 logger.info("🔍 FINAL COUNT VERIFICATION:")
-                logger.info(f"   Total valid channels: {total_processed}")
-                logger.info(f"   Total calculated matches: {real_total}")
+                logger.info("   Total valid channels: {}".format(total_processed))
+                logger.info("   Total calculated matches: {}".format(real_total))
                 logger.info(
-                    f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
+                    "   Rytec: {}, DVB-S: {}, DVB-T: {}".format(rytec_matches, dvb_matches, dvbt_matches))
                 logger.info(
-                    f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
+                    "   Manual DB: {}, Fallback: {}".format(manual_db_matches, fallback_matches))
 
                 # Check consistency
                 if real_total != total_processed:
                     logger.warning(
-                        f"⚠️ COUNT MISMATCH: Calculated {real_total} vs Processed {total_processed}")
+                        "⚠️ COUNT MISMATCH: Calculated {} vs Processed {}".format(real_total, total_processed))
                     # Auto-adjust to match reality
                     # scale_factor = total_processed / real_total if real_total > 0 else 1
                     adjusted_fallback = max(0, total_processed -
                                             (rytec_matches + dvb_matches + dvbt_matches + manual_db_matches))
                     logger.info(
-                        f"🔧 ADJUSTED: Fallback now {adjusted_fallback}, Total now {total_processed}")
+                        "🔧 ADJUSTED: Fallback now {}, Total now {}".format(adjusted_fallback, total_processed))
 
                 logger.info("🎯 ===== DETAILED CONVERSION STATISTICS =====")
                 logger.info(f"📊 Total channels processed: {total_processed}")
@@ -8702,7 +8704,7 @@ class ManualMatchEditor(Screen):
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.debug(
-                    f"   {idx}: {name[:30]} -> {match_type} | {epg_type} | TVG: {tvg_id}")
+                    "   {}: {} -> {} | {} | TVG: {}".format(idx, name[:30], match_type, epg_type, tvg_id))
 
             if has_epg:
                 epg_count += 1
@@ -8762,7 +8764,7 @@ class ManualMatchEditor(Screen):
                     clean_name, tvg_id, name, channel.get('url', ''))
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.debug(
-                        f"   Lookup result: service_ref={service_ref}, match_type={match_type}")
+                        "   Lookup result: service_ref={}, match_type={}".format(service_ref, match_type))
 
                 # If a DVB/Rytec match is found, update channel info
                 if service_ref and service_ref.startswith('1:0:'):
@@ -8780,7 +8782,7 @@ class ManualMatchEditor(Screen):
         if enhanced_count > 0:
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"🎯 Forced EPG detected for {enhanced_count} channels")
+                    "🎯 Forced EPG detected for {} channels".format(enhanced_count))
         else:
             logger.warning("⚠️ No EPG found during forced detection!")
 
@@ -8811,7 +8813,7 @@ class ManualMatchEditor(Screen):
                     _("Saved {} MANUAL corrections").format(saved_count))
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"🎉 Success: {saved_count} TRULY MANUAL corrections saved")
+                        "🎉 Success: {} TRULY MANUAL corrections saved".format(saved_count))
 
                 # 4. Reload services
                 self.reload_services_after_manual_edit()
@@ -8914,10 +8916,10 @@ class ManualMatchEditor(Screen):
                         saved_count += 1
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info(
-                                f"✅ SAVED MANUAL: {saved_count}. {channel_name}")
+                                "✅ SAVED MANUAL: {}. {}".format(saved_count, channel_name))
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"🎯 FINAL MANUAL SAVE: {saved_count} channels")
+                logger.info("🎯 FINAL MANUAL SAVE: {} channels".format(saved_count))
             return saved_count
 
         except Exception as e:
@@ -8963,14 +8965,14 @@ class ManualMatchEditor(Screen):
                 new_count = len(filtered_mappings)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"🧹 DATABASE CLEANED: {old_count} -> {new_count} mappings")
+                        "🧹 DATABASE CLEANED: {} -> {} mappings".format(old_count, new_count))
                 return True
             else:
                 logger.error("❌ Failed to save cleaned database")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Database cleanup error: {str(e)}")
+            logger.error("❌ Database cleanup error: {}".format(str(e)))
             return False
 
     def reload_services_after_manual_edit(self):
@@ -9732,10 +9734,10 @@ class ManualMatchEditor(Screen):
             self.changes_made = True
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"📝 MANUAL CHANGE: {channel_name} - {original_sref[:30]} -> {current_sref[:30]}")
+                    "📝 MANUAL CHANGE: {} - {} -> {}".format(channel_name, original_sref[:30], current_sref[:30]))
         else:
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.debug(f"ℹ️ No real change: {channel_name}")
+                logger.debug("ℹ️ No real change: {}".format(channel_name))
 
         # Refresh display
         self.update_channel_list()
@@ -10106,9 +10108,11 @@ class ManualDatabaseEditor(Screen):
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ Database reloaded. Selection mode: {
-                        self.selection_mode}, View: {
-                        'duplicates' if self.showing_duplicates else 'all'}")
+                    "✅ Database reloaded. Selection mode: {}, View: {}".format(
+                        self.selection_mode,
+                        'duplicates' if self.showing_duplicates else 'all'
+                    )
+                )
 
         except Exception as e:
             logger.error(f"Error loading database: {str(e)}")
@@ -10410,7 +10414,8 @@ class ManualDatabaseEditor(Screen):
                             _("Deleted {} items").format(selected_count))
 
                     logger.info(
-                        f"✅ Deleted {selected_count} items, remained in selection mode")
+                        "✅ Deleted {} items, remained in selection mode".format(selected_count)
+                    )
 
                 else:
                     self["status"].setText(_("Error deleting items"))
@@ -10443,9 +10448,10 @@ class ManualDatabaseEditor(Screen):
                 if 0 <= index < len(temp_mappings):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"🗑️ Deleting index {index}: {
-                                temp_mappings[index].get(
-                                    'channel_name', 'Unknown')}")
+                            "🗑️ Deleting index {}: {}".format(
+                                index, temp_mappings[index].get('channel_name', 'Unknown')
+                            )
+                        )
                     del temp_mappings[index]
 
             new_mappings = temp_mappings
@@ -10462,8 +10468,10 @@ class ManualDatabaseEditor(Screen):
                     self.mappings = new_mappings
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"✅ Deleted {deleted_count} mappings, new total: {
-                                len(new_mappings)}")
+                            "✅ Deleted {} mappings, new total: {}".format(
+                                deleted_count, len(new_mappings)
+                            )
+                        )
                     return True
 
             return False
@@ -10544,8 +10552,8 @@ class ManualDatabaseEditor(Screen):
                     deleted = True
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"✅ Deleted mapping: {
-                                mapping_to_delete.get('channel_name')}")
+                            "✅ Deleted mapping: {}".format(mapping_to_delete.get('channel_name'))
+                        )
                 else:
                     new_mappings.append(mapping)
 
@@ -10843,7 +10851,8 @@ class ManualDatabaseManager:
                         shutil.copy2(self.db_path, corrupt_backup)
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info(
-                                f"Backed up corrupted file to: {corrupt_backup}")
+                                "Backed up corrupted file to: {}".format(corrupt_backup)
+                            )
 
                     data = self._get_default_structure()
                     self._cached_db = data  # ✅ SAVE TO CACHE
@@ -10947,8 +10956,8 @@ class ManualDatabaseManager:
                             'assigned_sref') == mapping_data.get('assigned_sref'):
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.debug(
-                                f"🔄 Auto-save skip: identical mapping already exists for {
-                                    mapping_data.get('channel_name')}")
+                                "🔄 Auto-save skip: identical mapping already exists for {}".format(mapping_data.get('channel_name'))
+                            )
                         return True  # Do not save duplicates
 
                 # Check that assigned_sref is not an encoded URL
@@ -10970,7 +10979,8 @@ class ManualDatabaseManager:
 
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"💾 SAVE: {mapping_data.get('channel_name')} -> {mapping_data.get('assigned_sref')}")
+                        "💾 SAVE: {} -> {}".format(mapping_data.get('channel_name'), mapping_data.get('assigned_sref'))
+                    )
 
                 if not mapping_data.get(
                         'assigned_sref') or not mapping_data.get('channel_name'):
@@ -11006,19 +11016,19 @@ class ManualDatabaseManager:
 
                 if success:
                     logger.info(
-                        f"✅ Saved successfully: {
-                            mapping_data.get('channel_name')}")
+                        "✅ Saved successfully: {}".format(mapping_data.get('channel_name'))
+                    )
                 else:
                     logger.error(
-                        f"❌ Save failed: {
-                            mapping_data.get('channel_name')}")
+                        "❌ Save failed: {}".format(mapping_data.get('channel_name'))
+                    )
 
                 return success
 
             except Exception as e:
-                logger.error(f"❌ Manual mapping save error: {str(e)}")
+                logger.error("❌ Manual mapping save error: {}".format(str(e)))
                 import traceback
-                logger.error(f"❌ Traceback: {traceback.format_exc()}")
+                logger.error("❌ Traceback: {}".format(traceback.format_exc()))
                 return False
 
     def _enforce_db_size_limit(self):
@@ -11043,17 +11053,17 @@ class ManualDatabaseManager:
 
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"📏 Enforced DB size limit: {
-                            len(mappings)} -> {max_size}")
+                        "📏 Enforced DB size limit: {} -> {}".format(len(mappings), max_size)
+                    )
 
                 # Save directly without calling save_database
-                temp_path = f"{self.db_path}.tmp"
+                temp_path = "{}.tmp".format(self.db_path)
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 replace(temp_path, self.db_path)
 
         except Exception as e:
-            logger.error(f"❌ Error enforcing DB size limit: {str(e)}")
+            logger.error("❌ Error enforcing DB size limit: {}".format(str(e)))
 
     def save_database(self, data):
         """Save database to file with enhanced debugging"""
@@ -11061,9 +11071,8 @@ class ManualDatabaseManager:
             # DEBUG: Log what we're trying to save
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("💾 SAVE DATABASE DEBUG: Starting save process")
-                logger.info(f"   Data type: {type(data)}")
-                logger.info(
-                    f"   Mappings count: {len(data.get('mappings', []))}")
+                logger.info("   Data type: {}".format(type(data)))
+                logger.info("   Mappings count: {}".format(len(data.get('mappings', []))))
 
             # Validate data structure before saving
             if not isinstance(data, dict) or 'mappings' not in data:
@@ -11089,34 +11098,31 @@ class ManualDatabaseManager:
                     corrupted_count += 1
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"⚠️ Corrupted mapping at index {i}: {mapping}")
+                            "⚠️ Corrupted mapping at index {}: {}".format(i, mapping))
 
             if corrupted_count > 0:
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.warning(
-                        f"⚠️ Found {corrupted_count} corrupted mappings")
+                    logger.warning("⚠️ Found {} corrupted mappings".format(corrupted_count))
 
             data['mappings'] = valid_mappings
             data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
 
             # DEBUG: Log before file operations
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(
-                    f"💾 About to write {
-                        len(valid_mappings)} mappings to file")
+                logger.info("💾 About to write {} mappings to file".format(len(valid_mappings)))
 
             # Save with atomic write and verification
-            temp_path = f"{self.db_path}.tmp"
+            temp_path = "{}.tmp".format(self.db_path)
 
             # DEBUG: Log the JSON we're about to write
             try:
                 json_str = json.dumps(data, indent=2, ensure_ascii=False)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(f"💾 JSON string length: {len(json_str)}")
-                    logger.info(f"💾 First 500 chars: {json_str[:500]}")
-                    logger.info(f"💾 Last 500 chars: {json_str[-500:]}")
+                    logger.info("💾 JSON string length: {}".format(len(json_str)))
+                    logger.info("💾 First 500 chars: {}".format(json_str[:500]))
+                    logger.info("💾 Last 500 chars: {}".format(json_str[-500:]))
             except Exception as e:
-                logger.error(f"❌ JSON serialization failed: {e}")
+                logger.error("❌ JSON serialization failed: {}".format(e))
 
             with open(temp_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -11126,18 +11132,14 @@ class ManualDatabaseManager:
                 with open(temp_path, 'r', encoding='utf-8') as f:
                     saved_content = f.read()
                     if config.plugins.m3uconverter.enable_debug.value:
-                        verified_data = json.loads(
-                            saved_content)  # Test reading
+                        verified_data = json.loads(saved_content)  # Test reading
                         logger.info(
-                            f"✅ Saved file verification PASSED: {
-                                len(
-                                    verified_data.get(
-                                        'mappings',
-                                        []))} mappings loaded successfully")
+                            "✅ Saved file verification PASSED: {} mappings loaded successfully".format(
+                                len(verified_data.get('mappings', [])))
+                        )
             except json.JSONDecodeError as e:
-                logger.error(f"❌ Saved file verification FAILED: {str(e)}")
-                logger.error(
-                    f"❌ Corrupted content: {saved_content[e.pos - 50:e.pos + 50]}")
+                logger.error("❌ Saved file verification FAILED: {}".format(str(e)))
+                logger.error("❌ Corrupted content: {}".format(saved_content[e.pos - 50:e.pos + 50]))
                 return False
 
             # Replace original file
@@ -11241,8 +11243,7 @@ class ManualDatabaseManager:
                 data['last_updated'] = strftime("%Y-%m-%d %H:%M:%S")
                 self.save_database(data)
                 if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(
-                        f"🧹 Cleaned {removed_count} inconsistent mappings from database")
+                    logger.info("🧹 Cleaned {} inconsistent mappings from database".format(removed_count))
 
             return removed_count
 
@@ -11261,9 +11262,7 @@ class ManualDatabaseManager:
                 content = f.read()
 
             # Create emergency backup
-            emergency_backup = f"{
-                self.db_path}.emergency_backup_{
-                strftime('%Y%m%d_%H%M%S')}"
+            emergency_backup = "{}.emergency_backup_{}".format(self.db_path, strftime('%Y%m%d_%H%M%S'))
             with open(emergency_backup, 'w', encoding='utf-8') as f:
                 f.write(content)
 
@@ -11297,12 +11296,12 @@ class ManualDatabaseManager:
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ Emergency repair completed. Recovered {
-                        len(valid_mappings)} mappings.")
+                    "✅ Emergency repair completed. Recovered {} mappings.".format(len(valid_mappings))
+                )
             return True
 
         except Exception as e:
-            logger.error(f"❌ Emergency repair failed: {str(e)}")
+            logger.error("❌ Emergency repair failed: {}".format(str(e)))
             # If all else fails, create a clean database
             clean_data = self._get_default_structure()
             with open(self.db_path, 'w', encoding='utf-8') as f:
@@ -11314,9 +11313,7 @@ class ManualDatabaseManager:
         try:
             # Create backup before saving
             if exists(self.db_path):
-                backup_path = f"{
-                    self.db_path}.backup_{
-                    strftime('%Y%m%d_%H%M%S')}"
+                backup_path = "{}.backup_{}".format(self.db_path, strftime('%Y%m%d_%H%M%S'))
                 shutil.copy2(self.db_path, backup_path)
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(f"Created backup: {backup_path}")
@@ -11354,21 +11351,20 @@ class ManualDatabaseManager:
                 if not isinstance(mapping, dict):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"⚠️ Mapping {i} is not a dict: {mapping}")
+                            "⚠️ Mapping {} is not a dict: {}".format(i, mapping))
                     continue
 
-                if not mapping.get('channel_name') or not mapping.get(
-                        'assigned_sref'):
+                if not mapping.get('channel_name') or not mapping.get('assigned_sref'):
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.warning(
-                            f"⚠️ Mapping {i} missing required fields: {mapping}")
+                            "⚠️ Mapping {} missing required fields: {}".format(i, mapping))
                     continue
 
                 valid_count += 1
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ Database integrity check: {valid_count} valid mappings")
+                    "✅ Database integrity check: {} valid mappings".format(valid_count))
             return True
 
         except Exception as e:
@@ -11519,12 +11515,10 @@ class ManualDatabaseManager:
                         remove(backup)
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info(
-                                f"🧹 Removed old backup: {
-                                    basename(backup)}")
+                                "🧹 Removed old backup: {}".format(basename(backup)))
                     except Exception as e:
                         logger.error(
-                            f"❌ Error removing backup {backup}: {
-                                str(e)}")
+                            "❌ Error removing backup {}: {}".format(backup, str(e)))
 
         except Exception as e:
             logger.error(f"Backup cleanup error: {str(e)}")
@@ -11546,19 +11540,18 @@ class ManualDatabaseManager:
                     mapping['assigned_sref'] = f"4097:0:1:{service_id}:0:0:0:0:0:0:{encoded_url}"
                     fixed_count += 1
                     logger.info(
-                        f"🔧 Fixed mapping: {
-                            mapping.get('channel_name')}")
+                        "🔧 Fixed mapping: {}".format(mapping.get('channel_name')))
 
             if fixed_count > 0:
                 data['mappings'] = mappings
                 self.save_database(data)
                 logger.info(
-                    f"✅ Fixed {fixed_count} mappings with URL instead of service reference")
+                    "✅ Fixed {} mappings with URL instead of service reference".format(fixed_count))
 
             return fixed_count
 
         except Exception as e:
-            logger.error(f"❌ Error fixing existing mappings: {str(e)}")
+            logger.error("❌ Error fixing existing mappings: {}".format(str(e)))
             return 0
 
 
