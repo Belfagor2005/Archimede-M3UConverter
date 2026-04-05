@@ -9563,7 +9563,8 @@ class ManualMatchEditor(Screen):
                 sref_short = match['sref'][:30] + \
                     "..." if len(match['sref']) > 30 else match['sref']
 
-                match_text = f"{i + 1}. {icon} {similarity_pct}%\n{match['name'][:35]}\n{sref_short}"
+                match_text = f"{i +
+                                1}. {icon} {similarity_pct}%\n{match['name'][:35]}\n{sref_short}"
                 match_items.append(match_text)
 
         # Update UI in main thread using callFromThread
