@@ -3271,15 +3271,19 @@ class EPGServiceMapper:
 
             if success:
                 logger.info(
-                    f"✅ Batch save successful: {
-                        len(mappings_to_save)} mappings")
+                    "✅ Batch save successful: %s mappings",
+                    len(mappings_to_save)
+                )
             else:
                 logger.error("❌ Batch save failed")
 
             return success
 
         except Exception as e:
-            logger.error(f"❌ Batch save error: {str(e)}")
+            logger.error(
+                "❌ Batch save error: %s",
+                str(e)
+            )
             return False
 
     def normalize_conversion_data(self, conversion_data):
@@ -3317,7 +3321,8 @@ class EPGServiceMapper:
             import random
             unique_id = random.randint(1000, 9999)
             debug_file_tab = join(
-                DEBUG_DIR, f"{timestamp}_{unique_id}_{bouquet_name}_quick_tab.csv")
+                DEBUG_DIR, "{}_{}_{}_quick_tab.csv".format(timestamp, unique_id, bouquet_name)
+            )
 
             # 2. Also create a TAB-friendly version
             with open(debug_file_tab, 'w', encoding='utf-8') as f:
@@ -3355,7 +3360,7 @@ class EPGServiceMapper:
                         url = str(channel[1])[:30] if len(channel) > 1 else ''
 
                     else:
-                        # Caso sconosciuto - usare valori di default
+                        # Unknown case - use default values
                         name = str(channel)[:50]
                         original_name = name
                         tvg_id = ''
@@ -3366,10 +3371,23 @@ class EPGServiceMapper:
                         url = ''
 
                     f.write(
-                        f"{name}{separator}{original_name}{separator}{tvg_id}{separator}{clean_name}{separator}{match_type}{separator}{has_epg}{separator}{service_ref}{separator}{url}\n")
+                        "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
+                            name, separator,
+                            original_name, separator,
+                            tvg_id, separator,
+                            clean_name, separator,
+                            match_type, separator,
+                            has_epg, separator,
+                            service_ref, separator,
+                            url
+                        )
+                    )
 
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"📁 Debug CSV saved: {debug_file_tab}")
+                logger.info(
+                    "📁 Debug CSV saved: %s",
+                    debug_file_tab
+                )
 
         except Exception as e:
             logger.error(f"❌ Quick debug saving error: {str(e)}")
@@ -3452,10 +3470,15 @@ class EPGServiceMapper:
                     has_bouquet = bouquet_name in content
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"Bouquet present in sources: {has_bouquet}")
+                            "Bouquet present in sources: %s",
+                            has_bouquet
+                        )
 
             except Exception as e:
-                logger.error(f"Error reading sources.xml: {str(e)}")
+                logger.error(
+                    "Error reading sources.xml: %s",
+                    str(e)
+                )
 
         return channels_exists and sources_exists and channel_count > 0
 
@@ -3470,17 +3493,19 @@ class EPGServiceMapper:
         if not config.plugins.m3uconverter.enable_debug.value:
             return
 
-        logger.debug(f"=== MATCHING DEBUG for: {original_name} ===")
-        logger.debug(f"Clean name: {clean_name}")
-        logger.debug(f"TVG ID: {tvg_id}")
+        logger.debug("=== MATCHING DEBUG for: %s ===", original_name)
+        logger.debug("Clean name: %s", clean_name)
+        logger.debug("TVG ID: %s", tvg_id)
         logger.debug(
-            f"Final EPG ID: {
-                self._get_correct_epg_id(
-                    original_name,
-                    tvg_id,
-                    result)}")
-        logger.debug(f"Result: {result}")
-        logger.debug(f"Match type: {match_type}")
+            "Final EPG ID: %s",
+            self._get_correct_epg_id(
+                original_name,
+                tvg_id,
+                result
+            )
+        )
+        logger.debug("Result: %s", result)
+        logger.debug("Match type: %s", match_type))
 
     def _cleanup_all_match_types(self):
         """Global cleanup of all match_type entries in the system"""
