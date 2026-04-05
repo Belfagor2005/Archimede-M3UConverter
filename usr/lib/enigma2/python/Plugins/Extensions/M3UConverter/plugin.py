@@ -5133,7 +5133,8 @@ class UniversalConverter(Screen):
                     break
 
             timestamp = strftime("%Y%m%d_%H%M%S")
-            export_filename = "manual_mappings_export_{}.json".format(timestamp)
+            export_filename = "manual_mappings_export_{}.json".format(
+                timestamp)
             export_path = join(export_dir, export_filename)
 
             with open(export_path, 'w', encoding='utf-8') as f:
