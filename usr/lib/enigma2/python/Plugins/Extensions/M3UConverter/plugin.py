@@ -3433,8 +3433,16 @@ class EPGServiceMapper:
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info("=== EPG FILE VERIFICATION ===")
-            logger.info(f"Channels file: {channels_exists} - {channels_file}")
-            logger.info(f"Sources file: {sources_exists} - {sources_file}")
+            logger.info(
+                "Channels file: %s - %s",
+                channels_exists,
+                channels_file
+            )
+            logger.info(
+                "Sources file: %s - %s",
+                sources_exists,
+                sources_file
+            )
 
         # Verify content
         channel_count = 0
@@ -3444,7 +3452,10 @@ class EPGServiceMapper:
                     content = f.read()
                     channel_count = content.count('<channel id=')
                     if config.plugins.m3uconverter.enable_debug.value:
-                        logger.info(f"Channels in file: {channel_count}")
+                        logger.info(
+                            "Channels in file: %s",
+                            channel_count
+                        )
 
                     # Count match types
                     rytec_matches = content.count('rytec_')
@@ -4258,9 +4269,15 @@ class UniversalConverter(Screen):
             return self.epg_mapper
 
         except Exception as e:
-            logger.error(f"❌ EPG Mapper initialization failed: {str(e)}")
+            logger.error(
+                "❌ EPG Mapper initialization failed: %s",
+                str(e)
+            )
             import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(
+                "Traceback: %s",
+                traceback.format_exc()
+            )
             # Still create a fallback instance
             self.epg_mapper = EPGServiceMapper(prefer_satellite=True)
             return self.epg_mapper
@@ -4268,7 +4285,10 @@ class UniversalConverter(Screen):
     def _open_file_browser(self):
         """Open file browser for file selection."""
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.debug(f"Opening file browser for {self.conversion_type}")
+            logger.debug(
+                "Opening file browser for %s",
+                self.conversion_type
+            )
 
         try:
             # Determina il percorso iniziale in base al tipo di conversione
@@ -4293,7 +4313,10 @@ class UniversalConverter(Screen):
             )
 
         except Exception as e:
-            logger.error(f"Error opening file browser: {str(e)}")
+            logger.error(
+                "Error opening file browser: %s",
+                str(e)
+            )
             self.session.open(
                 MessageBox,
                 _("Error opening file browser:\n%s") % str(e),
@@ -4369,20 +4392,28 @@ class UniversalConverter(Screen):
             """Callback when the manual editor closes - return to UniversalConverter"""
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    "Manual editor closed, returning to UniversalConverter")
+                    "Manual editor closed, returning to UniversalConverter"
+                )
             try:
                 # Just show confirmation and log it
                 self["status"].setText(
-                    _("Manual editing completed - ready for conversion"))
+                    _("Manual editing completed - ready for conversion")
+                )
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        "✅ Returned to UniversalConverter successfully")
+                        "✅ Returned to UniversalConverter successfully"
+                    )
             except Exception as e:
-                logger.error(f"Error updating after editor close: {str(e)}")
+                logger.error(
+                    "Error updating after editor close: %s",
+                    str(e)
+                )
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Opening ManualMatchEditor from main for: {bouquet_name}")
+                "Opening ManualMatchEditor from main for: %s",
+                bouquet_name
+            )
 
         # Convert tuple data to dictionary format if needed
         processed_data = []
@@ -4885,8 +4916,9 @@ class UniversalConverter(Screen):
 
         if config.plugins.m3uconverter.enable_debug.value:
             logger.info(
-                f"Opening ManualMatchEditor from tools for: {bouquet_name}")
-
+                "Opening ManualMatchEditor from tools for: %s",
+                bouquet_name
+            )
         self.session.openWithCallback(
             editor_closed,
             ManualMatchEditor,
@@ -5181,7 +5213,12 @@ class UniversalConverter(Screen):
                     except BaseException:
                         pass
 
-                    display_text = f"{filename} [{file_type}] ({mapping_count} maps, {file_time})"
+                    display_text = "{} [{}] ({} maps, {})".format(
+                        filename,
+                        file_type,
+                        mapping_count,
+                        file_time
+                    )
                     file_items.append((display_text, file_path))
 
                 file_items.append((_("🔙 Back to locations"), "back"))
