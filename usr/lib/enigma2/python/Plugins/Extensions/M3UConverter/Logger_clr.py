@@ -136,9 +136,13 @@ class ColoredLogger:
         # Output a console
         if self.SUPPORTS_COLOR and color:
             print(
-                f"{timestamp} {
-                    self.plugin_name} {label} {color}{message}{
-                    self.END}")
+                str(timestamp) + " " +
+                str(self.plugin_name) + " " +
+                str(label) + " " +
+                str(color) +
+                str(message) +
+                str(self.END)
+            )
         else:
             print(console_message)
 
