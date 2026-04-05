@@ -354,7 +354,9 @@ class EPGServiceMapper:
                             "⚠️ Database corrupted, attempting repair...")
                         # This will trigger the enhanced JSON repair
                 except Exception as e:
-                    logger.error("❌ Database integrity check failed: {}".format(str(e)))
+                    logger.error(
+                        "❌ Database integrity check failed: {}".format(
+                            str(e)))
 
             # 1. Load DVB if required (including DVB-T for full/dtt modes)
             if self.database_mode in ["both", "dvb", "full", "dtt"]:
