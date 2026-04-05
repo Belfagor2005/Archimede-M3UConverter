@@ -10201,8 +10201,13 @@ class ManualDatabaseEditor(Screen):
                 prefix = "[X] " if i in self.selected_items else "[ ] " if self.selection_mode else ""
                 # sref_short = sref[:30] + "..." if len(sref) > 30 else sref
 
-                display_text = f"{prefix}{
-                    i + 1:03d}. {channel_name} [{match_type}]"
+                display_text = "{}{:.03d}. {} [{}]".format(
+                    prefix,
+                    i + 1,
+                    channel_name,
+                    match_type
+                )
+
                 if len(display_text) > 80:
                     display_text = display_text[:77] + "..."
 
@@ -10857,9 +10862,10 @@ class ManualDatabaseManager:
 
                     # Backup the corrupted file
                     if exists(self.db_path):
-                        corrupt_backup = f"{
-                            self.db_path}.corrupted_{
-                            strftime('%Y%m%d_%H%M%S')}"
+                        corrupt_backup = "{}.corrupted_{}".format(
+                            self.db_path,
+                            strftime('%Y%m%d_%H%M%S')
+                        )
                         shutil.copy2(self.db_path, corrupt_backup)
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info(
