@@ -2221,17 +2221,17 @@ class EPGServiceMapper:
                 content = '<?xml version="1.0" encoding="utf-8"?>\n<sources>\n</sources>'
 
             # Check if this bouquet already exists in sources
-            existing_pattern = rf'<source type="gen_xmltv"[^>]*channels="{
-                escape(bouquet_name)}\.channels\.xml"[^>]*>'
+            escaped_name = escape(bouquet_name)
+            existing_pattern = r'<source type="gen_xmltv"[^>]*channels="{}\.channels\.xml"[^>]*>'.format(escaped_name)
+
             if search(existing_pattern, content):
                 # Remove existing entry to update it
                 content = sub(
-                    rf'<source type="gen_xmltv"[^>]*channels="{
-                        escape(bouquet_name)}\.channels\.xml"[^>]*>.*?</source>',
+                    r'<source type="gen_xmltv"[^>]*channels="{}\.channels\.xml"[^>]*>.*?</source>'.format(escaped_name),
                     '',
                     content,
-                    flags=DOTALL)
-
+                    flags=DOTALL
+                )
             # Create the new source entry
             new_source = (
                 '    <source type="gen_xmltv" nocheck="1" channels="{}.channels.xml">\n'
@@ -3061,9 +3061,12 @@ class EPGServiceMapper:
                 # Write decompressed content
                 with open(output_path, 'wb') as f:
                     f.write(decompressed_content)
+
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"Downloaded and decompressed EPG file to {output_path}")
+                        "Downloaded and decompressed EPG file to %s",
+                        output_path
+                    )
 
             else:
                 # Write directly if not compressed
@@ -3082,9 +3085,13 @@ class EPGServiceMapper:
         """Download and parse EPGShare data with extensive debugging."""
         try:
             country_code = LANGUAGE_TO_COUNTRY.get(language_code, 'ALL')
-            epg_url = f"https://epgshare01.online/epgshare01/epg_ripper_{country_code}1.xml.gz"
+            epg_url = "https://epgshare01.online/epgshare01/epg_ripper_{}1.xml.gz".format(country_code)
+
             if config.plugins.m3uconverter.enable_debug.value:
-                logger.info(f"Downloading EPG from: {epg_url}")
+                logger.info(
+                    "Downloading EPG from: %s",
+                    epg_url
+                )
 
             # Download the file
             temp_path = join(LOG_DIR, "epgshare_download.xml")
@@ -3108,9 +3115,11 @@ class EPGServiceMapper:
                             if variant.get('source_type') == 'epgshare':
                                 epgshare_count += 1
                                 break
-                if config.plugins.m3uconverter.enable_debug.value:
-                    logger.info(
-                        f"EPGShare parsing completed: {epgshare_count} channels")
+            if config.plugins.m3uconverter.enable_debug.value:
+                logger.info(
+                    "EPGShare parsing completed: %s channels",
+                    epgshare_count
+                )
 
                 if epgshare_count > 0:
                     return True
@@ -3203,14 +3212,19 @@ class EPGServiceMapper:
                             mappings_to_save)
                         if success:
                             logger.info(
-                                f"💾 AUTO-SAVE BATCH: {len(mappings_to_save)} mappings saved")
+                                "💾 AUTO-SAVE BATCH: %s mappings saved",
+                                len(mappings_to_save)
+                            )
                         else:
                             logger.error("❌ Auto-save batch failed")
                     else:
                         logger.info("ℹ️ No mappings to save in auto-save")
 
                 except Exception as e:
-                    logger.error(f"Background auto-save error: {str(e)}")
+                    logger.error(
+                        "Background auto-save error: %s",
+                        str(e)
+                    )
 
             # Start thread - every save is immediate and thread-safe
             thread = threading.Thread(target=background_auto_save, daemon=True)
@@ -3309,8 +3323,8 @@ class EPGServiceMapper:
             with open(debug_file_tab, 'w', encoding='utf-8') as f:
                 separator = ';'  # Excel-friendly delimiter
                 f.write(
-                    f"Channel{separator}Original_Name{separator}TVG_ID{separator}Clean_Name{separator}Match_Type{separator}Has_EPG{separator}Service_Ref{separator}URL_Start\n")
-
+                    "Channel{0}Original_Name{0}TVG_ID{0}Clean_Name{0}Match_Type{0}Has_EPG{0}Service_Ref{0}URL_Start\n".format(separator)
+                )
                 for channel in normalized_data:
                     # CORREZIONE: Gestire sia dizionari che tuple
                     if isinstance(channel, dict):
@@ -3421,7 +3435,11 @@ class EPGServiceMapper:
 
                     if config.plugins.m3uconverter.enable_debug.value:
                         logger.info(
-                            f"Rytec matches: {rytec_matches}, DVB matches: {dvb_matches}, Fallback: {fallback_matches}")
+                            "Rytec matches: %s, DVB matches: %s, Fallback: %s",
+                            rytec_matches,
+                            dvb_matches,
+                            fallback_matches
+                        )
 
             except Exception as e:
                 logger.error(f"Error reading channels.xml: {str(e)}")
@@ -3505,7 +3523,11 @@ class EPGServiceMapper:
                         cleaned_conv += 1
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"🧹 GLOBAL CLEAN: cache={cleaned_cache}, db={cleaned_db}, conv={cleaned_conv}")
+                    "🧹 GLOBAL CLEAN: cache=%s, db=%s, conv=%s",
+                    cleaned_cache,
+                    cleaned_db,
+                    cleaned_conv
+                )
 
             return True
 
@@ -3576,12 +3598,17 @@ class EPGServiceMapper:
 
             if cleaned_count > 0:
                 logger.info(
-                    f"🧹 Cleaned {cleaned_count} debug files older than 1 day.")
+                    "🧹 Cleaned %s debug files older than 1 day.",
+                    cleaned_count
+                )
             else:
                 logger.debug("No old debug files found to clean.")
 
         except Exception as e:
-            logger.debug(f"Cleanup skipped due to error: {str(e)}")
+            logger.debug(
+                "Cleanup skipped due to error: %s",
+                str(e)
+            )
 
     def _cleanup_log_file(self):
         """Completely clear the log file before new conversion"""
@@ -3613,8 +3640,9 @@ class EPGServiceMapper:
                         remove(old_file)
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.debug(
-                                f"🧹 Removed old debug: {
-                                    basename(old_file)}")
+                                "🧹 Removed old debug: %s",
+                                basename(old_file)
+                            )
                     except Exception as e:
                         logger.debug(f"Could not remove {old_file}: {e}")
 
@@ -4146,7 +4174,9 @@ class UniversalConverter(Screen):
             self.epg_mapper._parse_lamedb()
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ Lamedb loaded: {len(self.epg_mapper.mapping.dvb)} channels")
+                    "✅ Lamedb loaded: %s channels",
+                    len(self.epg_mapper.mapping.dvb)
+                )
 
             self.epg_mapper._parse_existing_bouquets()
             if config.plugins.m3uconverter.enable_debug.value:
@@ -4171,11 +4201,15 @@ class UniversalConverter(Screen):
                     if rytec_count > 0:
                         if config.plugins.m3uconverter.enable_debug.value:
                             logger.info(
-                                f"✅ Rytec database loaded: {rytec_count} channels")
+                                "✅ Rytec database loaded: %s channels",
+                                rytec_count
+                            )
                         break
                     else:
                         logger.error(
-                            f"❌ Rytec file exists but 0 channels loaded from: {rytec_path}")
+                            "❌ Rytec file exists but 0 channels loaded from: %s",
+                            rytec_path
+                        )
                 else:
                     logger.warning(f"📁 File not found: {rytec_path}")
             # 3. Channel mapping and optimizations
@@ -4193,7 +4227,10 @@ class UniversalConverter(Screen):
             final_dvb = len(self.epg_mapper.mapping.dvb)
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"🎯 FINAL DATABASE STATUS: Rytec={final_rytec}, DVB={final_dvb}")
+                    "🎯 FINAL DATABASE STATUS: Rytec=%s, DVB=%s",
+                    final_rytec,
+                    final_dvb
+                )
 
             return self.epg_mapper
 
