@@ -4431,8 +4431,9 @@ class UniversalConverter(Screen):
                 processed_data.append(channel)
             else:
                 logger.warning(
-                    f"Skipping invalid channel format: {
-                        type(channel)}")
+                    "Skipping invalid channel format: %s",
+                    type(channel)
+                )
 
         self.session.openWithCallback(
             editor_closed,
@@ -6067,7 +6068,10 @@ class UniversalConverter(Screen):
                         entries.append(current_params.copy())
                     current_params = {}
         if config.plugins.m3uconverter.enable_debug.value:
-            logger.info(f"Parsing completed: {len(entries)} channels found")
+            logger.info(
+                "Parsing completed: %s channels found",
+                len(entries)
+            )
         return entries
 
     def _parse_m3u_incremental(self, filename, chunk_size=65536):
@@ -6214,9 +6218,13 @@ class UniversalConverter(Screen):
 
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info(
-                    f"✅ TV file parsed successfully: {
-                        len(channels)} channels found")
-                logger.debug(f"📺 Sample channels: {channels[:3]}")
+                    "✅ TV file parsed successfully: %s channels found",
+                    len(channels)
+                )
+                logger.debug(
+                    "📺 Sample channels: %s",
+                    channels[:3]
+                )
 
             self._update_ui_success(len(self.m3u_channels_list))
 
@@ -6810,30 +6818,44 @@ class UniversalConverter(Screen):
             # VERIFICATION: Log detailed counts for debugging
             if config.plugins.m3uconverter.enable_debug.value:
                 logger.info("🔍 FINAL COUNT VERIFICATION:")
-                logger.info(f"   Total valid channels: {total_valid}")
-                logger.info(f"   Total calculated matches: {total_calculated}")
+                logger.info("   Total valid channels: %s", total_valid)
+                logger.info("   Total calculated matches: %s", total_calculated)
                 logger.info(
-                    f"   Rytec: {rytec_matches}, DVB-S: {dvb_matches}, DVB-T: {dvbt_matches}")
+                    "   Rytec: %s, DVB-S: %s, DVB-T: %s",
+                    rytec_matches,
+                    dvb_matches,
+                    dvbt_matches
+                )
                 logger.info(
-                    f"   Manual DB: {manual_db_matches}, Fallback: {fallback_matches}")
+                    "   Manual DB: %s, Fallback: %s",
+                    manual_db_matches,
+                    fallback_matches
+                )
 
             # Check consistency - use the REAL processed count (total_valid)
             if total_calculated != total_valid:
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.warning(
-                        f"⚠️ COUNT MISMATCH: Calculated {total_calculated} vs Processed {total_valid}")
+                        "⚠️ COUNT MISMATCH: Calculated %s vs Processed %s",
+                        total_calculated,
+                        total_valid
+                    )
 
                 # Force consistency by adjusting fallback count
                 calculated_without_fallback = total_calculated - fallback_matches
                 fallback_matches = max(
-                    0, total_valid - calculated_without_fallback)
+                    0, total_valid - calculated_without_fallback
+                )
                 if config.plugins.m3uconverter.enable_debug.value:
                     logger.info(
-                        f"🔧 ADJUSTED: Fallback now {fallback_matches}, Total now {
-                            calculated_without_fallback + fallback_matches}")
+                        "🔧 ADJUSTED: Fallback now %s, Total now %s",
+                        fallback_matches,
+                        calculated_without_fallback + fallback_matches
+                    )
             else:
                 logger.info(
-                    "✅ Count verification PASSED - all channels accounted for")
+                    "✅ Count verification PASSED - all channels accounted for"
+                )
 
             # Real EPG: only Rytec + DVB + DVB-T + Manual DB (exclude fallback)
             real_epg_matches = rytec_matches + dvb_matches + dvbt_matches + manual_db_matches
@@ -6842,7 +6864,10 @@ class UniversalConverter(Screen):
             try:
                 perf_stats = self.epg_mapper._get_cache_statistics()
             except Exception as e:
-                logger.warning(f"Error getting performance stats: {str(e)}")
+                logger.warning(
+                    "Error getting performance stats: %s",
+                    str(e)
+                )
                 perf_stats = {'match_hit_rate': 'N/A', 'match_cache_size': 0}
 
             # Update stats for consistency
@@ -7766,9 +7791,15 @@ class UniversalConverter(Screen):
             self.file_loaded = False  # Reset file state
 
         except Exception as e:
-            logger.error(f"❌ Error in conversion_finished: {str(e)}")
+            logger.error(
+                "❌ Error in conversion_finished: %s",
+                str(e)
+            )
             import traceback
-            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            logger.error(
+                "❌ Traceback: %s",
+                traceback.format_exc()
+            )
             self.session.open(
                 MessageBox,
                 _("Error processing conversion result"),
@@ -8444,20 +8475,21 @@ class UniversalConverter(Screen):
                 # Cache statistics
                 logger.info("💾 CACHE PERFORMANCE:")
                 logger.info(
-                    f"   Hit rate: {
-                        stats.get(
-                            'match_hit_rate',
-                            'N/A')}")
+                    "   Hit rate: %s",
+                    stats.get('match_hit_rate', 'N/A')
+                )
                 logger.info(
-                    f"   Cache size: {
-                        stats.get(
-                            'match_cache_size',
-                            0)} entries")
+                    "   Cache size: %s entries",
+                    stats.get('match_cache_size', 0)
+                )
 
                 logger.info("==========================================")
 
             except Exception as e:
-                logger.error(f"Error printing detailed stats: {str(e)}")
+                logger.error(
+                    "Error printing detailed stats: %s",
+                    str(e)
+                )
 
     def print_simple_stats(self):
         """Print simple conversion statistics without cache details."""
