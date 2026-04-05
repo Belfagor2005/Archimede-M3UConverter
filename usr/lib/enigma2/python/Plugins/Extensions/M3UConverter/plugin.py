@@ -7766,25 +7766,13 @@ class UniversalConverter(Screen):
 
                         stats_data = {
                             'total_channels': total_processed,
-                            'effective_epg_matches': int(
-                                total_processed * effective_coverage / 100),
-                            'effective_coverage': f"{
-                                effective_coverage:.1f}%",
-                            'rytec_matches': cache_stats.get(
-                                'rytec_matches',
-                                0),
-                            'dvb_matches': cache_stats.get(
-                                'dvb_matches',
-                                0),
-                            'dvbt_matches': cache_stats.get(
-                                'dvbt_matches',
-                                0),
-                            'fallback_matches': cache_stats.get(
-                                'fallback_matches',
-                                0),
-                            'manual_db_matches': cache_stats.get(
-                                'manual_db_matches',
-                                0),
+                            'effective_epg_matches': int(total_processed * effective_coverage / 100),
+                            'effective_coverage': f"{effective_coverage:.1f}%",  # Correct string formatting for percentage
+                            'rytec_matches': cache_stats.get('rytec_matches', 0),
+                            'dvb_matches': cache_stats.get('dvb_matches', 0),
+                            'dvbt_matches': cache_stats.get('dvbt_matches', 0),
+                            'fallback_matches': cache_stats.get('fallback_matches', 0),
+                            'manual_db_matches': cache_stats.get('manual_db_matches', 0),
                         }
 
                         self.last_conversion_stats = stats_data
