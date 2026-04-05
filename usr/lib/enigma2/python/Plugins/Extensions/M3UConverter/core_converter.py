@@ -95,8 +95,9 @@ class CoreConverter:
             logger.info("📁 FILE & STORAGE SETTINGS:")
             logger.info("  • Default Folder: %s",
                         config.plugins.m3uconverter.lastdir.value)
-            logger.info("  • Large file threshold: %s MB",
-                        config.plugins.m3uconverter.large_file_threshold_mb.value)
+            logger.info(
+                "  • Large file threshold: %s MB",
+                config.plugins.m3uconverter.large_file_threshold_mb.value)
 
             logger.info("🎯 BOUQUET SETTINGS:")
             logger.info("  • Bouquet Mode: %s",
@@ -135,10 +136,12 @@ class CoreConverter:
             logger.info("  🎯 SIMILARITY THRESHOLDS:")
             logger.info("    • Global Similarity: %s%%",
                         config.plugins.m3uconverter.similarity_threshold.value)
-            logger.info("    • Rytec Similarity: %s%%",
-                        config.plugins.m3uconverter.similarity_threshold_rytec.value)
-            logger.info("    • DVB Similarity: %s%%",
-                        config.plugins.m3uconverter.similarity_threshold_dvb.value)
+            logger.info(
+                "    • Rytec Similarity: %s%%",
+                config.plugins.m3uconverter.similarity_threshold_rytec.value)
+            logger.info(
+                "    • DVB Similarity: %s%%",
+                config.plugins.m3uconverter.similarity_threshold_dvb.value)
 
             logger.info("  💾 MANUAL DATABASE:")
             logger.info("    • Manual DB Max Size: %s",
@@ -148,7 +151,9 @@ class CoreConverter:
 
             logger.info("  🗄️ DEBUG STORAGE:")
             logger.info("    • BASE_STORAGE_PATH: %s", BASE_STORAGE_PATH)
-            logger.info("    • ARCHIMEDE_CONVERTER_PATH: %s", ARCHIMEDE_CONVERTER_PATH)
+            logger.info(
+                "    • ARCHIMEDE_CONVERTER_PATH: %s",
+                ARCHIMEDE_CONVERTER_PATH)
             logger.info("    • LOG_DIR: %s", LOG_DIR)
             logger.info("    • DB PATCH: %s", DB_PATCH)
             logger.info("    • USB exists: %s", isdir('/media/usb/'))
