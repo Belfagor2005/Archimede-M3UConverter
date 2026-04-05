@@ -8716,8 +8716,7 @@ class ManualMatchEditor(Screen):
                 "📊 ENHANCED EPG Summary: %s with EPG, %s without EPG, %s manual",
                 epg_count,
                 no_epg_count,
-                manual_count
-            )
+                manual_count)
 
         self.force_epg_detection()
 
