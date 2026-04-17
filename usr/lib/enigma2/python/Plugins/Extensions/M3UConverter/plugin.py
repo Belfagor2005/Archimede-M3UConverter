@@ -2582,7 +2582,7 @@ class EPGServiceMapper:
             '28.2e': 'astra28', '28e': 'astra28', '28.2': 'astra28',
             '23.5e': 'astra23', '23e': 'astra23',
             '5.0w': 'amazonas', '5w': 'amazonas',
-            '0.8w': 'thor', '0.8w': 'thor',
+            '0.8w': 'thor',
             '4.8e': 'sirius', '4.8': 'sirius',
             '7.0w': 'nilesat', '7w': 'nilesat',
             '9.0e': 'eutelsat9', '9e': 'eutelsat9'
