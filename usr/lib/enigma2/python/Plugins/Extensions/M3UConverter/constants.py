@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+
+# ======================== IMPORTS ========================
+from os.path import dirname, join
+from enigma import getDesktop
+from Screens.Setup import Setup
+from . import _, __version__
+from .utils import get_best_storage_path
 
 """
 #########################################################
@@ -20,20 +27,6 @@ from __future__ import absolute_import, print_function
 #########################################################
 """
 __author__ = "Lululla"
-
-# ======================== IMPORTS ========================
-# ?? STANDARD LIBRARIES (Python built-ins)
-from os.path import dirname, join
-
-# ?? ENIGMA2 CORE
-from enigma import getDesktop
-
-# ?? ENIGMA2 SCREENS
-from Screens.Setup import Setup
-
-# ?? LOCAL MODULES
-from . import _, __version__
-from .utils import get_best_storage_path
 
 
 # ==================== CONSTANTS & PATHS ====================

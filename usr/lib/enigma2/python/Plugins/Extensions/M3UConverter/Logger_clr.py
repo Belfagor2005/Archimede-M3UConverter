@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+import sys
+from threading import Lock
+from os import makedirs, remove, rename
+from os.path import join, exists, getsize
+from time import strftime
+from io import StringIO
+
 
 """
 #########################################################
 #                                                       #
 #  Universal Logger Module                              #
-#  Version: 1.1                                         #
 #  Created by Lululla (https://github.com/Belfagor2005) #
 #  License: CC BY-NC-SA 4.0                             #
 #  https://creativecommons.org/licenses/by-nc-sa/4.0    #
@@ -19,12 +25,6 @@ from __future__ import absolute_import, print_function
 #  please maintain this credit header.                  #
 #########################################################
 """
-import sys
-from threading import Lock
-from os import makedirs, remove, rename
-from os.path import join, exists, getsize
-from time import strftime
-from io import StringIO
 
 logfile = StringIO()
 mutex = Lock()
@@ -121,10 +121,8 @@ class ColoredLogger:
 
         console_message = f"{timestamp} {self.plugin_name} {label} {message}"
 
-        # Per file log (senza colori e con emoticon sostituite se necessario)
         file_label = label
         if not self.SUPPORTS_UNICODE:
-            # Sostituisci emoticon con testo
             file_label = file_label.replace("🐛", "[DEBUG]")
             file_label = file_label.replace("ℹ️", "[INFO]")
             file_label = file_label.replace("⚠️", "[WARN]")
@@ -215,7 +213,7 @@ class ColoredLogger:
         try:
             msg = message % args if args else message
         except (TypeError, ValueError):
-            msg = message  # fallback se è già una f-string
+            msg = message
         self.log("DEBUG", msg)
 
     def info(self, message, *args):

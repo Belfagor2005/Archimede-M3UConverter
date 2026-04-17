@@ -1,5 +1,24 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+from os.path import exists, join
+from Screens.Screen import Screen
+from Components.ActionMap import ActionMap
+from Components.ScrollLabel import ScrollLabel
+from Components.Sources.StaticText import StaticText
+from Components.config import config
+from . import _, __version__, LAST_MODIFIED_DATE
+from .constants import (
+    SCREEN_WIDTH,
+    BASE_STORAGE_PATH,
+    ARCHIMEDE_CONVERTER_PATH,
+    LOG_DIR,
+    DEBUG_DIR,
+    DB_PATCH,
+    EXPORT_DIR
+)
+from .Logger_clr import get_logger
+from .core_converter import CoreConverter
+
 
 """
 #########################################################
@@ -20,33 +39,6 @@ from __future__ import absolute_import, print_function
 #########################################################
 """
 __author__ = "Lululla"
-# ======================== IMPORTS ========================
-# 🧠 STANDARD LIBRARIES (Python built-ins)
-from os.path import exists, join
-
-# 🪟 ENIGMA2 SCREENS
-from Screens.Screen import Screen
-
-# 🧩 ENIGMA2 COMPONENTS
-from Components.ActionMap import ActionMap
-from Components.ScrollLabel import ScrollLabel
-from Components.Sources.StaticText import StaticText
-from Components.config import config
-
-# 🧱 LOCAL MODULES
-from . import _, __version__, LAST_MODIFIED_DATE
-from .constants import (
-    SCREEN_WIDTH,
-    BASE_STORAGE_PATH,
-    ARCHIMEDE_CONVERTER_PATH,
-    LOG_DIR,
-    DEBUG_DIR,
-    DB_PATCH,
-    EXPORT_DIR
-)
-from .Logger_clr import get_logger
-from .core_converter import CoreConverter
-
 
 # ==================== LOGGER ====================
 logger = get_logger(

@@ -3,9 +3,11 @@
 **Universal playlist converter for Enigma2 (Python 3 only)**  
 Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG mapping and intelligent channel matching.
 
-![Version](https://img.shields.io/badge/Version-3.0-blue.svg)
+![](https://komarev.com/ghpvc/?username=Belfagor2005)
+![Version](https://img.shields.io/badge/Version-3.3-blue.svg)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)
-![Python](https://img.shields.io/badge/Python-3-only-orange.svg)
+![Python](https://img.shields.io/badge/Python3-only-orange.svg)
+
 
 ## 🚀 Key Features
 

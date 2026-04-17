@@ -1,5 +1,29 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+import shutil
+import hashlib
+import unicodedata
+from re import sub
+from time import strftime
+from threading import Lock
+from collections import defaultdict
+from os.path import exists, isdir, join, basename
+from os import access, W_OK, listdir, remove, replace, chmod, system, makedirs
+from Components.config import config
+
+from .constants import (
+    LOG_DIR,
+    DB_PATCH,
+    BASE_STORAGE_PATH,
+    ARCHIMEDE_CONVERTER_PATH,
+)
+from .utils import (
+    clean_group_name,
+    transliterate_text,
+    create_bouquets_backup
+)
+from .Logger_clr import get_logger
+
 
 """
 #########################################################
@@ -20,36 +44,6 @@ from __future__ import absolute_import, print_function
 #########################################################
 """
 __author__ = "Lululla"
-
-# ======================== IMPORTS ========================
-# 🧠 STANDARD LIBRARIES (Python built-ins)
-import shutil
-import hashlib
-import unicodedata
-from re import sub
-from time import strftime
-from threading import Lock
-from collections import defaultdict
-from os.path import exists, isdir, join, basename
-from os import access, W_OK, listdir, remove, replace, chmod, system, makedirs
-
-# 🧩 ENIGMA2 COMPONENTS
-from Components.config import config
-
-
-# 🧱 LOCAL MODULES
-from .constants import (
-    LOG_DIR,
-    DB_PATCH,
-    BASE_STORAGE_PATH,
-    ARCHIMEDE_CONVERTER_PATH,
-)
-from .utils import (
-    clean_group_name,
-    transliterate_text,
-    create_bouquets_backup
-)
-from .Logger_clr import get_logger
 
 
 # ==================== LOGGER ====================

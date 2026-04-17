@@ -2,7 +2,7 @@
 ## setup command=wget -q --no-check-certificate https://raw.githubusercontent.com/Belfagor2005/Archimede-M3UConverter/main/installer.sh -O - | /bin/sh
 
 version='3.3'
-changelog='Fix Stream url name'
+changelog='Porting pyhon3'
 
 TMPPATH=/tmp/Archimede-M3UConverter-install
 FILEPATH=/tmp/Archimede-M3UConverter-main.tar.gz

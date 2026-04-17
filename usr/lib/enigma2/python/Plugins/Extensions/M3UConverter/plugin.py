@@ -1,28 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
-
-"""
-#########################################################
-#                                                       #
-#  Archimede Universal Converter Plugin                 #
-#  Version: 3.0                                         #
-#  Created by Lululla (https://github.com/Belfagor2005) #
-#  License: CC BY-NC-SA 4.0                             #
-#  https://creativecommons.org/licenses/by-nc-sa/4.0    #
-#  Last Modified: "20:05 - 20251102"                    #
-#                                                       #
-#  Credits:                                             #
-#  - Original concept by Lululla                        #
-#  Usage of this code without proper attribution        #
-#  is strictly prohibited.                              #
-#  For modifications and redistribution,                #
-#  please maintain this credit header.                  #
-#########################################################
-"""
-__author__ = "Lululla"
-
-# ======================== IMPORTS ========================
-# 🧠 STANDARD LIBRARIES (Python built-ins)
+from __future__ import absolute_import
 import json
 import time
 import glob
@@ -39,14 +16,10 @@ from os import access, W_OK, listdir, remove, replace, chmod, mkdir, makedirs
 from re import compile, sub, findall, DOTALL, MULTILINE, IGNORECASE, search, escape
 from os.path import exists, isdir, isfile, join, normpath, basename, dirname, getsize, getmtime
 
-# ⚡ TWISTED / ASYNC
 from twisted.internet import threads
 from twisted.internet.reactor import callInThread, callFromThread
 
-# 📺 ENIGMA2 CORE
 from enigma import eServiceReference, eTimer, eDVBDB
-
-# 🧩 ENIGMA2 COMPONENTS
 from Components.Label import Label
 from Components.MenuList import MenuList
 from Components.ActionMap import ActionMap
@@ -56,16 +29,11 @@ from Components.config import (
     config, ConfigSelection, ConfigSubsection, ConfigYesNo,
     ConfigNumber, ConfigSelectionNumber
 )
-
-# 🪟 ENIGMA2 SCREENS
 from Screens.Screen import Screen
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
-
-# 🧰 ENIGMA2 TOOLS
 from Tools.Directories import fileExists
 
-# 🧱 LOCAL MODULES
 from . import _, __version__
 from .Logger_clr import get_logger
 from .constants import (
@@ -91,6 +59,28 @@ from .utils import (
 )
 from .plugin_info import PluginInfoScreen
 from .core_converter import CoreConverter, UnifiedChannelMapping
+
+
+"""
+#########################################################
+#                                                       #
+#  Archimede Universal Converter Plugin                 #
+#  Version: 3.0                                         #
+#  Created by Lululla (https://github.com/Belfagor2005) #
+#  License: CC BY-NC-SA 4.0                             #
+#  https://creativecommons.org/licenses/by-nc-sa/4.0    #
+#  Last Modified: "20:05 - 20251102"                    #
+#                                                       #
+#  Credits:                                             #
+#  - Original concept by Lululla                        #
+#  Usage of this code without proper attribution        #
+#  is strictly prohibited.                              #
+#  For modifications and redistribution,                #
+#  please maintain this credit header.                  #
+#########################################################
+"""
+__author__ = "Lululla"
+
 
 # Try to import lxml, install if not available
 try:
@@ -3390,7 +3380,7 @@ class EPGServiceMapper:
                         url = ''
 
                     f.write(
-                        "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
+                        "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
                             name, separator,
                             original_name, separator,
                             tvg_id, separator,

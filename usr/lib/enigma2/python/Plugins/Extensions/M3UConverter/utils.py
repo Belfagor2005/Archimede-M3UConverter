@@ -1,5 +1,25 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+
+import unicodedata
+from re import IGNORECASE, sub
+from os import access, remove, W_OK, system
+from os.path import dirname, exists, isdir, join
+
+from enigma import eTimer
+try:
+    from enigma import AVSwitch
+except ImportError:
+    from Components.AVSwitch import AVSwitch
+
+from Components.ActionMap import ActionMap
+from Components.FileList import FileList
+from Components.config import config
+from Screens.Screen import Screen
+from Tools.Directories import defaultRecordingLocation
+
+from . import _, __version__
+from .Logger_clr import get_logger
 
 """
 #########################################################
@@ -20,31 +40,6 @@ from __future__ import absolute_import, print_function
 #########################################################
 """
 __author__ = "Lululla"
-
-# ======================== IMPORTS ========================
-# 🧠 STANDARD LIBRARIES (Python built-ins)
-import unicodedata
-from re import IGNORECASE, sub
-from os import access, remove, W_OK, system
-from os.path import dirname, exists, isdir, join
-
-# 📺 ENIGMA2 CORE
-from enigma import eTimer
-try:
-    from enigma import AVSwitch
-except ImportError:
-    from Components.AVSwitch import AVSwitch
-
-# 🧩 ENIGMA2 COMPONENTS
-from Components.ActionMap import ActionMap
-from Components.FileList import FileList
-from Components.config import config
-from Screens.Screen import Screen
-from Tools.Directories import defaultRecordingLocation
-
-# 🧱 LOCAL MODULES
-from . import _, __version__
-from .Logger_clr import get_logger
 
 
 # ==================== UTILITY FUNCTIONS A ====================
