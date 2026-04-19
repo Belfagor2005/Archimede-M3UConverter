@@ -1,12 +1,14 @@
-# 📺 Archimede Universal Converter
+<h1 align="center">📺 Archimede Universal Converter</h1>
+
+![Visitors](https://komarev.com/ghpvc/?username=Belfagor2005&label=Repository%20Views&color=blueviolet)
+![Version](https://img.shields.io/badge/Version-3.3-blue.svg)
+[![Enigma2](https://img.shields.io/badge/Enigma2-Plugin-ff6600.svg)](https://www.enigma2.net)
+![Python](https://img.shields.io/badge/Python3-only-orange.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)
+[![Donate](https://img.shields.io/badge/_-Donate-red.svg?logo=githubsponsors&labelColor=555555&style=for-the-badge)](Maintainers.md#maintainers "Donate")
 
 **Universal playlist converter for Enigma2 (Python 3 only)**  
 Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG mapping and intelligent channel matching.
-
-![](https://komarev.com/ghpvc/?username=Belfagor2005)
-![Version](https://img.shields.io/badge/Version-3.3-blue.svg)
-![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)
-![Python](https://img.shields.io/badge/Python3-only-orange.svg)
 
 
 ## 🚀 Key Features
