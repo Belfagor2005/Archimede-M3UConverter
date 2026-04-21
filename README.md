@@ -5,7 +5,8 @@
 [![Enigma2](https://img.shields.io/badge/Enigma2-Plugin-ff6600.svg)](https://www.enigma2.net)
 ![Python](https://img.shields.io/badge/Python3-only-orange.svg)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)
-[![Donate](https://img.shields.io/badge/_-Donate-red.svg?logo=githubsponsors&labelColor=555555&style=for-the-badge)](Maintainers.md#maintainers "Donate")
+[![Donate](https://img.shields.io/badge/_-Donate-red.svg?logo=githubsponsors&labelColor=555555&style=for-the-badge)](https://ko-fi.com/lululla)
+
 
 **Universal playlist converter for Enigma2 (Python 3 only)**  
 Convert between M3U, JSON, XSPF formats and Enigma2 bouquets with advanced EPG mapping and intelligent channel matching.
